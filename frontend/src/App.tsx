@@ -60,14 +60,12 @@ const App = () => (
                   </DashboardLayout>
                 }
               />
-              
+
               <Route
                 path="documents"
                 element={
                   <DashboardLayout>
-                    <DocumentCenter
-                    
-                    />
+                    <DocumentCenter />
                   </DashboardLayout>
                 }
               />
@@ -152,57 +150,31 @@ const App = () => (
                 path=""
                 element={
                   <DashboardLayout>
-                    <DocumentationDashboard userRole={dummyUserRole} />
+                    <DocumentationDashboard />
                   </DashboardLayout>
                 }
               />
               <Route
-                path="projects"
+                path="documents"
                 element={
                   <DashboardLayout>
-                    <ProjectsDashboard />
+                    <DocumentCenter />
                   </DashboardLayout>
                 }
               />
+              
               <Route
-                path="returned"
+                path="calendar"
                 element={
                   <DashboardLayout>
-                    <ProjectExecutionFlow section="returned" user={dummyUser} />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="outgoing"
-                element={
-                  <DashboardLayout>
-                    <ProjectExecutionFlow section="outgoing" user={dummyUser} />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="clientlog"
-                element={
-                  <DashboardLayout>
-                    <ProjectExecutionFlow
-                      section="clientlog"
-                      user={dummyUser}
-                    />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="register"
-                element={
-                  <DashboardLayout>
-                    <ProjectExecutionFlow section="register" user={dummyUser} />
+                    <CommonCalendar />
                   </DashboardLayout>
                 }
               />
             </Route>
 
             {/* Working Team */}
-            <Route path="/worker" element={<RoleProtectedRoute />}>
+            <Route path="/working" element={<RoleProtectedRoute />}>
               <Route
                 path=""
                 element={
@@ -212,18 +184,10 @@ const App = () => (
                 }
               />
               <Route
-                path="projects"
+                path="documents"
                 element={
                   <DashboardLayout>
-                    <ProjectsDashboard />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="tasks"
-                element={
-                  <DashboardLayout>
-                    <TaskAssignmentPage user={dummyUser} />
+                    <DocumentCenter />
                   </DashboardLayout>
                 }
               />
@@ -248,26 +212,18 @@ const App = () => (
                 }
               />
               <Route
+                path="documents"
+                element={
+                  <DashboardLayout>
+                    <DocumentCenter />
+                  </DashboardLayout>
+                }
+              />
+              <Route
                 path="projects"
                 element={
                   <DashboardLayout>
                     <ProjectsDashboard />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="reports"
-                element={
-                  <DashboardLayout>
-                    <ProjectExecutionFlow section="reports" user={dummyUser} />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="archive"
-                element={
-                  <DashboardLayout>
-                    <ProjectExecutionFlow section="archive" user={dummyUser} />
                   </DashboardLayout>
                 }
               />
