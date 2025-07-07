@@ -8,7 +8,7 @@ const roleToPath: Record<string, string> = {
   pm: "/pm",
   rfq: "/rfq",
   estimation: "/estimation",
-  working: "/worker",
+  working: "/working",
   documentation: "/documentation",
   admin: "/admin",
 };
