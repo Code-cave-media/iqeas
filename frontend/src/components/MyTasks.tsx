@@ -17,12 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import ShowFile from "@/components/ShowFile";
 
-// Dummy data for demonstration
-const PROJECTS = [
-  { id: "p1", name: "Pipeline Expansion" },
-  { id: "p2", name: "Compressor Upgrade" },
-];
-const DUMMY_TASKS: Task[] = [
+
+export const DUMMY_TASKS: Task[] = [
   {
     id: "t1",
     title: "Draft P&ID",
