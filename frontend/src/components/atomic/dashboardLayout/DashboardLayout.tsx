@@ -38,37 +38,24 @@ const menuConfig = {
     { label: "Calendar", to: "/estimation/calendar", icon: Calendar },
   ],
   documentation: [
-    { label: "Dashboard", to: "/documentation", icon: Home },
-    { label: "All Projects", to: "/documentation/projects", icon: Folder },
+    { label: "Document submission", to: "/documentation", icon: Home },
     {
-      label: "Returned Files",
-      to: "/documentation/returned",
-      icon: RefreshCcw,
+      label: "Document Center",
+      to: "/documentation/documents",
+      icon: BookOpen,
     },
-    { label: "Sent to Client", to: "/documentation/outgoing", icon: Send },
-    {
-      label: "Client Log",
-      to: "/documentation/clientlog",
-      icon: MessageCircle,
-    },
-    {
-      label: "Document Register",
-      to: "/documentation/register",
-      icon: FileCheck2,
-    },
+    { label: "Calendar", to: "/documentation/calendar", icon: Calendar },
   ],
   working: [
-    { label: "Dashboard", to: "/worker", icon: Home },
-    { label: "Projects", to: "/worker/projects", icon: Folder },
-    { label: "Tasks & Assignment", to: "/worker/tasks", icon: ListChecks },
-    { label: "Calendar", to: "/worker/calendar", icon: Calendar },
+    { label: "My Task", to: "/working", icon: Home },
+    { label: "Document Center", to: "/working/documents", icon: BookOpen },
+    { label: "Calendar", to: "/working/calendar", icon: Calendar },
   ],
   admin: [
-    { label: "Dashboard", to: "/admin", icon: Home },
-    { label: "Projects", to: "/admin/projects", icon: Folder },
-    { label: "Reports", to: "/admin/reports", icon: File },
-    { label: "Archive", to: "/admin/archive", icon: FileText },
+    { label: "", to: "/admin", icon: Folder },
     { label: "Calendar", to: "/admin/calendar", icon: Calendar },
+    { label: "Members", to: "/admin/members", icon: Calendar },
+    { label: "Document Center", to: "/admin/calendar", icon: Calendar },
   ],
 };
 
