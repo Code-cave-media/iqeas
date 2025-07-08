@@ -52,10 +52,10 @@ const menuConfig = {
     { label: "Calendar", to: "/working/calendar", icon: Calendar },
   ],
   admin: [
-    { label: "", to: "/admin", icon: Folder },
-    { label: "Calendar", to: "/admin/calendar", icon: Calendar },
+    { label: "Projects", to: "/admin", icon: Folder },
     { label: "Members", to: "/admin/members", icon: Calendar },
-    { label: "Document Center", to: "/admin/calendar", icon: Calendar },
+    { label: "Document Center", to: "/admin/documents", icon: Calendar },
+    { label: "Calendar", to: "/admin/calendar", icon: Calendar },
   ],
 };
 
