@@ -12,6 +12,7 @@ import {
 import { ProjectCard } from "@/components/ProjectCard";
 import { Badge } from "@/components/ui/badge";
 import ProjectSlidingPanel from "./ProjectSlidingPanel";
+import ProjectAdminSlidingPanel from "./ProjectAdminSlidingPanel";
 
 const mockProjects = [
   {
@@ -90,7 +91,7 @@ const mockProjects = [
 
 type Project = (typeof mockProjects)[number];
 
-export const ProjectsDashboard = () => {
+export const AdminProjectsDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -210,7 +211,6 @@ export const ProjectsDashboard = () => {
               project={project}
               onSelect={() => setSelectedProject(project)}
               viewMode={viewMode}
-              userRole={""}
             />
           </div>
         ))}
@@ -228,7 +228,7 @@ export const ProjectsDashboard = () => {
 
       {/* Sliding Panel */}
       {selectedProject && (
-        <ProjectSlidingPanel
+        <ProjectAdminSlidingPanel
           selectedProject={selectedProject}
           onClose={() => setSelectedProject(null)}
         />

@@ -10,7 +10,7 @@ const roleToPath: Record<string, string> = {
   estimation: "/estimation",
   working: "/working",
   documentation: "/documentation",
-  Admin: "/admin",
+  admin: "/admin",
 };
 
 const Home = ({ children }: any) => {

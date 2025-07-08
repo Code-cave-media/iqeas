@@ -6,6 +6,8 @@ import { Progress } from "@/components/ui/progress";
 import { Calendar, MapPin, Users, Clock, AlertCircle } from "lucide-react";
 import TaskAssignmentPage from "./TaskAssignmentPage";
 import Submission from "./Submission";
+import ShowFile from "./ShowFile";
+import AdminEstimationStage from "./AdminEstimationStage";
 
 interface Project {
   id: string;
@@ -17,6 +19,15 @@ interface Project {
   progress: number;
   priority: string;
   estimatedCompletion: string;
+  estimationDetails: {
+    costEstimate: string;
+    costBreakdownFile: { label: string; url: string } | null;
+    estimationPDF: { label: string; url: string } | null;
+    deadline: string;
+    approvalDate?: string;
+    remarks: string;
+    uploadedFiles: { label: string; url: string }[];
+  };
 }
 
 type PanelTab = "deliverable" | "task" | "documentation";
@@ -59,6 +70,7 @@ const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
   onClose,
 }) => {
   const [panelTab, setPanelTab] = useState<PanelTab>("deliverable");
+  const [showEstimationDetails, setShowEstimationDetails] = useState(false);
   const isOverdue =
     new Date(selectedProject.estimatedCompletion) < new Date() &&
     selectedProject.status !== "Finalized";
@@ -135,6 +147,25 @@ const ProjectSlidingPanel: React.FC<ProjectSlidingPanelProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Estimation Details Section */}
+        <div className="mb-6">
+          <button
+            className="flex items-center justify-between w-full px-4 py-2 bg-slate-100 rounded hover:bg-slate-200"
+            onClick={() => setShowEstimationDetails((v) => !v)}
+          >
+            <span className="font-semibold text-blue-700">
+              Estimation Details
+            </span>
+            <span>{showEstimationDetails ? "▲" : "▼"}</span>
+          </button>
+          {showEstimationDetails && selectedProject.estimationDetails && (
+            <div className="p-0">
+              <AdminEstimationStage project={selectedProject} />
+            </div>
+          )}
+        </div>
+
         {/* Tab Buttons */}
         <div className="flex mb-6">
           <button
