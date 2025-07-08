@@ -1,11 +1,9 @@
-import express from "express";
+import app from "./src/v1/app.js";
 import dotenv from "dotenv";
 dotenv.config();
 
 const port = process.env.PORT;
 const base_url = process.env.API_BASE_URL;
-
-const app = express();
 
 app.get("/", (req, res) => {
   res.json({ active: "true", status: "200" });
