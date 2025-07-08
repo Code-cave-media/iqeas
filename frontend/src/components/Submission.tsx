@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const STAGES = ["IDC", "IFR", "IFA", "AFC"];
 const STAGE_COLORS = {
@@ -123,6 +124,8 @@ const statusBadge = (status: string) => {
 };
 
 const Submission = ({ projectId }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [timelines, setTimelines] = useState(initialTimelines);
   const [currentStage, setCurrentStage] = useState("IDC");
   const [pmNote, setPmNote] = useState("");
@@ -349,7 +352,8 @@ const Submission = ({ projectId }) => {
         </div>
         <div className="flex-1">
           {/* PM Actions */}
-          {enabledStage === currentStage &&
+          {!isAdmin &&
+            enabledStage === currentStage &&
             getStageStatus(timelines[currentStage]) !== "approved" && (
               <div className="mb-6">
                 <Button className="mt-3" onClick={() => setShowPmDialog(true)}>
@@ -490,7 +494,7 @@ const Submission = ({ projectId }) => {
                                     t.status.slice(1)}
                                 </span>
                               </div>
-                              {canReopen && (
+                              {!isAdmin && canReopen && (
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -510,79 +514,81 @@ const Submission = ({ projectId }) => {
         </div>
       </div>
       {/* Reopen Task Modal */}
-      <Dialog
-        open={!!reopenTaskId}
-        onOpenChange={(open) => {
-          if (!open) setReopenTaskId(null);
-        }}
-      >
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Reopen Task</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Note</label>
-              <Textarea
-                placeholder="Add a note (required)"
-                value={reopenNote}
-                onChange={(e) => setReopenNote(e.target.value)}
-              />
-            </div>
-            <div>
-              <div className="block text-sm font-medium mb-1">
-                Select system files:
+      {!isAdmin && (
+        <Dialog
+          open={!!reopenTaskId}
+          onOpenChange={(open) => {
+            if (!open) setReopenTaskId(null);
+          }}
+        >
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Reopen Task</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Note</label>
+                <Textarea
+                  placeholder="Add a note (required)"
+                  value={reopenNote}
+                  onChange={(e) => setReopenNote(e.target.value)}
+                />
               </div>
-              {SYSTEM_FILES.map((sf) => (
-                <label key={sf.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={reopenSystemFiles.includes(sf.id)}
-                    onChange={(e) => {
-                      setReopenSystemFiles((prev) =>
-                        e.target.checked
-                          ? [...prev, sf.id]
-                          : prev.filter((id) => id !== sf.id)
-                      );
-                    }}
-                  />
-                  <ShowFile label={sf.label} url={""} size="small" />
-                </label>
-              ))}
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Upload Files
-              </label>
-              <Input type="file" multiple onChange={handleReopenFileInput} />
-              {reopenFiles.map((f, idx) => (
-                <div key={idx} className="flex items-center gap-2 mt-1">
-                  <Input
-                    type="text"
-                    value={f.label}
-                    onChange={handleReopenFileLabel(idx)}
-                    className={f.label.trim() ? "" : "border-red-400"}
-                  />
-                  <span className="text-xs">{f.file && f.file.name}</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={removeReopenFile(idx)}
-                  >
-                    &times;
-                  </Button>
+              <div>
+                <div className="block text-sm font-medium mb-1">
+                  Select system files:
                 </div>
-              ))}
+                {SYSTEM_FILES.map((sf) => (
+                  <label key={sf.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={reopenSystemFiles.includes(sf.id)}
+                      onChange={(e) => {
+                        setReopenSystemFiles((prev) =>
+                          e.target.checked
+                            ? [...prev, sf.id]
+                            : prev.filter((id) => id !== sf.id)
+                        );
+                      }}
+                    />
+                    <ShowFile label={sf.label} url={""} size="small" />
+                  </label>
+                ))}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Upload Files
+                </label>
+                <Input type="file" multiple onChange={handleReopenFileInput} />
+                {reopenFiles.map((f, idx) => (
+                  <div key={idx} className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="text"
+                      value={f.label}
+                      onChange={handleReopenFileLabel(idx)}
+                      className={f.label.trim() ? "" : "border-red-400"}
+                    />
+                    <span className="text-xs">{f.file && f.file.name}</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={removeReopenFile(idx)}
+                    >
+                      &times;
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <Button variant="outline" onClick={() => setReopenTaskId(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleReopenSubmit}>Reopen Task</Button>
+              </div>
             </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setReopenTaskId(null)}>
-                Cancel
-              </Button>
-              <Button onClick={handleReopenSubmit}>Reopen Task</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

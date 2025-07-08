@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Task } from "./TaskAssignmentPage";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Mock data for teams and individuals (should be imported or passed as props in real use)
 const TEAMS = [
@@ -56,6 +57,8 @@ const TaskTable: React.FC<TaskTableProps> = ({
   isWorker,
 }) => {
   // State for modals
+  const {user} = useAuth();
+  const isAdmin = user.role =='admin'
   const [completeModal, setCompleteModal] = useState<{
     open: boolean;
     taskId: string | null;
@@ -148,12 +151,12 @@ const TaskTable: React.FC<TaskTableProps> = ({
                 </TableCell>
                 <TableCell>{lastAction}</TableCell>
                 <TableCell>
-                  {isWorker && task.status === "todo" && (
+                  {!isAdmin && isWorker && task.status === "todo" && (
                     <Button size="sm" onClick={() => onStart(task.id)}>
                       Start
                     </Button>
                   )}
-                  {isWorker && task.status === "in-progress" && (
+                  {!isAdmin && isWorker && task.status === "in-progress" && (
                     <>
                       <Button size="sm" onClick={() => onPause(task.id)}>
                         Pause
@@ -166,12 +169,12 @@ const TaskTable: React.FC<TaskTableProps> = ({
                       </Button>
                     </>
                   )}
-                  {isWorker && task.status === "paused" && (
+                  {!isAdmin && isWorker && task.status === "paused" && (
                     <Button size="sm" onClick={() => onStart(task.id)}>
                       Resume
                     </Button>
                   )}
-                  {task.status === "completed" && (
+                  {!isAdmin && task.status === "completed" && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -181,6 +184,7 @@ const TaskTable: React.FC<TaskTableProps> = ({
                     </Button>
                   )}
                   {!isWorker &&
+                    !isAdmin &&
                     !(
                       (task.status === "todo" && isWorker) ||
                       (task.status === "in-progress" && isWorker) ||
@@ -218,146 +222,154 @@ const TaskTable: React.FC<TaskTableProps> = ({
       </Table>
 
       {/* Complete Task Modal */}
-      <Dialog
-        open={completeModal.open}
-        onOpenChange={() => setCompleteModal({ open: false, taskId: null })}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Complete Task</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Textarea
-              placeholder="Notes"
-              value={completeNotes}
-              onChange={(e) => setCompleteNotes(e.target.value)}
-            />
-            <Input
-              type="file"
-              multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                setCompleteFiles((prev) => [
-                  ...prev,
-                  ...files.map((file) => ({
-                    file,
-                    label: "",
-                    tempUrl: URL.createObjectURL(file),
-                  })),
-                ]);
-                e.target.value = "";
-              }}
-            />
-            {completeFiles.map((uf, idx) => (
-              <div key={idx} className="flex items-center gap-2 mt-1">
-                <Input
-                  type="text"
-                  placeholder="Label"
-                  value={uf.label}
-                  onChange={(e) =>
-                    setCompleteFiles((prev) =>
-                      prev.map((u, i) =>
-                        i === idx ? { ...u, label: e.target.value } : u
+      {!isAdmin && (
+        <Dialog
+          open={completeModal.open}
+          onOpenChange={() => setCompleteModal({ open: false, taskId: null })}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Complete Task</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Textarea
+                placeholder="Notes"
+                value={completeNotes}
+                onChange={(e) => setCompleteNotes(e.target.value)}
+              />
+              <Input
+                type="file"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  setCompleteFiles((prev) => [
+                    ...prev,
+                    ...files.map((file) => ({
+                      file,
+                      label: "",
+                      tempUrl: URL.createObjectURL(file),
+                    })),
+                  ]);
+                  e.target.value = "";
+                }}
+              />
+              {completeFiles.map((uf, idx) => (
+                <div key={idx} className="flex items-center gap-2 mt-1">
+                  <Input
+                    type="text"
+                    placeholder="Label"
+                    value={uf.label}
+                    onChange={(e) =>
+                      setCompleteFiles((prev) =>
+                        prev.map((u, i) =>
+                          i === idx ? { ...u, label: e.target.value } : u
+                        )
                       )
-                    )
-                  }
-                  className={uf.label.trim() ? "" : "border-red-400"}
-                />
-                <span className="text-xs">{uf.file.name}</span>
+                    }
+                    className={uf.label.trim() ? "" : "border-red-400"}
+                  />
+                  <span className="text-xs">{uf.file.name}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setCompleteFiles((prev) =>
+                        prev.filter((_, i) => i !== idx)
+                      )
+                    }
+                  >
+                    &times;
+                  </Button>
+                </div>
+              ))}
+              <div className="flex gap-2 justify-end mt-4">
                 <Button
-                  size="sm"
-                  variant="ghost"
+                  variant="outline"
                   onClick={() =>
-                    setCompleteFiles((prev) => prev.filter((_, i) => i !== idx))
+                    setCompleteModal({ open: false, taskId: null })
                   }
                 >
-                  &times;
+                  Cancel
                 </Button>
+                <Button onClick={handleCompleteSave}>Save & Complete</Button>
               </div>
-            ))}
-            <div className="flex gap-2 justify-end mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setCompleteModal({ open: false, taskId: null })}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleCompleteSave}>Save & Complete</Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Reopen Task Modal */}
-      <Dialog
-        open={reopenModal.open}
-        onOpenChange={() => setReopenModal({ open: false, taskId: null })}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reopen Task</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Textarea
-              placeholder="Notes"
-              value={reopenNotes}
-              onChange={(e) => setReopenNotes(e.target.value)}
-            />
-            <Input
-              type="file"
-              multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                setReopenFiles((prev) => [
-                  ...prev,
-                  ...files.map((file) => ({
-                    file,
-                    label: "",
-                    tempUrl: URL.createObjectURL(file),
-                  })),
-                ]);
-                e.target.value = "";
-              }}
-            />
-            {reopenFiles.map((uf, idx) => (
-              <div key={idx} className="flex items-center gap-2 mt-1">
-                <Input
-                  type="text"
-                  placeholder="Label"
-                  value={uf.label}
-                  onChange={(e) =>
-                    setReopenFiles((prev) =>
-                      prev.map((u, i) =>
-                        i === idx ? { ...u, label: e.target.value } : u
+      {!isAdmin && (
+        <Dialog
+          open={reopenModal.open}
+          onOpenChange={() => setReopenModal({ open: false, taskId: null })}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reopen Task</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Textarea
+                placeholder="Notes"
+                value={reopenNotes}
+                onChange={(e) => setReopenNotes(e.target.value)}
+              />
+              <Input
+                type="file"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  setReopenFiles((prev) => [
+                    ...prev,
+                    ...files.map((file) => ({
+                      file,
+                      label: "",
+                      tempUrl: URL.createObjectURL(file),
+                    })),
+                  ]);
+                  e.target.value = "";
+                }}
+              />
+              {reopenFiles.map((uf, idx) => (
+                <div key={idx} className="flex items-center gap-2 mt-1">
+                  <Input
+                    type="text"
+                    placeholder="Label"
+                    value={uf.label}
+                    onChange={(e) =>
+                      setReopenFiles((prev) =>
+                        prev.map((u, i) =>
+                          i === idx ? { ...u, label: e.target.value } : u
+                        )
                       )
-                    )
-                  }
-                  className={uf.label.trim() ? "" : "border-red-400"}
-                />
-                <span className="text-xs">{uf.file.name}</span>
+                    }
+                    className={uf.label.trim() ? "" : "border-red-400"}
+                  />
+                  <span className="text-xs">{uf.file.name}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setReopenFiles((prev) => prev.filter((_, i) => i !== idx))
+                    }
+                  >
+                    &times;
+                  </Button>
+                </div>
+              ))}
+              <div className="flex gap-2 justify-end mt-4">
                 <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() =>
-                    setReopenFiles((prev) => prev.filter((_, i) => i !== idx))
-                  }
+                  variant="outline"
+                  onClick={() => setReopenModal({ open: false, taskId: null })}
                 >
-                  &times;
+                  Cancel
                 </Button>
+                <Button onClick={handleReopenSave}>Reopen Task</Button>
               </div>
-            ))}
-            <div className="flex gap-2 justify-end mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setReopenModal({ open: false, taskId: null })}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleReopenSave}>Reopen Task</Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 };

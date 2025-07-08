@@ -23,9 +23,32 @@ import ShowFile from "./ShowFile";
 import ProjectDocumentsDropdown, {
   ProjectDocument,
 } from "./ProjectDocumentsDropdown";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Mock deliverables needing documentation team action
-const docReviewDeliverables = [
+const docReviewDeliverables: Array<{
+  id: string;
+  projectId: string;
+  client: string;
+  clientEmail: string;
+  clientPhone: string;
+  stage: string;
+  deliverable: string;
+  submittedBy: string;
+  date: string;
+  status: string;
+  files: { label: string; url: string }[];
+  notes: string;
+  delivered?: boolean;
+  deliveryNote?: string;
+  deliveryFiles?: { name: string }[];
+}> = [
   {
     id: "D-001",
     projectId: "PRJ-1024",
@@ -60,6 +83,20 @@ const docReviewDeliverables = [
     ],
     notes: "",
   },
+  {
+    id: "D-003",
+    projectId: "PRJ-1026",
+    client: "Test Client",
+    clientEmail: "test@email.com",
+    clientPhone: "+966500000003",
+    stage: "AFC",
+    deliverable: "Test Deliverable AFC",
+    submittedBy: "Test User",
+    date: "2024-07-04",
+    status: "not approved",
+    files: [{ label: "AFC File v1.0", url: "/uploads/afc-file-v1.0.pdf" }],
+    notes: "",
+  },
 ];
 
 // Mock all project-related documents (could be fetched or filtered by projectId in real use)
@@ -91,8 +128,17 @@ const allProjectDocuments: ProjectDocument[] = [
   },
 ];
 
+// Add dummy files for delivery selection
+const dummyDeliveryFiles = [
+  { label: "Spec Sheet.pdf", url: "/uploads/spec-sheet.pdf" },
+  { label: "Final Drawing.dwg", url: "/uploads/final-drawing.dwg" },
+  { label: "QA Report.docx", url: "/uploads/qa-report.docx" },
+];
+
 export const DocumentationDashboard = () => {
-  const [deliverables, setDeliverables] = useState(docReviewDeliverables);
+  const [deliverables, setDeliverables] = useState<
+    typeof docReviewDeliverables
+  >(docReviewDeliverables);
   const [rejectModal, setRejectModal] = useState<{
     open: boolean;
     deliverableId: string | null;
@@ -102,6 +148,37 @@ export const DocumentationDashboard = () => {
   const [viewDetail, setViewDetail] = useState<
     (typeof docReviewDeliverables)[0] | null
   >(null);
+  // Delivery modal state
+  const [deliveryModal, setDeliveryModal] = useState<{
+    open: boolean;
+    deliverableId: string | null;
+  }>({ open: false, deliverableId: null });
+  const [deliveryFiles, setDeliveryFiles] = useState<
+    { file: File; label: string; tempUrl: string }[]
+  >([]);
+  const [deliveryNote, setDeliveryNote] = useState("");
+  // Filtering and searching state
+  const [stageFilter, setStageFilter] = useState<string>("All");
+  const [search, setSearch] = useState<string>("");
+  // State for selected dummy files
+  const [selectedDummyFiles, setSelectedDummyFiles] = useState<string[]>([]);
+
+  // Get unique stages for dropdown
+  const stageOptions = [
+    "All",
+    ...Array.from(new Set(docReviewDeliverables.map((d) => d.stage))),
+  ];
+
+  // Filtered deliverables
+  const filteredDeliverables = deliverables.filter((d) => {
+    const matchesStage = stageFilter === "All" || d.stage === stageFilter;
+    const searchLower = search.toLowerCase();
+    const matchesSearch =
+      d.client.toLowerCase().includes(searchLower) ||
+      d.projectId.toLowerCase().includes(searchLower) ||
+      d.deliverable.toLowerCase().includes(searchLower);
+    return matchesStage && (!search || matchesSearch);
+  });
 
   // Approve handler
   const handleApprove = (id: string) => {
@@ -124,13 +201,70 @@ export const DocumentationDashboard = () => {
     setRejectFiles([]);
   };
 
+  // Delivery handler
+  const handleDelivery = () => {
+    setDeliverables((prev) =>
+      prev.map((d) =>
+        d.id === deliveryModal.deliverableId
+          ? {
+              ...d,
+              delivered: true,
+              deliveryFiles: [
+                ...deliveryFiles.map((f) => ({
+                  label: f.label,
+                  name: f.file.name,
+                })),
+                ...dummyDeliveryFiles
+                  .filter((f) => selectedDummyFiles.includes(f.url))
+                  .map((f) => ({ label: f.label, name: f.label })),
+              ],
+              deliveryNote,
+            }
+          : d
+      )
+    );
+    setDeliveryModal({ open: false, deliverableId: null });
+    setDeliveryFiles([]);
+    setDeliveryNote("");
+    setSelectedDummyFiles([]);
+  };
+
   return (
     <div className="p-6 mx-auto">
       <h2 className="text-2xl font-bold text-blue-900 mb-6">
         Documentation Team Dashboard
       </h2>
+      {/* Filter and Search Controls */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
+        <div className="min-w-[180px] flex flex-row items-center">
+          <label className="text-lg font-semibold text-slate-500 mr-2">
+            Stage:
+          </label>
+          <Select value={stageFilter} onValueChange={setStageFilter}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select stage" />
+            </SelectTrigger>
+            <SelectContent>
+              {stageOptions.map((opt) => (
+                <SelectItem key={opt} value={opt}>
+                  {opt}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1">
+          <input
+            className="border rounded px-2 py-1 w-full"
+            type="text"
+            placeholder="Search by client, project ID, or deliverable..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {deliverables.map((d) => (
+        {filteredDeliverables.map((d) => (
           <Card
             key={d.id}
             className="hover:shadow-lg transition-shadow border-blue-100"
@@ -205,6 +339,25 @@ export const DocumentationDashboard = () => {
                   >
                     Reject
                   </Button>
+                  {/* Make Project Delivery Button */}
+                  {d.stage === "AFC" &&
+                    d.status === "Approved" &&
+                    !d.delivered && (
+                      <Button
+                        size="sm"
+                        className="bg-blue-700 hover:bg-blue-800 text-white md:flex-1 shadow-sm"
+                        onClick={() =>
+                          setDeliveryModal({ open: true, deliverableId: d.id })
+                        }
+                      >
+                        Make Project Delivery
+                      </Button>
+                    )}
+                  {d.delivered && (
+                    <span className="text-green-700 font-semibold ml-2">
+                      Delivered
+                    </span>
+                  )}
                 </div>
               </div>
               {/* Contact Section */}
@@ -225,10 +378,30 @@ export const DocumentationDashboard = () => {
                 </div>
               </div>
               {/* Files Section */}
-              
               {d.status === "Rejected" && d.notes && (
                 <div className="mt-2 text-red-700 font-semibold">
                   Rejection Note: {d.notes}
+                </div>
+              )}
+              {/* Delivery Note Section */}
+              {d.delivered && d.deliveryNote && (
+                <div className="mt-2 text-blue-700 font-semibold">
+                  Delivery Note: {d.deliveryNote}
+                </div>
+              )}
+              {/* Delivery Files Section */}
+              {d.delivered && d.deliveryFiles && d.deliveryFiles.length > 0 && (
+                <div className="mt-2">
+                  <span className="text-xs font-semibold text-slate-500 mb-1">
+                    Delivered Files:
+                  </span>
+                  <ul className="list-disc ml-6">
+                    {d.deliveryFiles.map((f, i) => (
+                      <li key={i} className="text-blue-700 text-xs">
+                        {f.name}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </CardContent>
@@ -275,6 +448,124 @@ export const DocumentationDashboard = () => {
                 disabled={!rejectNote.trim()}
               >
                 Reject
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delivery Modal */}
+      <Dialog
+        open={deliveryModal.open}
+        onOpenChange={() => {
+          setDeliveryModal({ open: false, deliverableId: null });
+          setSelectedDummyFiles([]);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Project Delivery</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              placeholder="Delivery Note"
+              value={deliveryNote}
+              onChange={(e) => setDeliveryNote(e.target.value)}
+            />
+            {/* Dummy files selection */}
+            <div>
+              <div className="text-xs font-semibold text-slate-500 mb-1">
+                Select from existing files:
+              </div>
+              <div className="flex flex-col gap-2">
+                {dummyDeliveryFiles.map((file, idx) => (
+                  <label
+                    key={idx}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedDummyFiles.includes(file.url)}
+                      onChange={(e) => {
+                        setSelectedDummyFiles((prev) =>
+                          e.target.checked
+                            ? [...prev, file.url]
+                            : prev.filter((u) => u !== file.url)
+                        );
+                      }}
+                    />
+                    <ShowFile label={file.label} url={file.url} size="small" />
+                  </label>
+                ))}
+              </div>
+            </div>
+            <Input
+              type="file"
+              multiple
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                setDeliveryFiles((prev) => [
+                  ...prev,
+                  ...files.map((file) => ({
+                    file,
+                    label: "",
+                    tempUrl: URL.createObjectURL(file),
+                  })),
+                ]);
+                e.target.value = "";
+              }}
+            />
+            {deliveryFiles.map((uf, idx) => (
+              <div key={idx} className="flex items-center gap-2 mt-1">
+                <Input
+                  type="text"
+                  placeholder="Label"
+                  value={uf.label}
+                  onChange={(e) =>
+                    setDeliveryFiles((prev) =>
+                      prev.map((u, i) =>
+                        i === idx ? { ...u, label: e.target.value } : u
+                      )
+                    )
+                  }
+                  className={uf.label.trim() ? "" : "border-red-400"}
+                />
+                <span className="text-xs">{uf.file.name}</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    setDeliveryFiles((prev) => prev.filter((_, i) => i !== idx))
+                  }
+                >
+                  &times;
+                </Button>
+              </div>
+            ))}
+            <div className="flex gap-2 justify-end mt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeliveryModal({ open: false, deliverableId: null });
+                  setSelectedDummyFiles([]);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="bg-blue-700 hover:bg-blue-800 text-white"
+                onClick={() => {
+                  handleDelivery();
+                  setSelectedDummyFiles([]);
+                }}
+                disabled={
+                  (deliveryFiles.length === 0 &&
+                    selectedDummyFiles.length === 0) ||
+                  !deliveryNote.trim() ||
+                  deliveryFiles.some((f) => !f.label.trim())
+                }
+              >
+                Confirm Delivery
               </Button>
             </div>
           </div>

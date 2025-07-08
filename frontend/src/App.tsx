@@ -23,6 +23,9 @@ import { EstimationDashboard } from "./components/EstimationDashboard";
 import { WorkerDashboard } from "./components/WorkerDashboard";
 import Home from "./components/Home";
 import MyTasks from "./components/MyTasks";
+import { AdminProjectsDashboard } from "./components/AdminProjectDashboard";
+import AdminMembers from "./components/AdminMembers";
+
 // Placeholder components for missing ones
 const PMSettings = () => (
   <div className="p-8 text-2xl text-blue-800">[Settings Placeholder]</div>
@@ -162,7 +165,7 @@ const App = () => (
                   </DashboardLayout>
                 }
               />
-              
+
               <Route
                 path="calendar"
                 element={
@@ -207,7 +210,7 @@ const App = () => (
                 path=""
                 element={
                   <DashboardLayout>
-                    <PMDashboard />
+                    <AdminProjectsDashboard />
                   </DashboardLayout>
                 }
               />
@@ -220,10 +223,10 @@ const App = () => (
                 }
               />
               <Route
-                path="projects"
+                path="members"
                 element={
                   <DashboardLayout>
-                    <ProjectsDashboard />
+                    <AdminMembers />
                   </DashboardLayout>
                 }
               />
