@@ -20,7 +20,6 @@ interface ProjectCardProps {
   project: Project;
   onSelect: () => void;
   viewMode: "grid" | "list";
-  userRole: string;
 }
 
 const getStatusColor = (status: string) => {
@@ -55,7 +54,6 @@ export const ProjectCard = ({
   project,
   onSelect,
   viewMode,
-  userRole,
 }: ProjectCardProps) => {
   const isOverdue =
     new Date(project.estimatedCompletion) < new Date() &&

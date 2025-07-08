@@ -52,7 +52,7 @@ export interface Task {
 }
 interface UploadFile {
   file: File;
-    label: string;
+  label: string;
   tempUrl: string;
   id?: string;
 }
@@ -71,9 +71,9 @@ interface FormState {
 }
 
 // Mock data for teams, individuals, and system files
-  const TEAMS = [
-    { id: "team1", name: "Design Team" },
-    { id: "team2", name: "Drafting Team" },
+const TEAMS = [
+  { id: "team1", name: "Design Team" },
+  { id: "team2", name: "Drafting Team" },
 ];
 const INDIVIDUALS = [
   { id: "1", name: "John Doe" },
@@ -121,11 +121,17 @@ const DUMMY_COMPLETED_TASK: Task = {
       ],
       notes: "Work done. Please review.",
       time: Date.now() - 1000 * 60 * 60,
-        },
-      ],
-    };
+    },
+  ],
+};
 
-function TaskAssignmentPage({ projectId }: { projectId: string }) {
+function TaskAssignmentPage({
+  projectId,
+  isAdmin = false,
+}: {
+  projectId: string;
+  isAdmin?: boolean;
+}) {
   // State for tasks, modal, and form
   const [tasks, setTasks] = useState<Task[]>([DUMMY_COMPLETED_TASK]);
   const [showModal, setShowModal] = useState(false);
@@ -133,7 +139,7 @@ function TaskAssignmentPage({ projectId }: { projectId: string }) {
     deliverableId: "",
     title: "",
     description: "",
-      priority: "medium",
+    priority: "medium",
     assignedType: "individual",
     assignedTo: "",
     dueDate: new Date(),
@@ -402,9 +408,11 @@ function TaskAssignmentPage({ projectId }: { projectId: string }) {
     <div className="p-0">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Tasks</h2>
-        <Button onClick={() => setShowModal(true)}>
-          <Plus size={20} /> Create Task
-            </Button>
+        {!isAdmin && (
+          <Button onClick={() => setShowModal(true)}>
+            <Plus size={20} /> Create Task
+          </Button>
+        )}
       </div>
       {/* Stage Filter */}
       <div className="mb-4 pl-1">
@@ -424,345 +432,363 @@ function TaskAssignmentPage({ projectId }: { projectId: string }) {
       {/* Tasks Table */}
       <TaskTable
         tasks={tasks}
-        onStart={handleStart}
-        onPause={handlePause}
-        onComplete={handleComplete}
-        onReopen={handleReopen}
+        onStart={isAdmin ? undefined : handleStart}
+        onPause={isAdmin ? undefined : handlePause}
+        onComplete={isAdmin ? undefined : handleComplete}
+        onReopen={isAdmin ? undefined : handleReopen}
         onViewDetails={(task) => setTimelineModal({ open: true, task })}
         isWorker={false}
       />
 
       {/* Create Task Modal */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-4xl" overlayClassName="!bg-black/20">
+      {!isAdmin && (
+        <Dialog open={showModal} onOpenChange={setShowModal}>
+          <DialogContent className="max-w-4xl" overlayClassName="!bg-black/20">
             <DialogHeader>
-            <DialogTitle>Create Task</DialogTitle>
+              <DialogTitle>Create Task</DialogTitle>
             </DialogHeader>
-          <div className="flex flex-col gap-y-4 max-h-[80vh] overflow-y-auto pr-2 px-2 pt-2">
-            <label className="text-sm font-medium">Deliverable</label>
-            <Select
-              value={form.deliverableId}
-              onValueChange={(v) =>
-                setForm((f) => ({ ...f, deliverableId: v }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Deliverable" />
-              </SelectTrigger>
-              <SelectContent>
-                {DELIVERABLES.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {formErrors.deliverableId && (
-              <div className="text-xs text-red-500">
-                {formErrors.deliverableId}
-              </div>
-            )}
-                <Input
-              placeholder="Title"
-              value={form.title}
-                  onChange={(e) =>
-                setForm((f) => ({ ...f, title: e.target.value }))
-              }
-            />
-            {formErrors.title && (
-              <div className="text-xs text-red-500">{formErrors.title}</div>
-            )}
-                <Textarea
-              placeholder="Description"
-              value={form.description}
-                  onChange={(e) =>
-                setForm((f) => ({ ...f, description: e.target.value }))
+            <div className="flex flex-col gap-y-4 max-h-[80vh] overflow-y-auto pr-2 px-2 pt-2">
+              <label className="text-sm font-medium">Deliverable</label>
+              <Select
+                value={form.deliverableId}
+                onValueChange={(v) =>
+                  setForm((f) => ({ ...f, deliverableId: v }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Deliverable" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DELIVERABLES.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formErrors.deliverableId && (
+                <div className="text-xs text-red-500">
+                  {formErrors.deliverableId}
+                </div>
+              )}
+              <Input
+                placeholder="Title"
+                value={form.title}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, title: e.target.value }))
+                }
+              />
+              {formErrors.title && (
+                <div className="text-xs text-red-500">{formErrors.title}</div>
+              )}
+              <Textarea
+                placeholder="Description"
+                value={form.description}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, description: e.target.value }))
+                }
+              />
+              <label className="text-sm font-medium ">Priority</label>
+              <Select
+                value={form.priority}
+                onValueChange={(v) =>
+                  setForm((f) => ({ ...f, priority: v as any }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRIORITIES.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <label className="text-sm font-medium">Assigned To</label>
+              <div className="flex gap-2">
+                <Button
+                  variant={
+                    form.assignedType === "individual" ? "default" : "outline"
                   }
-                />
-            <label className="text-sm font-medium ">Priority</label>
+                  size="sm"
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      assignedType: "individual",
+                      assignedTo: "",
+                    }))
+                  }
+                >
+                  Individual
+                </Button>
+                <Button
+                  variant={form.assignedType === "team" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      assignedType: "team",
+                      assignedTo: "",
+                    }))
+                  }
+                >
+                  Team
+                </Button>
+              </div>
+              {form.assignedType === "individual" ? (
                 <Select
-              value={form.priority}
-              onValueChange={(v) =>
-                setForm((f) => ({ ...f, priority: v as any }))
+                  value={form.assignedTo}
+                  onValueChange={(v) =>
+                    setForm((f) => ({ ...f, assignedTo: v }))
                   }
                 >
                   <SelectTrigger>
-                <SelectValue placeholder="Priority" />
+                    <SelectValue placeholder="Select Individual" />
                   </SelectTrigger>
                   <SelectContent>
-                {PRIORITIES.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
-                  </SelectItem>
-                ))}
+                    {INDIVIDUALS.map((i) => (
+                      <SelectItem key={i.id} value={i.id}>
+                        {i.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-            <label className="text-sm font-medium">Assigned To</label>
-            <div className="flex gap-2">
-                  <Button
-                    variant={
-                  form.assignedType === "individual" ? "default" : "outline"
-                    }
-                    size="sm"
-                onClick={() =>
-                  setForm((f) => ({
-                    ...f,
-                    assignedType: "individual",
-                    assignedTo: "",
-                  }))
-                }
-                  >
-                    Individual
-                  </Button>
-                  <Button
-                variant={form.assignedType === "team" ? "default" : "outline"}
-                    size="sm"
-                onClick={() =>
-                  setForm((f) => ({
-                    ...f,
-                    assignedType: "team",
-                    assignedTo: "",
-                  }))
-                }
-                  >
-                    Team
-                  </Button>
+              ) : (
+                <Select
+                  value={form.assignedTo}
+                  onValueChange={(v) =>
+                    setForm((f) => ({ ...f, assignedTo: v }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TEAMS.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {formErrors.assignedTo && (
+                <div className="text-xs text-red-500">
+                  {formErrors.assignedTo}
                 </div>
-            {form.assignedType === "individual" ? (
-                  <Select
-                value={form.assignedTo}
-                onValueChange={(v) => setForm((f) => ({ ...f, assignedTo: v }))}
-                  >
-                    <SelectTrigger>
-                  <SelectValue placeholder="Select Individual" />
-                    </SelectTrigger>
-                    <SelectContent>
-                  {INDIVIDUALS.map((i) => (
-                    <SelectItem key={i.id} value={i.id}>
-                      {i.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Select
-                value={form.assignedTo}
-                onValueChange={(v) => setForm((f) => ({ ...f, assignedTo: v }))}
-                  >
-                    <SelectTrigger>
-                  <SelectValue placeholder="Select Team" />
-                    </SelectTrigger>
-                    <SelectContent>
-                  {TEAMS.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-            {formErrors.assignedTo && (
-              <div className="text-xs text-red-500">
-                {formErrors.assignedTo}
-              </div>
-            )}
-            <div>
+              )}
+              <div>
                 <label className="text-sm font-medium">Due Date</label>
                 <Calendar
                   mode="single"
-                selected={form.dueDate}
-                onSelect={(date) => setForm((f) => ({ ...f, dueDate: date }))}
+                  selected={form.dueDate}
+                  onSelect={(date) => setForm((f) => ({ ...f, dueDate: date }))}
                   className="rounded-md border"
                 />
-              {formErrors.dueDate && (
-                <div className="text-xs text-red-500">{formErrors.dueDate}</div>
-              )}
-              </div>
-                <Textarea
-              placeholder="Notes"
-              value={form.notes}
-                  onChange={(e) =>
-                setForm((f) => ({ ...f, notes: e.target.value }))
-              }
-            />
-            {/* System Files */}
-            <div>
-              <div className="text-xs mb-1">Select system files:</div>
-              {SYSTEM_FILES.map((sf) => (
-                <label key={sf.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.systemFiles.includes(sf.id)}
-                    onChange={(e) => {
-                      setForm((f) => ({
-                        ...f,
-                        systemFiles: e.target.checked
-                          ? [...f.systemFiles, sf.id]
-                          : f.systemFiles.filter((id) => id !== sf.id),
-                      }));
-                    }}
-                  />
-                  <ShowFile label={sf.label} url={""} size="small" />
-                          </label>
-              ))}
+                {formErrors.dueDate && (
+                  <div className="text-xs text-red-500">
+                    {formErrors.dueDate}
                   </div>
-            {/* Upload Files */}
-            <div>
-              <div className="text-xs mb-1">Upload files (label required):</div>
-                  <Input
-                    type="file"
-                    multiple
-                    onChange={(e) => {
+                )}
+              </div>
+              <Textarea
+                placeholder="Notes"
+                value={form.notes}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, notes: e.target.value }))
+                }
+              />
+              {/* System Files */}
+              <div>
+                <div className="text-xs mb-1">Select system files:</div>
+                {SYSTEM_FILES.map((sf) => (
+                  <label key={sf.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={form.systemFiles.includes(sf.id)}
+                      onChange={(e) => {
+                        setForm((f) => ({
+                          ...f,
+                          systemFiles: e.target.checked
+                            ? [...f.systemFiles, sf.id]
+                            : f.systemFiles.filter((id) => id !== sf.id),
+                        }));
+                      }}
+                    />
+                    <ShowFile label={sf.label} url={""} size="small" />
+                  </label>
+                ))}
+              </div>
+              {/* Upload Files */}
+              <div>
+                <div className="text-xs mb-1">
+                  Upload files (label required):
+                </div>
+                <Input
+                  type="file"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setForm((f) => ({
+                      ...f,
+                      uploadFiles: [
+                        ...f.uploadFiles,
+                        ...files.map((file) => ({
+                          file,
+                          label: "",
+                          tempUrl: URL.createObjectURL(file),
+                        })),
+                      ],
+                    }));
+                    e.target.value = "";
+                  }}
+                />
+                {form.uploadFiles.map((uf, idx) => (
+                  <div key={idx} className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="text"
+                      placeholder="Label"
+                      value={uf.label}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          uploadFiles: f.uploadFiles.map((u, i) =>
+                            i === idx ? { ...u, label: e.target.value } : u
+                          ),
+                        }))
+                      }
+                      className={uf.label.trim() ? "" : "border-red-400"}
+                    />
+                    <span className="text-xs">{uf.file.name}</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          uploadFiles: f.uploadFiles.filter(
+                            (_, i) => i !== idx
+                          ),
+                        }))
+                      }
+                    >
+                      &times;
+                    </Button>
+                  </div>
+                ))}
+                {/* Show uploaded files with ShowFile */}
+                {form.uploadFiles.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {form.uploadFiles.map((uf, idx) => (
+                      <ShowFile
+                        key={idx}
+                        label={uf.label || uf.file.name}
+                        url={uf.tempUrl}
+                        size="small"
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <label className="text-sm font-medium">Hours</label>
+              <Input
+                type="number"
+                min={1}
+                value={form.totalHours}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, totalHours: Number(e.target.value) }))
+                }
+                placeholder="Total Hours"
+              />
+              <div className="flex gap-2 justify-end mt-4">
+                <Button variant="outline" onClick={() => setShowModal(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateTask}>Create Task</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Complete Modal */}
+      {!isAdmin && (
+        <Dialog
+          open={completeModal.open}
+          onOpenChange={() => setCompleteModal({ open: false, taskId: null })}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Complete Task</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Textarea
+                placeholder="Notes"
+                value={completeNotes}
+                onChange={(e) => setCompleteNotes(e.target.value)}
+              />
+              <Input
+                type="file"
+                multiple
+                onChange={(e) => {
                   const files = Array.from(e.target.files || []);
-                  setForm((f) => ({
-                    ...f,
-                    uploadFiles: [
-                      ...f.uploadFiles,
-                      ...files.map((file) => ({
-                        file,
-                        label: "",
-                        tempUrl: URL.createObjectURL(file),
-                      })),
-                        ],
-                      }));
-                      e.target.value = "";
-                    }}
-                  />
-              {form.uploadFiles.map((uf, idx) => (
+                  setCompleteFiles((prev) => [
+                    ...prev,
+                    ...files.map((file) => ({
+                      file,
+                      label: "",
+                      tempUrl: URL.createObjectURL(file),
+                    })),
+                  ]);
+                  e.target.value = "";
+                }}
+              />
+              {completeFiles.map((uf, idx) => (
                 <div key={idx} className="flex items-center gap-2 mt-1">
-                        <Input
-                          type="text"
+                  <Input
+                    type="text"
                     placeholder="Label"
                     value={uf.label}
-                          onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        uploadFiles: f.uploadFiles.map((u, i) =>
+                    onChange={(e) =>
+                      setCompleteFiles((prev) =>
+                        prev.map((u, i) =>
                           i === idx ? { ...u, label: e.target.value } : u
-                              ),
-                            }))
-                          }
+                        )
+                      )
+                    }
                     className={uf.label.trim() ? "" : "border-red-400"}
                   />
                   <span className="text-xs">{uf.file.name}</span>
                   <Button
                     size="sm"
                     variant="ghost"
-                          onClick={() =>
-                      setForm((f) => ({
-                        ...f,
-                        uploadFiles: f.uploadFiles.filter((_, i) => i !== idx),
-                            }))
-                          }
-                        >
-                          &times;
+                    onClick={() =>
+                      setCompleteFiles((prev) =>
+                        prev.filter((_, i) => i !== idx)
+                      )
+                    }
+                  >
+                    &times;
                   </Button>
                 </div>
               ))}
-              {/* Show uploaded files with ShowFile */}
-              {form.uploadFiles.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {form.uploadFiles.map((uf, idx) => (
-                    <ShowFile
-                      key={idx}
-                      label={uf.label || uf.file.name}
-                      url={uf.tempUrl}
-                      size="small"
-                    />
-                    ))}
-                  </div>
-                )}
-                    </div>
-            <label className="text-sm font-medium">Hours</label>
-                <Input
-                  type="number"
-                  min={1}
-              value={form.totalHours}
-                  onChange={(e) =>
-                setForm((f) => ({ ...f, totalHours: Number(e.target.value) }))
-              }
-              placeholder="Total Hours"
-            />
-            <div className="flex gap-2 justify-end mt-4">
-              <Button variant="outline" onClick={() => setShowModal(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreateTask}>Create Task</Button>
-            </div>
+              <div className="flex gap-2 justify-end mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setCompleteModal({ open: false, taskId: null })
+                  }
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleCompleteSave}>Save & Complete</Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
-
-      {/* Complete Modal */}
-      <Dialog
-        open={completeModal.open}
-        onOpenChange={() => setCompleteModal({ open: false, taskId: null })}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Complete Task</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-                <Textarea
-              placeholder="Notes"
-              value={completeNotes}
-              onChange={(e) => setCompleteNotes(e.target.value)}
-            />
-            <Input
-                    type="file"
-                    multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                setCompleteFiles((prev) => [
-                  ...prev,
-                  ...files.map((file) => ({
-                    file,
-                    label: "",
-                    tempUrl: URL.createObjectURL(file),
-                  })),
-                ]);
-                e.target.value = "";
-              }}
-            />
-            {completeFiles.map((uf, idx) => (
-              <div key={idx} className="flex items-center gap-2 mt-1">
-                <Input
-                    type="text"
-                  placeholder="Label"
-                  value={uf.label}
-                    onChange={(e) =>
-                    setCompleteFiles((prev) =>
-                      prev.map((u, i) =>
-                        i === idx ? { ...u, label: e.target.value } : u
-                      )
-                    )
-                  }
-                  className={uf.label.trim() ? "" : "border-red-400"}
-                />
-                <span className="text-xs">{uf.file.name}</span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() =>
-                    setCompleteFiles((prev) => prev.filter((_, i) => i !== idx))
-                  }
-                  >
-                    &times;
-                </Button>
-                </div>
-              ))}
-            <div className="flex gap-2 justify-end mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setCompleteModal({ open: false, taskId: null })}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleCompleteSave}>Save & Complete</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      )}
 
       {/* Timeline/Details Modal */}
       <Dialog
@@ -777,10 +803,10 @@ function TaskAssignmentPage({ projectId }: { projectId: string }) {
             <div className="bg-white rounded-lg shadow divide-y divide-slate-100 max-h-[80vh] overflow-y-auto">
               {/* Task Info */}
               <div className="p-6 flex flex-col gap-2">
-                  <div className="text-xl font-bold text-blue-900 mb-1">
+                <div className="text-xl font-bold text-blue-900 mb-1">
                   {timelineModal.task.title}
-                  </div>
-                  <div className="text-sm text-slate-600">
+                </div>
+                <div className="text-sm text-slate-600">
                   {timelineModal.task.description}
                 </div>
                 <div className="flex flex-wrap gap-4 mt-2">
@@ -818,11 +844,11 @@ function TaskAssignmentPage({ projectId }: { projectId: string }) {
                       Due Date:
                     </span>{" "}
                     {timelineModal.task.dueDate?.toLocaleDateString?.()}
-                </div>
+                  </div>
                   <div>
                     <span className="font-semibold text-slate-700">Hours:</span>{" "}
                     {timelineModal.task.totalHours}
-              </div>
+                  </div>
                 </div>
                 <div className="mt-2">
                   <span className="font-semibold text-slate-700">Notes:</span>{" "}
@@ -861,7 +887,7 @@ function TaskAssignmentPage({ projectId }: { projectId: string }) {
                             icon = null;
                           if (tl.action === "assigned") {
                             color = "bg-blue-100 text-blue-700 border-blue-300";
-                              label = "Assigned";
+                            label = "Assigned";
                             icon = (
                               <span className="inline-block w-3 h-3 bg-blue-500 rounded-full" />
                             );
@@ -882,7 +908,7 @@ function TaskAssignmentPage({ projectId }: { projectId: string }) {
                           } else if (tl.action === "completed") {
                             color =
                               "bg-purple-100 text-purple-700 border-purple-300";
-                              label = "Completed";
+                            label = "Completed";
                             icon = (
                               <span className="inline-block w-3 h-3 bg-purple-500 rounded-full" />
                             );
@@ -905,20 +931,20 @@ function TaskAssignmentPage({ projectId }: { projectId: string }) {
                             icon = (
                               <span className="inline-block w-3 h-3 bg-emerald-500 rounded-full" />
                             );
-                            }
-                            return (
-                              <div
-                                key={idx}
+                          }
+                          return (
+                            <div
+                              key={idx}
                               className={`flex items-start gap-3 mb-4 relative z-10`}
+                            >
+                              <span
+                                className={`inline-flex items-center justify-center w-7 h-7 rounded-full border-2 border-white shadow ${color}`}
                               >
-                                <span
-                                  className={`inline-flex items-center justify-center w-7 h-7 rounded-full border-2 border-white shadow ${color}`}
-                                >
-                                  {icon}
-                                </span>
+                                {icon}
+                              </span>
                               <div className="flex-1">
                                 <div className="font-semibold text-base">
-                                    {label}
+                                  {label}
                                 </div>
                                 <div className="text-xs text-slate-500 mb-1">
                                   {new Date(tl.time).toLocaleString()}
@@ -929,14 +955,14 @@ function TaskAssignmentPage({ projectId }: { projectId: string }) {
                                       Notes:
                                     </span>{" "}
                                     {tl.notes}
-                                        </div>
-                                      )}
+                                  </div>
+                                )}
                                 {tl.files && tl.files.length > 0 && (
                                   <div className="mb-1">
                                     <span className="font-semibold text-slate-700">
                                       Files:
                                     </span>
-                                          <ul className="list-disc ml-6">
+                                    <ul className="list-disc ml-6">
                                       {tl.files.map((f, i) => (
                                         <li key={i} className="text-xs">
                                           <ShowFile
@@ -947,15 +973,15 @@ function TaskAssignmentPage({ projectId }: { projectId: string }) {
                                             url={""}
                                             size="small"
                                           />
-                                              </li>
-                                            ))}
-                                          </ul>
-                                    </div>
-                                  )}
-                                </div>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
                               </div>
-                            );
-                          })}
+                            </div>
+                          );
+                        })}
                       </>
                     ) : (
                       <div className="text-xs text-slate-400">
@@ -963,7 +989,7 @@ function TaskAssignmentPage({ projectId }: { projectId: string }) {
                       </div>
                     )}
                   </div>
-                      </div>
+                </div>
               </div>
             </div>
           )}
@@ -971,101 +997,107 @@ function TaskAssignmentPage({ projectId }: { projectId: string }) {
       </Dialog>
 
       {/* PM Review Modal */}
-      <Dialog
-        open={reviewModal.open}
-        onOpenChange={(open) => {
-          if (!open) setReviewModal({ open: false, task: null });
-        }}
-      >
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Review Task</DialogTitle>
-          </DialogHeader>
-          {reviewModal.task && (
-            <div className="space-y-4">
-              <div>
-                <div className="font-semibold mb-1">Completed Files</div>
-                <ul className="space-y-2">
-                  {reviewModal.task.timeline
-                    .filter((tl) => tl.action === "completed")
-                    .flatMap((tl) => tl.files)
-                    .map((f, idx) => (
-                      <li key={idx}>
-                        <ShowFile
-                          label={f.label}
-                          url={f.file || ""}
-                          size="small"
-                        />
-                      </li>
-                    ))}
-                </ul>
-            </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Optional Note
-                </label>
-            <Textarea
-                  placeholder="Add a note (optional)"
-                  value={reviewNote}
-                  onChange={(e) => setReviewNote(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Upload Files
-            </label>
-                <Input type="file" multiple onChange={handleReviewFileInput} />
-                {reviewFiles.map((f, idx) => (
-                  <div key={idx} className="flex items-center gap-2 mt-1">
-                    <Input
-                      type="text"
-                      value={f.label}
-                      onChange={handleReviewFileLabel(idx)}
-                      className={f.label.trim() ? "" : "border-red-400"}
-                    />
-                    <span className="text-xs">{f.file && f.file.name}</span>
-              <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={removeReviewFile(idx)}
-              >
-                      &times;
-              </Button>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <div className="block text-sm font-medium mb-1">
-                  Select system files:
+      {!isAdmin && (
+        <Dialog
+          open={reviewModal.open}
+          onOpenChange={(open) => {
+            if (!open) setReviewModal({ open: false, task: null });
+          }}
+        >
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Review Task</DialogTitle>
+            </DialogHeader>
+            {reviewModal.task && (
+              <div className="space-y-4">
+                <div>
+                  <div className="font-semibold mb-1">Completed Files</div>
+                  <ul className="space-y-2">
+                    {reviewModal.task.timeline
+                      .filter((tl) => tl.action === "completed")
+                      .flatMap((tl) => tl.files)
+                      .map((f, idx) => (
+                        <li key={idx}>
+                          <ShowFile
+                            label={f.label}
+                            url={f.file || ""}
+                            size="small"
+                          />
+                        </li>
+                      ))}
+                  </ul>
                 </div>
-                {SYSTEM_FILES.map((sf) => (
-                  <label key={sf.id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={reviewSystemFiles.includes(sf.id)}
-                      onChange={(e) =>
-                        handleReviewSystemFile(sf.id, e.target.checked)
-                      }
-                    />
-                    <ShowFile label={sf.label} url={sf.file} size="small" />
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Optional Note
                   </label>
-                ))}
+                  <Textarea
+                    placeholder="Add a note (optional)"
+                    value={reviewNote}
+                    onChange={(e) => setReviewNote(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Upload Files
+                  </label>
+                  <Input
+                    type="file"
+                    multiple
+                    onChange={handleReviewFileInput}
+                  />
+                  {reviewFiles.map((f, idx) => (
+                    <div key={idx} className="flex items-center gap-2 mt-1">
+                      <Input
+                        type="text"
+                        value={f.label}
+                        onChange={handleReviewFileLabel(idx)}
+                        className={f.label.trim() ? "" : "border-red-400"}
+                      />
+                      <span className="text-xs">{f.file && f.file.name}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={removeReviewFile(idx)}
+                      >
+                        &times;
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="block text-sm font-medium mb-1">
+                    Select system files:
+                  </div>
+                  {SYSTEM_FILES.map((sf) => (
+                    <label key={sf.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={reviewSystemFiles.includes(sf.id)}
+                        onChange={(e) =>
+                          handleReviewSystemFile(sf.id, e.target.checked)
+                        }
+                      />
+                      <ShowFile label={sf.label} url={sf.file} size="small" />
+                    </label>
+                  ))}
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleReviewAction("pm-rejected")}
+                  >
+                    Reject
+                  </Button>
+                  <Button onClick={() => handleReviewAction("verified")}>
+                    Verify
+                  </Button>
+                </div>
               </div>
-              <div className="flex justify-end gap-2 mt-4">
-              <Button
-                  variant="destructive"
-                  onClick={() => handleReviewAction("pm-rejected")}
-              >
-                  Reject
-                </Button>
-                <Button onClick={() => handleReviewAction("verified")}>
-                  Verify
-              </Button>
-            </div>
-          </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

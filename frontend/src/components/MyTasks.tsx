@@ -202,7 +202,7 @@ const MyTasks = () => {
           )}
         </DialogContent>
       </Dialog>
-      {/* Task Details Modal (copied from TaskAssignmentPage timelineModal) */}
+     
       <Dialog
         open={detailsModal.open}
         onOpenChange={() => setDetailsModal({ open: false, task: null })}
