@@ -1,0 +1,67 @@
+import {
+  createEstimation,
+  getEstimationById,
+} from "../services/estimation.service.js";
+import { formatResponse } from "../utils/response.js";
+
+export const createEstimationHandler = async (req, res) => {
+  try {
+    const estimationData = req.body;
+
+    if (!estimationData.project_id || !estimationData.user_id) {
+      return res.status(400).json(
+        formatResponse({
+          statusCode: 400,
+          detail: "Project ID and User ID are required",
+        })
+      );
+    }
+
+    const newEstimation = await createEstimation(estimationData);
+
+    return res.status(201).json(
+      formatResponse({
+        statusCode: 201,
+        detail: "Estimation created",
+        data: newEstimation,
+      })
+    );
+  } catch (error) {
+    console.error("Error creating estimation:", error);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
+  }
+};
+
+export const getEstimationHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const estimation = await getEstimationById(id);
+
+    if (!estimation) {
+      return res
+        .status(404)
+        .json(
+          formatResponse({ statusCode: 404, detail: "Estimation not found" })
+        );
+    }
+
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Estimation retrieved",
+        data: estimation,
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching estimation:", error);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
+  }
+};
