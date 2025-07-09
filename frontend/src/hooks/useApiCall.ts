@@ -12,7 +12,7 @@ interface ApiRequest {
 interface ApiResponse {
   data?: any;
   status: number;
-  error?: string;
+  detail?: string;
 }
 
 export const useAPICall = () => {
@@ -48,10 +48,11 @@ export const useAPICall = () => {
         headers: header,
         url: endpoint,
       });
+      const responseJson = response.data;
       responseData = {
-        status: response.status,
-        data: response.data,
-        error: undefined,
+        status: responseJson.status_code,
+        data: responseJson.data,
+        detail: responseJson.detail,
       };
     } catch (error) {
       console.log(error);
@@ -60,32 +61,32 @@ export const useAPICall = () => {
         responseData = {
           status: error.response.status,
           data: undefined,
-          error: error.response.data.detail,
+          detail: error.response.data.detail,
         };
       } else {
         responseData = {
           status: 500,
           data: undefined,
-          error: "An unexpected error occurred",
+          detail: "An unexpected error occurred",
         };
       }
     }
     setIsFetching(false);
     setFetchType("");
-    if (responseData.status === 500) {
-      toast.error("An unexpected error occurred, Please try again later");
-      console.log(responseData.error);
-    }
-    if (responseData.status === 401) {
-      // toast.error("Unauthorized, Please login again");
-      console.log(responseData.error);
-    }
-    if (responseData.status === 403) {
-      toast.error(
-        "Forbidden, You don't have permission to access this resource"
-      );
-      console.log(responseData.error);
-    }
+    // if (responseData.status === 500) {
+    //   toast.error("An unexpected error occurred, Please try again later");
+    //   console.log(responseData.detail);
+    // }
+    // if (responseData.status === 401) {
+    //   // toast.error("Unauthorized, Please login again");
+    //   console.log(responseData.detail);
+    // }
+    // if (responseData.status === 403) {
+    //   toast.error(
+    //     "Forbidden, You don't have permission to access this resource"
+    //   );
+    //   console.log(responseData.detail);
+    // }
     setIsFetched(true);
     return responseData;
   }

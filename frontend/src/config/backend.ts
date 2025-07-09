@@ -1,13 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { get } from "http";
 
 export const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1`;
 export const API_ENDPOINT = {
-  PURCHASE_NEW_USER: `${API_URL}/purchase/e-book-course`,
-  VERIFY_USER: `${API_URL}/user/me `,
-  LOGIN: `${API_URL}/user/login`,
-  REGISTER: `${API_URL}/user/register`,
-  CREATE_COURSE: `${API_URL}/course/create`,
-  CREATE_COURSE_CHAPTER: `${API_URL}/course/chapter/create`,
+  VERIFY_USER: `${API_URL}/auth/me `,
+  LOGIN: `${API_URL}/auth/login`,
+  ADD_NEW_USER: `${API_URL}/admin/create/create-user`,
+  EDIT_USER_STATUS: (id: any) => `${API_URL}/admin/user/${id}/status`,
+  CREATE_PROJECT: `${API_URL}/projects`,
   UPDATE_COURSE_CHAPTER: (chapter_id: number) =>
     `${API_URL}/course/chapter/update/${chapter_id}`,
   DELETE_COURSE_CHAPTER: (chapter_id: number) =>
