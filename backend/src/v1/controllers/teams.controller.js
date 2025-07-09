@@ -1,10 +1,9 @@
 import { createTeam, getAllTeams } from "../services/teams.service.js";
 import { formatResponse } from "../utils/response.js";
 
-// POST /api/teams
 export const createTeamHandler = async (req, res) => {
   try {
-    const { title, description } = req.body;
+    const { title, users = [], active = true, role = "member" } = req.body;
 
     if (!title) {
       return res
@@ -12,12 +11,15 @@ export const createTeamHandler = async (req, res) => {
         .json(formatResponse({ statusCode: 400, detail: "Title is required" }));
     }
 
-    const team = await createTeam({ title, description });
-    return res
-      .status(201)
-      .json(
-        formatResponse({ statusCode: 201, detail: "Team created", data: team })
-      );
+    const team = await createTeam({ title, active, role, users });
+
+    return res.status(201).json(
+      formatResponse({
+        statusCode: 201,
+        detail: "Team created successfully",
+        data: team,
+      })
+    );
   } catch (err) {
     console.error("Error creating team:", err);
     return res
@@ -28,7 +30,7 @@ export const createTeamHandler = async (req, res) => {
   }
 };
 
-// GET /api/teams
+
 export const getAllTeamsHandler = async (_req, res) => {
   try {
     const teams = await getAllTeams();

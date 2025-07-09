@@ -21,8 +21,12 @@ CREATE TABLE teams (
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     title VARCHAR(100) NOT NULL,
-    description TEXT
+    description TEXT DEFAULT '',
+    users JSONB DEFAULT '[]',         
+    active BOOLEAN DEFAULT TRUE,
+    role TEXT DEFAULT ''
 );
+
 
 CREATE TABLE teams_users (
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
