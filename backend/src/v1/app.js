@@ -10,8 +10,10 @@ import teamsRoute from "./routes/teams.route.js";
 import taskRoute from "./routes/task.route.js";
 import taskActivityLogRoute from "./routes/task_activity_log.route.js";
 import chatRoute from "./routes/chat.route.js";
+import cors from "cors"; // <-- Import cors
 
 const app = express();
+app.use(cors()); // <-- Use cors middleware
 app.use(express.json());
 
 app.use("/api/v1", authRoute);

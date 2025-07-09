@@ -2,14 +2,19 @@ import { formatResponse } from "../utils/response.js";
 import { createUser } from "../services/user.service.js";
 
 export const createNewUser = async (req, res) => {
-  const { email, phonenumber, name, role } = req.body;
+  const { email, phoneNumber, name, role, active } = req.body;
 
-  if (!email || !phonenumber || !name || !role) {
-    return res.status(400).json(formatResponse(400, "Missing required fields"));
+  if (!email || !phoneNumber || !name || !role || !active) {
+    return res.status(400).json(
+      formatResponse({
+        statusCode: 400,
+        detail: "Missing required fields",
+      })
+    );
   }
 
   try {
-    const { user, password } = await createUser(email, phonenumber, name, role);
+    const { user, password } = await createUser(email, phoneNumber, name, role,active);
 
     return res.status(201).json(
       formatResponse({
@@ -23,6 +28,8 @@ export const createNewUser = async (req, res) => {
 
     return res
       .status(500)
-      .json(formatResponse({statusCode: 500, detail: "Internal Server Error"}));
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
   }
 };
