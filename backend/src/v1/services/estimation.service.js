@@ -79,3 +79,31 @@ export async function getEstimationById(id) {
   estimation.uploaded_files = uploadedFilesResult.rows;
   return estimation;
 }
+
+export async function updateEstimation(id, data) {
+  const fields = [];
+  const values = [];
+  let index = 1;
+
+  for (const key in data) {
+    fields.push(`${key} = $${index}`);
+    values.push(data[key]);
+    index++;
+  }
+
+  if (fields.length === 0) {
+    throw new Error("No fields provided to update");
+  }
+
+  const query = `
+    UPDATE estimations
+    SET ${fields.join(", ")}, updated_at = NOW()
+    WHERE id = $${index}
+    RETURNING *;
+  `;
+
+  values.push(id);
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
+}
