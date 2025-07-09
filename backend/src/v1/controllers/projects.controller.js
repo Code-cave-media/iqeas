@@ -46,15 +46,13 @@ export const patchProject = async (req, res) => {
         .json(formatResponse({ statusCode: 404, detail: "Project not found" }));
     }
 
-    return res
-      .status(200)
-      .json(
-        formatResponse({
-          statusCode: 200,
-          detail: "Project updated successfully",
-          data: updatedProject,
-        })
-      );
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Project updated successfully",
+        data: updatedProject,
+      })
+    );
   } catch (error) {
     console.error("Error updating project:", error);
     return res
@@ -65,7 +63,6 @@ export const patchProject = async (req, res) => {
   }
 };
 
-
 export async function getProjectsPaginatedController(req, res) {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -73,8 +70,18 @@ export async function getProjectsPaginatedController(req, res) {
 
     const data = await getProjectByPagination(page, size);
 
-    res.status(200).json({ success: true, page, size, projects: data });
+    res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Project fetched sucessfully",
+        data: data,
+      })
+    );
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
   }
 }
