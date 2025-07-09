@@ -32,19 +32,22 @@ export const createNewUser = async (req, res) => {
   }
 };
 
+
 export const toggleUserStatus = async (req, res) => {
   const { id } = req.params;
   const { active } = req.body;
 
   if (typeof active !== "boolean") {
-    return res.status(400).json(
-      formatResponse({
-        statusCode: 400,
-        detail: "`active` must be boolean (true/false)",
-      })
-    );
+    return res
+      .status(400)
+      .json(
+        formatResponse({
+          statusCode: 400,
+          detail: "`active` must be a boolean (true/false)",
+        })
+      );
   }
-
+  
   try {
     const user = await updateUserActiveStatus(id, active);
 
@@ -55,8 +58,8 @@ export const toggleUserStatus = async (req, res) => {
         data: user,
       })
     );
-  } catch (e) {
-    console.error("Error updating user status:", e.message);
+  } catch (error) {
+    console.error("Error updating user status:", error.message);
 
     return res
       .status(500)
