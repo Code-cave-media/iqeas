@@ -1,6 +1,7 @@
 import {
   createEstimation,
   getEstimationById,
+  updateEstimation,
 } from "../services/estimation.service.js";
 import { formatResponse } from "../utils/response.js";
 
@@ -58,6 +59,44 @@ export const getEstimationHandler = async (req, res) => {
     );
   } catch (error) {
     console.error("Error fetching estimation:", error);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
+  }
+};
+
+export const updateEstimationHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    if (!id) {
+      return res
+        .status(400)
+        .json(formatResponse({ statusCode: 400, detail: "ID is required" }));
+    }
+
+    const updatedEstimation = await updateEstimation(id, updateData);
+
+    if (!updatedEstimation) {
+      return res
+        .status(404)
+        .json(
+          formatResponse({ statusCode: 404, detail: "Estimation not found" })
+        );
+    }
+
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Estimation updated",
+        data: updatedEstimation,
+      })
+    );
+  } catch (error) {
+    console.error("Error updating estimation:", error);
     return res
       .status(500)
       .json(

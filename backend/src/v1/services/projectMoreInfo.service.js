@@ -1,5 +1,4 @@
 import pool from "../config/db.js";
-import { uuidGenerator } from "../utils/uuidGenerator.js";
 
 export async function createProjectMoreInfo({
   project_id,
@@ -35,4 +34,88 @@ export async function createProjectMoreInfo({
   }
 
   return result.rows[0];
+}
+
+
+export async function getProjectMoreInfo(id) {
+  const result = await pool.query(
+    `SELECT * FROM project_more_info WHERE id = $1`,
+    [id]
+  );
+
+  if (result.rowCount === 0) return null;
+
+  const info = result.rows[0];
+
+  const fileResult = await pool.query(
+    `SELECT uf.* FROM uploaded_files uf
+     JOIN project_more_info_uploaded_files pmf
+     ON uf.id = pmf.uploaded_file_id
+     WHERE pmf.project_more_info_id = $1`,
+    [id]
+  );
+
+  info.uploaded_files = fileResult.rows;
+
+  return info;
+}
+
+
+export async function updateProjectMoreInfo(id, data) {
+  const allowedFields = ["notes", "enquiry"];
+  const fields = [];
+  const values = [];
+  let index = 1;
+
+  for (const key of allowedFields) {
+    if (data[key] !== undefined) {
+      fields.push(`${key} = $${index}`);
+      values.push(data[key]);
+      index++;
+    }
+  }
+
+  let updateQuery = null;
+  if (fields.length > 0) {
+    updateQuery = `
+      UPDATE project_more_info
+      SET ${fields.join(", ")}, updated_at = NOW()
+      WHERE id = $${index}
+      RETURNING *;
+    `;
+    values.push(id);
+  }
+
+  let updatedRow = null;
+  if (updateQuery) {
+    const result = await pool.query(updateQuery, values);
+    updatedRow = result.rows[0];
+  }
+
+  if (data.uploaded_file_ids) {
+    const { rows: existingFiles } = await pool.query(
+      `SELECT id FROM uploaded_files WHERE id = ANY($1)`,
+      [data.uploaded_file_ids]
+    );
+
+    if (existingFiles.length !== data.uploaded_file_ids.length) {
+      throw new Error("One or more uploaded_file_ids do not exist");
+    }
+
+    await pool.query(
+      `DELETE FROM project_more_info_uploaded_files WHERE project_more_info_id = $1`,
+      [id]
+    );
+
+    const insertPromises = data.uploaded_file_ids.map((fileId) =>
+      pool.query(
+        `INSERT INTO project_more_info_uploaded_files (project_more_info_id, uploaded_file_id)
+         VALUES ($1, $2)`,
+        [id, fileId]
+      )
+    );
+    await Promise.all(insertPromises);
+  }
+
+  return await getProjectMoreInfo(id);
 }

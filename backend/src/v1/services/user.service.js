@@ -21,6 +21,7 @@ export async function createUser(email, phoneNumber, name, role, active = true) 
     password,
   };
 }
+
 export async function updateUserActiveStatus(id, isActive) {
   const result = await pool.query(
     `UPDATE users SET active = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, name, role, active`,
@@ -32,4 +33,11 @@ export async function updateUserActiveStatus(id, isActive) {
   }
 
   return result.rows[0];
+}
+
+export async function getAllUsers() {
+  const result = await pool.query(
+    `SELECT id, email, name, role, phonenumber, active, created_at FROM users ORDER BY created_at DESC`
+  );
+  return result.rows;
 }
