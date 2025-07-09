@@ -2,8 +2,7 @@ import pool from "../config/db.js";
 import { generateProjectId } from "../utils/projectIdCreator.js";
 
 export async function createProject(projectData) {
-  const project_id = generateProjectId();
-
+  
   const {
     user_id,
     name,
@@ -20,7 +19,8 @@ export async function createProject(projectData) {
     status = "draft",
     send_to_estimation = false,
   } = projectData;
-
+  
+  const project_id = generateProjectId();
   const query = `
     INSERT INTO projects (
       user_id, name, project_id, received_date,
