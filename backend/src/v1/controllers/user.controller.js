@@ -9,13 +9,13 @@ export const createNewUser = async (req, res) => {
   }
 
   try {
-    const { user, password } = await createUser(email, phonenumber, name, role);
+    const { user } = await createUser(email, phonenumber, name, role);
 
     return res.status(201).json(
       formatResponse({
         statusCode: 201,
         detail: "User created successfully",
-        data: { user, password },
+        data: { user },
       })
     );
   } catch (e) {
