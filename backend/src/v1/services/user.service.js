@@ -20,3 +20,17 @@ export async function createUser(email, phonenumber, name, role) {
     password,
   };
 }
+
+
+export async function updateUserActiveStatus(userId, isActive) {
+  const result = await pool.query(
+    `UPDATE users SET active = $1, updated_at = NOW() WHERE user_id = $2 RETURNING id, email, name, role, active`,
+    [isActive, userId]
+  );
+
+  if (result.rows.length === 0) {
+    throw new Error("User not found");
+  }
+
+  return result.rows[0];
+}
