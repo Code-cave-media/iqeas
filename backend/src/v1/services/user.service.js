@@ -12,7 +12,7 @@ export async function createUser(email, phonenumber, name, role) {
     `INSERT INTO users (email, phonenumber, name, role, password, active, user_id) 
      VALUES ($1, $2, $3, $4, $5, $6, $7) 
      RETURNING id, email, phonenumber, name, role, active`,
-    [ email, phonenumber, name, role, hashedPassword, true, uniqueId]
+    [email, phonenumber, name, role, hashedPassword, true, uniqueId]
   );
 
   return {
@@ -20,12 +20,10 @@ export async function createUser(email, phonenumber, name, role) {
     password,
   };
 }
-
-
-export async function updateUserActiveStatus(userId, isActive) {
+export async function updateUserActiveStatus(id, isActive) {
   const result = await pool.query(
-    `UPDATE users SET active = $1, updated_at = NOW() WHERE user_id = $2 RETURNING id, email, name, role, active`,
-    [isActive, userId]
+    `UPDATE users SET active = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, name, role, active`,
+    [isActive, id]
   );
 
   if (result.rows.length === 0) {
