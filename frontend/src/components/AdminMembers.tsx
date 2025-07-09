@@ -3,8 +3,18 @@ import React, { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectItem,
+  SelectTrigger,
+  SelectContent,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useAPICall } from "@/hooks/useApiCall";
+import { useAuth } from "@/contexts/AuthContext";
+import toast from "react-hot-toast";
+import { API_ENDPOINT } from "@/config/backend";
 
 const ROLES = [
   { value: "rfq", label: "RFQ" },
@@ -16,6 +26,8 @@ const ROLES = [
 
 export default function AdminMembers() {
   // User state
+  const { makeApiCall, fetchType, fetching } = useAPICall();
+  const { user, authToken } = useAuth();
   const [users, setUsers] = useState([
     {
       id: 1,
@@ -51,20 +63,54 @@ export default function AdminMembers() {
     members: [],
     leader: "",
   });
+  const [showMembersDropdown, setShowMembersDropdown] = useState(false);
 
   // Add user
-  const handleAddUser = (e) => {
+  const handleAddUser = async (e) => {
     e.preventDefault();
-    if (!newUser.name || !newUser.email) return;
-    setUsers((prev) => [...prev, { ...newUser, id: Date.now() }]);
-    setNewUser({ name: "", email: "", phone: "", active: true, role: "rfq" });
+    if (!newUser.name || !newUser.email || !newUser.phone) {
+      toast.error("Fill required fields");
+      return;
+    }
+    const response = await makeApiCall(
+      "post",
+      API_ENDPOINT.ADD_NEW_USER,
+      {
+        ...newUser,
+        phoneNumber: newUser.phone,
+      },
+      "application/json",
+      authToken,
+      "addUser"
+    );
+    if (response.status == 200) {
+      setUsers([response.data, ...users]);
+      toast.success(response.detail);
+    } else {
+      toast.error(response.detail);
+    }
   };
 
   // Toggle user active
-  const handleToggleActive = (id) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, active: !u.active } : u))
+  const handleToggleActive = async (id) => {
+    const currentStatus = users.find(item=>item.id == id)
+    const response = await makeApiCall(
+      "patch",
+      API_ENDPOINT.EDIT_USER_STATUS(id),
+      { active: !currentStatus.active},
+      'application/json',
+      authToken,
+      'userToggle'
     );
+    if(response.status == 200){
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, active: !u.active } : u))
+      );
+      toast.success(response.detail)
+    }else{
+      toast.error(response.detail);
+    }
+    
   };
 
   // Add team
@@ -84,16 +130,19 @@ export default function AdminMembers() {
     setTeamForm({ title: "", members: [], leader: "" });
   };
 
-  // Handle team member selection
-  const handleTeamMemberChange = (e) => {
-    const options = Array.from(e.target.selectedOptions).map(
-      (o: any) => o.value
-    );
-    setTeamForm((f) => ({
-      ...f,
-      members: options,
-      leader: options.includes(f.leader) ? f.leader : "",
-    }));
+  const handleToggleMember = (id) => {
+    setTeamForm((f) => {
+      const idStr = id.toString();
+      const exists = f.members.includes(idStr);
+      const newMembers = exists
+        ? f.members.filter((m) => m !== idStr)
+        : [...f.members, idStr];
+      return {
+        ...f,
+        members: newMembers,
+        leader: newMembers.includes(f.leader) ? f.leader : "",
+      };
+    });
   };
 
   return (
@@ -141,23 +190,31 @@ export default function AdminMembers() {
           />
         </div>
         <div className="md:col-span-1">
-          <select
-            className="w-full border rounded px-2 py-2 min-h-[38px]"
+          <Select
             value={newUser.role}
-            onChange={(e) =>
-              setNewUser((u) => ({ ...u, role: e.target.value }))
+            onValueChange={(value) =>
+              setNewUser((u) => ({ ...u, role: value }))
             }
-            required
           >
-            {ROLES.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select Role" />
+            </SelectTrigger>
+            <SelectContent>
+              {ROLES.map((r) => (
+                <SelectItem key={r.value} value={r.value}>
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="md:col-span-1">
-          <Button type="submit" className="w-full">
+          <Button
+            type="submit"
+            className="w-full"
+            loading={fetching && fetchType == "addUser"}
+            disabled={fetching && fetchType == "addUser"}
+          >
             Add User
           </Button>
         </div>
@@ -214,41 +271,67 @@ export default function AdminMembers() {
           />
         </div>
         <div className="md:col-span-2">
-          <select
-            multiple
-            className="w-full border rounded px-2 py-1 min-h-[38px]"
-            value={teamForm.members}
-            onChange={handleTeamMemberChange}
-            required
-          >
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-          </select>
+          <label className="block text-xs font-medium mb-1">Team Members</label>
+          <div className="relative">
+            <button
+              type="button"
+              className="w-full border rounded px-2 py-2 text-left bg-white"
+              onClick={() => setShowMembersDropdown((v) => !v)}
+            >
+              {teamForm.members.length === 0
+                ? "Select team members..."
+                : users
+                    .filter((u) => teamForm.members.includes(u.id.toString()))
+                    .map((u) => u.name)
+                    .join(", ")}
+            </button>
+            {showMembersDropdown && (
+              <div className="absolute z-10 mt-1 w-full bg-white border rounded shadow max-h-48 overflow-y-auto">
+                {users.map((u) => {
+                  const idStr = u.id.toString();
+                  return (
+                    <label
+                      key={u.id}
+                      className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={teamForm.members.includes(idStr)}
+                        onChange={() => handleToggleMember(idStr)}
+                        className="mr-2"
+                      />
+                      {u.name}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           <div className="text-xs text-slate-500 mt-1">
-            Hold Ctrl/Cmd to select multiple
+            Click to select multiple members
           </div>
         </div>
         <div className="md:col-span-1">
-          <select
-            className="w-full border rounded px-2 py-1 min-h-[38px]"
+          <label className="block text-xs font-medium mb-1">Team Leader</label>
+          <Select
             value={teamForm.leader}
-            onChange={(e) =>
-              setTeamForm((f) => ({ ...f, leader: e.target.value }))
+            onValueChange={(value) =>
+              setTeamForm((f) => ({ ...f, leader: value }))
             }
-            required
           >
-            <option value="">Select Leader</option>
-            {users
-              .filter((u) => teamForm.members.includes(u.id.toString()))
-              .map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select Leader" />
+            </SelectTrigger>
+            <SelectContent>
+              {users
+                .filter((u) => teamForm.members.includes(u.id.toString()))
+                .map((u) => (
+                  <SelectItem key={u.id} value={u.id.toString()}>
+                    {u.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="md:col-span-1">
           <Button type="submit" className="w-full">

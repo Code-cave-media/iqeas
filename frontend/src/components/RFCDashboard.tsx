@@ -21,6 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { useAPICall } from "@/hooks/useApiCall";
+import { API_ENDPOINT } from "@/config/backend";
+import { useAuth } from "@/contexts/AuthContext";
 
 function generateProjectId() {
   return `PRJ-${new Date().getFullYear()}-${Math.floor(
@@ -55,7 +58,6 @@ export const RFCDashboard = () => {
       clientCompany: "Saudi Aramco",
       location: "Riyadh",
       projectType: "Pipeline",
-      receivedDate: "2024-01-15",
       uploadedFiles: [],
       contactPerson: "Ali Ahmed",
       contactPhone: "0501234567",
@@ -66,6 +68,8 @@ export const RFCDashboard = () => {
       priority: "High",
       documentsCount: 5,
       pendingClarifications: 2,
+      deadline: "",
+      updates: [],
     },
     {
       id: "PRJ-2024-002",
@@ -73,7 +77,6 @@ export const RFCDashboard = () => {
       clientCompany: "ADNOC",
       location: "Abu Dhabi",
       projectType: "Maintenance",
-      receivedDate: "2024-01-20",
       uploadedFiles: [],
       contactPerson: "Sara Khalid",
       contactPhone: "0509876543",
@@ -84,8 +87,12 @@ export const RFCDashboard = () => {
       priority: "Medium",
       documentsCount: 8,
       pendingClarifications: 0,
+      deadline: "",
+      updates: [],
     },
   ]);
+  const { fetchType, fetching, isFetched, makeApiCall } = useAPICall();
+  const { authToken } = useAuth();
   const [formStep, setFormStep] = useState(1);
   const [sendToEstimation, setSendToEstimation] = useState(false);
   const [detailsProject, setDetailsProject] = useState(null);
@@ -155,32 +162,28 @@ export const RFCDashboard = () => {
   const prevStep = () => setFormStep((s) => s - 1);
 
   // Submit new project
-  const submitProject = (sendToEstimationNow = false) => {
-    setProjects([
-      {
-        id: form.projectId,
-        clientName: form.clientName,
-        clientCompany: form.clientCompany,
-        location: form.location,
-        projectType: form.projectType,
-        receivedDate: form.receivedDate,
-        uploadedFiles: form.uploadedFiles,
-        contactPerson: form.contactPerson,
-        contactPhone: form.contactPhone,
-        contactEmail: form.contactEmail,
-        notes: form.notes,
-        status: sendToEstimationNow
-          ? "Ready for Estimation"
-          : "Data Collection",
-        estimationStatus: sendToEstimationNow ? "In Progress" : "Not Started",
-        priority: form.priority,
-        deadline: form.deadline,
-        documentsCount: form.uploadedFiles.filter((f) => f.file).length,
-        pendingClarifications: 0,
-        updates: [],
-      },
-      ...projects,
-    ]);
+  const submitProject = async (sendToEstimationNow = false) => {
+    const data = {
+      client_name: form.clientName,
+      client_company: form.clientCompany,
+      location: form.location,
+      received_date: new Date().getDate(),
+      project_type: form.projectType,
+      priority: form.priority,
+      contact_person: form.contactPerson,
+      contact_person_phone: form.contactPhone,
+      contact_person_email: form.contactEmail,
+      notes: form.notes,
+      send_to_estimation:sendToEstimationNow
+    };
+    const response = await makeApiCall(
+      "post",
+      API_ENDPOINT.CREATE_PROJECT,
+      {},
+      "application/json",
+      authToken,
+      "createProject"
+    );
     setShowForm(false);
     setSendToEstimation(false);
   };
@@ -198,11 +201,6 @@ export const RFCDashboard = () => {
           : p
       )
     );
-  };
-
-  // Update notes
-  const updateNotes = (id, notes) => {
-    setProjects(projects.map((p) => (p.id === id ? { ...p, notes } : p)));
   };
 
   // Filtered projects
@@ -341,16 +339,6 @@ export const RFCDashboard = () => {
             {formStep === 1 && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Received Date
-                    </label>
-                    <Input
-                      name="receivedDate"
-                      value={form.receivedDate}
-                      disabled
-                    />
-                  </div>
                   <div>
                     <label className="block text-sm font-medium">
                       Client Name
