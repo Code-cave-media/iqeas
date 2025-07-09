@@ -16,11 +16,12 @@ export const createNewUser = async (req, res) => {
   try {
     const { user, password } = await createUser(email, phoneNumber, name, role,active);
 
+
     return res.status(201).json(
       formatResponse({
         statusCode: 201,
         detail: "User created successfully",
-        data: { user, password },
+        data: { user },
       })
     );
   } catch (e) {

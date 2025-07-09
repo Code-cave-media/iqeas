@@ -81,3 +81,20 @@ export async function updateProjectPartial(id, fieldsToUpdate) {
   const result = await pool.query(query, values);
   return result.rows[0];
 }
+
+
+export async function getProjectByPagination(page = 1, size = 10) {
+  const limit = Math.max(Number(size), 1);
+  const offset = Math.max((Number(page) - 1) * limit, 0);
+
+  const query = `
+    SELECT * FROM projects
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2;
+  `;
+
+  const values = [limit, offset];
+
+  const result = await pool.query(query, values);
+  return result.rows;
+}
