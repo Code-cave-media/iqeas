@@ -2,7 +2,10 @@ import { formatResponse } from "../utils/response.js";
 import {
   createUser,
   updateUserActiveStatus,
+  getAllUsers,
 } from "../services/user.service.js";
+
+import { getAllTeams } from "../services/teams.service.js";
 
 export const createNewUser = async (req, res) => {
   const { email, phoneNumber, name, role, active } = req.body;
@@ -72,5 +75,29 @@ export const toggleUserStatus = async (req, res) => {
     return res
       .status(500)
       .json(formatResponse({ statusCode: 500, detail: error.message }));
+  }
+};
+
+export const getUsersController = async (req, res) => {
+  try {
+    const [users, teams] = await Promise.all([getAllUsers(), getAllTeams()]);
+
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Users and teams fetched successfully",
+        data: {
+          users,
+          teams,
+        },
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching users and teams:", error.message);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
   }
 };

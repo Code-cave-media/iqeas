@@ -7,6 +7,6 @@ import {
 const router = express.Router();
 
 router.post("/teams", createTeamHandler);
-router.get("/", getAllTeamsHandler);
+router.get("/teams/get-all-teams", getAllTeamsHandler);
 
 export default router;
