@@ -1,6 +1,7 @@
 import {
   createProject,
   updateProjectPartial,
+  getProjectByPagination,
 } from "../services/projects.service.js";
 import { formatResponse } from "../utils/response.js";
 
@@ -63,3 +64,17 @@ export const patchProject = async (req, res) => {
       );
   }
 };
+
+
+export async function getProjectsPaginatedController(req, res) {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const size = parseInt(req.query.size) || 10;
+
+    const data = await getProjectByPagination(page, size);
+
+    res.status(200).json({ success: true, page, size, projects: data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
