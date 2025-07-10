@@ -3,7 +3,13 @@ import { formatResponse } from "../utils/response.js";
 
 export const createTeamHandler = async (req, res) => {
   try {
-    const { title, users = [], active = true, role = "member" } = req.body;
+    const {
+      title,
+      users = [],
+      active = true,
+      role = "member",
+      leader_id,
+    } = req.body;
 
     if (!title) {
       return res
@@ -11,7 +17,7 @@ export const createTeamHandler = async (req, res) => {
         .json(formatResponse({ statusCode: 400, detail: "Title is required" }));
     }
 
-    const team = await createTeam({ title, active, role, users });
+    const team = await createTeam({ title, active, role, users, leader_id });
 
     return res.status(201).json(
       formatResponse({
@@ -30,19 +36,16 @@ export const createTeamHandler = async (req, res) => {
   }
 };
 
-
 export const getAllTeamsHandler = async (_req, res) => {
   try {
     const teams = await getAllTeams();
-    return res
-      .status(200)
-      .json(
-        formatResponse({
-          statusCode: 200,
-          detail: "Teams fetched",
-          data: teams,
-        })
-      );
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Teams fetched",
+        data: teams,
+      })
+    );
   } catch (err) {
     console.error("Error fetching teams:", err);
     return res
