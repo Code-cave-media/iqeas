@@ -39,11 +39,4 @@ router.patch(
   EditUserDataController
 );
 
-router.delete(
-  "/admin/users/:id",
-  authenticateToken,
-  allowRoles("admin"),
-  DeleteUser
-);
-
 export default router;

@@ -42,7 +42,7 @@ export async function updateUserActiveStatus(id, isActive) {
 
 export async function updateUserData(
   id,
-  { name, email, phoneNumber, active, role }
+  { name, email, phoneNumber, active, role, is_deleted = false }
 ) {
   const result = await pool.query(
     `UPDATE users SET
@@ -51,10 +51,11 @@ export async function updateUserData(
       phoneNumber = COALESCE($3, phoneNumber),
       active = COALESCE($4, active),
       role = COALESCE($5, role),
+      deleted = $6,
       updated_at = NOW()
-    WHERE id = $6
-    RETURNING id, email, phoneNumber, name, role, active`,
-    [name, email, phoneNumber, active, role, id]
+    WHERE id = $7
+    RETURNING id, email, phoneNumber, name, role, active, is_deleted`,
+    [name, email, phoneNumber, active, role, is_deleted, id]
   );
   if (result.rows.length === 0) {
     throw new Error("User not found");

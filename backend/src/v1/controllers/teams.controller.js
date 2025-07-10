@@ -42,7 +42,7 @@ export const createTeamHandler = async (req, res) => {
 
 export const EditTeamDataController = async (req, res) => {
   const { id } = req.params;
-  const { title, users, active } = req.body;
+  const { title, users, active, is_deleted } = req.body;
 
   if (!id) {
     return res
