@@ -1,4 +1,8 @@
-import { createTeam, getAllTeams } from "../services/teams.service.js";
+import {
+  createTeam,
+  getAllTeams,
+  updateTeamData,
+} from "../services/teams.service.js";
 import { formatResponse } from "../utils/response.js";
 
 export const createTeamHandler = async (req, res) => {
@@ -30,19 +34,47 @@ export const createTeamHandler = async (req, res) => {
   }
 };
 
+export const EditTeamDataController = async (req, res) => {
+  const { id } = req.params;
+  const { title, users, active } = req.body;
+
+  if (!id) {
+    return res
+      .status(400)
+      .json(formatResponse({ statusCode: 400, detail: "Team id is required" }));
+  }
+
+  try {
+    const updatedTeam = await updateTeamData(id, {
+      title,
+      active,
+      users,
+    });
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Teams updated successfully",
+        data: updatedTeam,
+      })
+    );
+  } catch (error) {
+    console.error("Error updating user:", error.message);
+    return res
+      .status(500)
+      .json(formatResponse({ statusCode: 500, detail: error.message }));
+  }
+};
 
 export const getAllTeamsHandler = async (_req, res) => {
   try {
     const teams = await getAllTeams();
-    return res
-      .status(200)
-      .json(
-        formatResponse({
-          statusCode: 200,
-          detail: "Teams fetched",
-          data: teams,
-        })
-      );
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Teams fetched",
+        data: teams,
+      })
+    );
   } catch (err) {
     console.error("Error fetching teams:", err);
     return res
