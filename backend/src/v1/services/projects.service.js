@@ -98,3 +98,16 @@ export async function getProjectByPagination(page = 1, size = 10) {
   const result = await pool.query(query, values);
   return result.rows;
 }
+
+
+export async function getProjectsSentToEstimation() {
+  const query = `SELECT * FROM projects WHERE send_to_estimation = true ORDER BY created_at DESC;`;
+  const result = await pool.query(query);
+  return result.rows;
+}
+
+export async function getProjectsSentToPM() {
+  const query = `SELECT * FROM projects WHERE send_to_pm = true ORDER BY created_at DESC;`;
+  const result = await pool.query(query);
+  return result.rows;
+}
