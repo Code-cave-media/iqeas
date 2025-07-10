@@ -106,7 +106,7 @@ export const getUsersController = async (req, res) => {
 
 export const EditUserDataController = async (req, res) => {
   const { id } = req.params;
-  const { name, email, phoneNumber, active, role } = req.body;
+  const { name, email, phoneNumber, active, role, is_deleted } = req.body;
 
   if (!id) {
     return res

@@ -10,8 +10,8 @@ export async function createTeam({
 }) {
   const result = await pool.query(
     `INSERT INTO teams (title, description, active, role, users, leader_id)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING *`,
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING *`,
     [title, description, active, role, JSON.stringify(users), leader_id]
   );
 
@@ -29,7 +29,7 @@ export async function getAllTeams() {
 
       const userResult = userIds.length
         ? await pool.query(
-            `SELECT name, id FROM users WHERE id = ANY($1::int[])`,
+            `SELECT name, id, leader_id FROM users WHERE id = ANY($1::int[])`,
             [userIds]
           )
         : { rows: [] };
@@ -54,16 +54,17 @@ export async function updateTeamActiveStatus(id, isActive) {
   return result.rows[0];
 }
 
-export async function updateTeamData(id, { title, users, active }) {
+export async function updateTeamData(id, { title, users, active,id_deleted = false }) {
   const result = await pool.query(
     `UPDATE teams SET
       title = COALESCE($1, title),
       active = COALESCE($2, active),
       users = COALESCE($3, users),
+      deleted = $4,
       updated_at = NOW()
-    WHERE id = $4
-    RETURNING id, users, title, active`,
-    [title, active, users, id]
+    WHERE id = $5
+    RETURNING id, users, title, active, deleted`,
+    [title, active, users, id_deleted, id]
   );
   if (result.rows.length === 0) {
     throw new Error("Team not found");
