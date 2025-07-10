@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FileText,
   Upload,
@@ -8,6 +8,16 @@ import {
   Plus,
   X,
   CheckCircle,
+  User,
+  Building2,
+  MapPin,
+  Phone,
+  Mail,
+  StickyNote,
+  Edit,
+  Trash2,
+  Info,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +34,10 @@ import { Switch } from "@/components/ui/switch";
 import { useAPICall } from "@/hooks/useApiCall";
 import { API_ENDPOINT } from "@/config/backend";
 import { useAuth } from "@/contexts/AuthContext";
+import type { IRFCProject } from "@/types/apiTypes";
+import ShowFile from "./ShowFile";
+import toast from "react-hot-toast";
+import { validateProjectForm } from "@/utils/validation";
 
 function generateProjectId() {
   return `PRJ-${new Date().getFullYear()}-${Math.floor(
@@ -32,18 +46,18 @@ function generateProjectId() {
 }
 
 const initialForm = {
-  projectId: "",
+  name: "",
   clientName: "",
   clientCompany: "",
   location: "",
   projectType: "Pipeline",
-  receivedDate: new Date().toISOString().slice(0, 10),
-  uploadedFiles: [{ label: "", file: null }],
+  received_date: new Date().toISOString().slice(0, 10),
+  uploadedFiles: [],
   contactPerson: "",
   contactPhone: "",
   contactEmail: "",
   notes: "",
-  priority: "Normal",
+  priority: "medium",
   deadline: "",
 };
 
@@ -51,46 +65,7 @@ export const RFCDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(initialForm);
-  const [projects, setProjects] = useState([
-    {
-      id: "PRJ-2024-001",
-      clientName: "Saudi Aramco",
-      clientCompany: "Saudi Aramco",
-      location: "Riyadh",
-      projectType: "Pipeline",
-      uploadedFiles: [],
-      contactPerson: "Ali Ahmed",
-      contactPhone: "0501234567",
-      contactEmail: "ali@aramco.com",
-      notes: "Urgent project",
-      status: "Data Collection",
-      estimationStatus: "Not Started",
-      priority: "High",
-      documentsCount: 5,
-      pendingClarifications: 2,
-      deadline: "",
-      updates: [],
-    },
-    {
-      id: "PRJ-2024-002",
-      clientName: "ADNOC",
-      clientCompany: "ADNOC",
-      location: "Abu Dhabi",
-      projectType: "Maintenance",
-      uploadedFiles: [],
-      contactPerson: "Sara Khalid",
-      contactPhone: "0509876543",
-      contactEmail: "sara@adnoc.com",
-      notes: "",
-      status: "Ready for Estimation",
-      estimationStatus: "In Progress",
-      priority: "Medium",
-      documentsCount: 8,
-      pendingClarifications: 0,
-      deadline: "",
-      updates: [],
-    },
-  ]);
+  const [projects, setProjects] = useState<IRFCProject[]>([]);
   const { fetchType, fetching, isFetched, makeApiCall } = useAPICall();
   const { authToken } = useAuth();
   const [formStep, setFormStep] = useState(1);
@@ -104,6 +79,58 @@ export const RFCDashboard = () => {
   const [moreInfoNotes, setMoreInfoNotes] = useState("");
   const [moreInfoEnquiry, setMoreInfoEnquiry] = useState("");
 
+  useEffect(() => {
+    // Fetch initial projects data from API
+    const fetchProjects = async () => {
+      const response = await makeApiCall(
+        "get",
+        API_ENDPOINT.GET_ALL_PROJECTS,
+        {},
+        "application/json",
+        authToken,
+        "fetchProjects"
+      );
+      if (response && response.status === 200 && Array.isArray(response.data)) {
+        // Add mock uploaded_files and add_more_infos for demo
+        const demoProjects = response.data.map((p, idx) => ({
+          ...p,
+          uploaded_files: [
+            { label: "BOQ", id: 1, file: "/public/placeholder.svg" },
+            { label: "Layout", id: 2, file: "/public/placeholder.svg" },
+          ],
+          add_more_infos: [
+            {
+              note: "Client sent additional clarifications.",
+              uploaded_files: [
+                {
+                  label: "Clarification Doc",
+                  id: 3,
+                  file: "/public/placeholder.svg",
+                },
+              ],
+            },
+            {
+              note: "Site visit photos uploaded.",
+              uploaded_files: [
+                {
+                  label: "Site Photo 1",
+                  id: 4,
+                  file: "/public/placeholder.svg",
+                },
+                {
+                  label: "Site Photo 2",
+                  id: 5,
+                  file: "/public/placeholder.svg",
+                },
+              ],
+            },
+          ],
+        }));
+        setProjects(demoProjects);
+      }
+    };
+    fetchProjects();
+  }, []);
   // Handle form field changes
   const handleFormChange = (e) => {
     const { name, value, files } = e.target;
@@ -150,8 +177,6 @@ export const RFCDashboard = () => {
   const startNewProject = () => {
     setForm({
       ...initialForm,
-      projectId: generateProjectId(),
-      receivedDate: new Date().toISOString().slice(0, 10),
     });
     setFormStep(1);
     setShowForm(true);
@@ -163,23 +188,46 @@ export const RFCDashboard = () => {
 
   // Submit new project
   const submitProject = async (sendToEstimationNow = false) => {
+    const missing = validateProjectForm(form);
+    if (missing.length > 0) {
+      toast.error(`Missing required field: ${missing[0]}`)
+      return;
+    }
+    // Upload all files in form.uploadedFiles
+    const uploadedFileIds = [];
+    for (const uf of form.uploadedFiles) {
+      if (uf.file) {
+        const uploaded = await uploadFile(uf.file, uf.label);
+        if (uploaded && uploaded.id) {
+          uploadedFileIds.push(uploaded.id);
+        } else {
+          toast.error("Failed to upload files");
+          return;
+        }
+      }
+    }
+    // Optionally update local state for preview (if needed)
+    // setForm((f) => ({ ...f, uploadedFiles: [] }));
+    // Prepare data for project creation
     const data = {
+      name: form.name,
       client_name: form.clientName,
       client_company: form.clientCompany,
       location: form.location,
-      received_date: new Date().getDate(),
+      received_date: form.received_date,
       project_type: form.projectType,
       priority: form.priority,
       contact_person: form.contactPerson,
       contact_person_phone: form.contactPhone,
       contact_person_email: form.contactEmail,
       notes: form.notes,
-      send_to_estimation:sendToEstimationNow
+      send_to_estimation: sendToEstimationNow,
+      uploaded_files: uploadedFileIds,
     };
     const response = await makeApiCall(
       "post",
       API_ENDPOINT.CREATE_PROJECT,
-      {},
+      data,
       "application/json",
       authToken,
       "createProject"
@@ -206,26 +254,26 @@ export const RFCDashboard = () => {
   // Filtered projects
   const filteredProjects = projects.filter(
     (project) =>
-      project.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.id.toLowerCase().includes(searchTerm.toLowerCase())
+      project.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.project_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Add function to add a new update to a project
   const addProjectUpdate = (projectId, text) => {
-    setProjects((projects) =>
-      projects.map((p) =>
-        p.id === projectId
-          ? {
-              ...p,
-              updates: [
-                { text, date: new Date().toISOString(), author: "RFC User" },
-                ...(p.updates || []),
-              ],
-            }
-          : p
-      )
-    );
-    setUpdateText("");
+    // setProjects((projects) =>
+    //   projects.map((p) =>
+    //     p.id === projectId
+    //       ? {
+    //           ...p,
+    //           updates: [
+    //             { text, date: new Date().toISOString(), author: "RFC User" },
+    //             ...(p.updates || []),
+    //           ],
+    //         }
+    //       : p
+    //   )
+    // );
+    // setUpdateText("");
   };
 
   // Add handlers for more info modal
@@ -248,46 +296,67 @@ export const RFCDashboard = () => {
     setMoreInfoFiles((files) => files.filter((_, i) => i !== idx));
   };
   const submitMoreInfo = () => {
-    setProjects((projects) =>
-      projects.map((p) =>
-        p.id === moreInfoProject.id
-          ? {
-              ...p,
-              uploadedFiles: [
-                ...p.uploadedFiles,
-                ...moreInfoFiles.filter((f) => f.file),
-              ],
-              updates: [
-                ...(moreInfoNotes.trim()
-                  ? [
-                      {
-                        text: `Note: ${moreInfoNotes}`,
-                        date: new Date().toISOString(),
-                        author: "RFC User",
-                      },
-                    ]
-                  : []),
-                ...(moreInfoEnquiry.trim()
-                  ? [
-                      {
-                        text: `Enquiry: ${moreInfoEnquiry}`,
-                        date: new Date().toISOString(),
-                        author: "RFC User",
-                      },
-                    ]
-                  : []),
-                ...(p.updates || []),
-              ],
-            }
-          : p
-      )
-    );
+    // setProjects((projects) =>
+    //   projects.map((p) =>
+    //     p.id === moreInfoProject.id
+    //       ? {
+    //           ...p,
+    //           uploadedFiles: [
+    //             ...p.uploadedFiles,
+    //             ...moreInfoFiles.filter((f) => f.file),
+    //           ],
+    //           updates: [
+    //             ...(moreInfoNotes.trim()
+    //               ? [
+    //                   {
+    //                     text: `Note: ${moreInfoNotes}`,
+    //                     date: new Date().toISOString(),
+    //                     author: "RFC User",
+    //                   },
+    //                 ]
+    //               : []),
+    //             ...(moreInfoEnquiry.trim()
+    //               ? [
+    //                   {
+    //                     text: `Enquiry: ${moreInfoEnquiry}`,
+    //                     date: new Date().toISOString(),
+    //                     author: "RFC User",
+    //                   },
+    //                 ]
+    //               : []),
+    //             ...(p.updates || []),
+    //           ],
+    //         }
+    //       : p
+    //   )
+    // );
     setMoreInfoProject(null);
     setMoreInfoFiles([{ label: "", file: null }]);
     setMoreInfoNotes("");
     setMoreInfoEnquiry("");
   };
 
+  const uploadFile = async (file: File, label: string) => {
+    const data = new FormData();
+    data.append("label", label);
+    console.log(typeof file);
+
+    data.append("file", file);
+    console.log(data);
+    const response = await makeApiCall(
+      "post",
+      API_ENDPOINT.UPLOAD_FILE,
+      data,
+      "application/form-data",
+      authToken,
+      "uploadFile"
+    );
+    if (response.status == 201) {
+      return response.data;
+    } else {
+      return null;
+    }
+  };
   return (
     <div className="p-6 relative">
       <div className="flex justify-between items-center mb-6">
@@ -341,6 +410,17 @@ export const RFCDashboard = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium">
+                      Project Name
+                    </label>
+                    <Input
+                      name="name"
+                      value={form.name}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">
                       Client Name
                     </label>
                     <Input
@@ -377,7 +457,7 @@ export const RFCDashboard = () => {
                     <Select
                       value={form.projectType}
                       onValueChange={(v) =>
-                        setForm((f) => ({ ...f, projectType: v }))
+                        setForm((f) => ({ ...f, projectType: v.toLowerCase() }))
                       }
                     >
                       <SelectTrigger>
@@ -398,16 +478,16 @@ export const RFCDashboard = () => {
                     <Select
                       value={form.priority}
                       onValueChange={(v) =>
-                        setForm((f) => ({ ...f, priority: v }))
+                        setForm((f) => ({ ...f, priority: v.toLowerCase() }))
                       }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="High">High</SelectItem>
-                        <SelectItem value="Normal">Normal</SelectItem>
-                        <SelectItem value="Low">Low</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -425,6 +505,18 @@ export const RFCDashboard = () => {
                       />
                     </div>
                   )}
+                  <div>
+                    <label className="block text-sm font-medium">
+                      Received Date
+                    </label>
+                    <Input
+                      type="date"
+                      name="received_date"
+                      value={form.received_date}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
                   <div className="col-span-2">
                     <label className="block text-sm font-medium mb-2">
                       Uploaded Files
@@ -520,6 +612,9 @@ export const RFCDashboard = () => {
                 <h3 className="font-semibold mb-2">Review Project Data</h3>
                 <div className="bg-slate-50 p-4 rounded mb-4 text-sm space-y-2">
                   <div>
+                    <strong>Project Name:</strong> {form.name}
+                  </div>
+                  <div>
                     <strong>Client Name:</strong> {form.clientName}
                   </div>
                   <div>
@@ -532,7 +627,7 @@ export const RFCDashboard = () => {
                     <strong>Project Type:</strong> {form.projectType}
                   </div>
                   <div>
-                    <strong>Received Date:</strong> {form.receivedDate}
+                    <strong>Received Date:</strong> {form.received_date}
                   </div>
                   <div>
                     <strong>Priority:</strong> {form.priority}
@@ -583,6 +678,7 @@ export const RFCDashboard = () => {
                   <Button
                     className="bg-green-600 hover:bg-green-700"
                     onClick={() => submitProject(sendToEstimation)}
+                    loading={fetching && fetchType == "createProject"}
                   >
                     Save
                   </Button>
@@ -594,7 +690,7 @@ export const RFCDashboard = () => {
       )}
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
@@ -629,32 +725,13 @@ export const RFCDashboard = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <AlertCircle size={20} className="text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {projects.reduce(
-                    (a, p) => a + (p.pendingClarifications || 0),
-                    0
-                  )}
-                </p>
-                <p className="text-sm text-slate-600">Pending Clarifications</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
               <div className="p-2 bg-red-100 rounded-lg">
                 <Upload size={20} className="text-red-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
                   {projects.reduce(
-                    (a, p) =>
-                      a + (p.uploadedFiles?.length || p.documentsCount || 0),
+                    (a, p) => a + (p.uploaded_files?.length || 0),
                     0
                   )}
                 </p>
@@ -686,88 +763,97 @@ export const RFCDashboard = () => {
         {filteredProjects.map((project) => (
           <Card
             key={project.id}
-            className="hover:shadow-lg transition-shadow cursor-pointer"
+            className="hover:shadow-lg transition-shadow cursor-pointer p-2 mb-4"
           >
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{project.id}</CardTitle>
-                  <p className="text-slate-600">{project.clientName}</p>
-                </div>
-                <Badge
-                  variant={
-                    project.priority === "High" ? "destructive" : "secondary"
-                  }
-                >
-                  {project.priority}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-slate-500">RFQ Received:</span>
-                  <span className="text-sm font-medium">
-                    {new Date(project.receivedDate).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-slate-500">Status:</span>
-                  <Badge variant="outline">{project.status}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-slate-500">Estimation:</span>
-                  <Badge variant="outline">{project.estimationStatus}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-slate-500">Documents:</span>
-                  <span className="text-sm font-medium">
-                    {Array.isArray(project.uploadedFiles)
-                      ? project.uploadedFiles.filter((f) => f.file).length
-                      : project.uploadedFiles?.length || project.documentsCount}
-                  </span>
-                </div>
-                {project.pendingClarifications > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-slate-500">Pending:</span>
-                    <Badge variant="destructive" className="text-xs">
-                      {project.pendingClarifications} clarifications
-                    </Badge>
+            <CardHeader className="pb-4 mb-2 border-b border-slate-100">
+              <div className="flex justify-between items-start gap-4">
+                <div className="space-y-2">
+                  <CardTitle className="text-lg">
+                    {project.project_id}
+                  </CardTitle>
+                  <p className="text-base font-bold text-slate-800 mb-1">
+                    {project.name}
+                  </p>
+                  <p className="text-slate-600 font-semibold flex items-center gap-1">
+                    <User size={14} /> {project.client_name}
+                  </p>
+                  <div className="text-xs text-slate-500 flex items-center gap-1">
+                    <Building2 size={12} /> {project.client_company}
                   </div>
-                )}
-                {project.deadline && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-slate-500">Deadline:</span>
-                    <span className="text-sm font-medium">
-                      {new Date(project.deadline).toLocaleDateString()}
-                    </span>
+                  <div className="text-xs text-slate-500 flex items-center gap-1">
+                    <MapPin size={12} /> {project.location}
                   </div>
-                )}
-                <div className="flex flex-col gap-2 mt-2">
-                  {/* <label className="text-xs text-slate-500">Notes:</label> */}
-                  {project.notes && <div>{project.notes}</div>}
+                  <p className="text-xs text-slate-500 flex items-center gap-1">
+                    <Calendar size={12} /> Received:{" "}
+                    {project.received_date
+                      ? new Date(project.received_date).toLocaleDateString()
+                      : "-"}
+                  </p>
+                  <div className="text-xs text-slate-500 flex items-center gap-1">
+                    <FileText size={12} /> {project.project_type}
+                  </div>
                 </div>
-              </div>
-              <div className="mt-4 flex gap-2">
-                {project.status !== "Ready for Estimation" && (
-                  <Button
-                    size="sm"
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => markReadyForEstimation(project.id)}
+                <div className="flex flex-col items-end gap-3">
+                  <Badge
+                    variant={
+                      project.priority.toLowerCase() === "high"
+                        ? "destructive"
+                        : "secondary"
+                    }
                   >
-                    Mark as Ready for Estimation
-                  </Button>
-                )}
+                    {project.priority}
+                  </Badge>
+                  <Badge variant="outline">{project.status}</Badge>
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        /* edit logic */
+                      }}
+                      title="Edit"
+                    >
+                      <Edit size={16} />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        /* delete logic */
+                      }}
+                      title="Delete"
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-5">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1"
+                  onClick={() => setDetailsProject(project)}
+                >
+                  <Info size={14} className="mr-1" /> Details
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => setMoreInfoProject(project)}
                 >
-                  Add More Info
+                  <StickyNote size={14} className="mr-1" /> Add More Info
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => {
+                    /* send to estimation logic */
+                  }}
+                >
+                  <Send size={14} className="mr-1" /> Send to Estimation
                 </Button>
               </div>
-            </CardContent>
+            </CardHeader>
           </Card>
         ))}
       </div>
@@ -782,102 +868,93 @@ export const RFCDashboard = () => {
             >
               <X />
             </button>
-            <h2 className="text-xl font-bold mb-4">Project Details</h2>
-            <div className="space-y-2 text-sm mb-6">
-              <div>
-                <strong>Project ID:</strong> {detailsProject.id}
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <FileText size={20} /> Project Details
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-8">
+              <div className="flex items-center gap-2">
+                <User size={16} /> <strong>Client Name:</strong>{" "}
+                {detailsProject.client_name}
               </div>
-              <div>
-                <strong>Client Name:</strong> {detailsProject.clientName}
+              <div className="flex items-center gap-2">
+                <Building2 size={16} /> <strong>Client Company:</strong>{" "}
+                {detailsProject.client_company}
               </div>
-              <div>
-                <strong>Client Company:</strong> {detailsProject.clientCompany}
+              <div className="flex items-center gap-2">
+                <MapPin size={16} /> <strong>Location:</strong>{" "}
+                {detailsProject.location}
               </div>
-              <div>
-                <strong>Location:</strong> {detailsProject.location}
+              <div className="flex items-center gap-2">
+                <FileText size={16} /> <strong>Project Type:</strong>{" "}
+                {detailsProject.project_type}
               </div>
-              <div>
-                <strong>Project Type:</strong> {detailsProject.projectType}
+              <div className="flex items-center gap-2">
+                <Calendar size={16} /> <strong>Deadline:</strong> 2023-11-20
               </div>
-              <div>
-                <strong>Received Date:</strong> {detailsProject.receivedDate}
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">{detailsProject.status}</Badge>
               </div>
-              <div>
-                <strong>Priority:</strong> {detailsProject.priority}
+              <div className="flex items-center gap-2">
+                <Phone size={16} /> <strong>Contact Person:</strong>{" "}
+                {detailsProject.contact_person}
               </div>
-              {detailsProject.deadline && (
-                <div>
-                  <strong>Deadline:</strong> {detailsProject.deadline}
-                </div>
-              )}
-              <div>
-                <strong>Status:</strong> {detailsProject.status}
+              <div className="flex items-center gap-2">
+                <Phone size={16} /> <strong>Phone:</strong>{" "}
+                {detailsProject.contact_person_phone}
               </div>
-              <div>
-                <strong>Estimation Status:</strong>{" "}
-                {detailsProject.estimationStatus}
+              <div className="flex items-center gap-2">
+                <Mail size={16} /> <strong>Email:</strong>{" "}
+                {detailsProject.contact_person_email}
               </div>
-              <div>
-                <strong>Contact Person:</strong> {detailsProject.contactPerson}
+              <div className="flex items-center gap-2">
+                <StickyNote size={16} /> <strong>Notes:</strong>{" "}
+                {detailsProject.notes}
               </div>
-              <div>
-                <strong>Phone:</strong> {detailsProject.contactPhone}
-              </div>
-              <div>
-                <strong>Email:</strong> {detailsProject.contactEmail}
-              </div>
-              {detailsProject.notes && <div>{detailsProject.notes}</div>}
-              <div>
-                <strong>Uploaded Files:</strong>
+              <div className="col-span-2 mt-2">
+                <strong className="flex items-center gap-2 text-base mb-1">
+                  <FileText size={16} /> Uploaded Files
+                </strong>
                 <ul className="list-disc ml-6">
-                  {(detailsProject.uploadedFiles || [])
-                    .filter((f) => f.file)
-                    .map((f, i) => (
-                      <li key={i}>
-                        {f.label ? `${f.label}: ` : ""}
-                        {f.file?.name}
-                      </li>
-                    ))}
+                  {(detailsProject.uploaded_files || []).map((f, i) => (
+                    <li key={i} className="mb-2">
+                      <ShowFile label={f.label} url={f.file} />
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
-            <div className="mb-4">
-              <h3 className="font-semibold mb-2">Project Updates</h3>
-              <div className="space-y-2 mb-2 max-h-40 overflow-y-auto">
-                {(detailsProject.updates || []).length === 0 && (
-                  <div className="text-slate-400">No updates yet.</div>
-                )}
-                {(detailsProject.updates || []).map((u, i) => (
-                  <div key={i} className="border rounded p-2 bg-slate-50">
-                    <div className="text-xs text-slate-500 mb-1">
-                      {u.author} • {new Date(u.date).toLocaleString()}
-                    </div>
-                    <div>{u.text}</div>
+            {/* Add More Infos Section */}
+            {detailsProject.add_more_infos &&
+              detailsProject.add_more_infos.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
+                    <StickyNote size={18} /> Additional Info
+                  </h3>
+                  <div className="space-y-4">
+                    {detailsProject.add_more_infos.map((info, idx) => (
+                      <div
+                        key={idx}
+                        className="border rounded-lg p-4 bg-slate-50"
+                      >
+                        <div className="flex items-center gap-2 mb-2 text-sm">
+                          <StickyNote size={14} />{" "}
+                          <span className="font-medium">{info.note}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {(info.uploaded_files || []).map((f, j) => (
+                            <ShowFile
+                              key={j}
+                              label={f.label}
+                              url={f.file}
+                              size="small"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add new update..."
-                  value={updateText}
-                  onChange={(e) => setUpdateText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && updateText.trim()) {
-                      addProjectUpdate(detailsProject.id, updateText);
-                    }
-                  }}
-                />
-                <Button
-                  onClick={() =>
-                    updateText.trim() &&
-                    addProjectUpdate(detailsProject.id, updateText)
-                  }
-                  disabled={!updateText.trim()}
-                >
-                  Add
-                </Button>
-              </div>
-            </div>
+                </div>
+              )}
             <div className="flex justify-end">
               <Button variant="outline" onClick={() => setDetailsProject(null)}>
                 Close

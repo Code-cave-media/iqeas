@@ -1,4 +1,3 @@
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import NotFound from "./pages/NotFound";
@@ -18,9 +17,11 @@ import Home from "./components/Home";
 import MyTasks from "./components/MyTasks";
 import { AdminProjectsDashboard } from "./components/AdminProjectDashboard";
 import AdminMembers from "./components/AdminMembers";
-import AuthVerification from "./components/AuthVerification";
-import { Toaster } from "react-hot-toast";
 
+import { ConfirmDialogProvider } from "@/components/ui/alert-dialog";
+import { Toast, ToastProvider } from "@radix-ui/react-toast";
+import { Toaster } from "react-hot-toast";
+import AuthVerification from "./components/AuthVerification";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -29,208 +30,210 @@ const CommonCalendar = () => (
 );
 
 const App = () => (
-  <AuthProvider>
-    <TooltipProvider>
-      <Toaster />
-      <AuthVerification>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
+  <ConfirmDialogProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster position="top-center" />
+        <AuthVerification>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
 
-            {/* PM Team */}
-            <Route path="/pm" element={<RoleProtectedRoute />}>
-              <Route
-                path=""
-                element={
-                  <DashboardLayout>
-                    <ProjectsDashboard />
-                  </DashboardLayout>
-                }
-              />
+              {/* PM Team */}
+              <Route path="/pm" element={<RoleProtectedRoute />}>
+                <Route
+                  path=""
+                  element={
+                    <DashboardLayout>
+                      <ProjectsDashboard />
+                    </DashboardLayout>
+                  }
+                />
 
-              <Route
-                path="documents"
-                element={
-                  <DashboardLayout>
-                    <DocumentCenter />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="calendar"
-                element={
-                  <DashboardLayout>
-                    <CommonCalendar />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="my-task"
-                element={
-                  <DashboardLayout>
-                    <MyTasks />
-                  </DashboardLayout>
-                }
-              />
-            </Route>
+                <Route
+                  path="documents"
+                  element={
+                    <DashboardLayout>
+                      <DocumentCenter />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="calendar"
+                  element={
+                    <DashboardLayout>
+                      <CommonCalendar />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="my-task"
+                  element={
+                    <DashboardLayout>
+                      <MyTasks />
+                    </DashboardLayout>
+                  }
+                />
+              </Route>
 
-            {/* RFQ Team */}
-            <Route path="/rfq" element={<RoleProtectedRoute />}>
-              <Route
-                path=""
-                element={
-                  <DashboardLayout>
-                    <RFCDashboard />
-                  </DashboardLayout>
-                }
-              />
+              {/* RFQ Team */}
+              <Route path="/rfq" element={<RoleProtectedRoute />}>
+                <Route
+                  path=""
+                  element={
+                    <DashboardLayout>
+                      <RFCDashboard />
+                    </DashboardLayout>
+                  }
+                />
 
-              <Route
-                path="documents"
-                element={
-                  <DashboardLayout>
-                    <DocumentCenter />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="calendar"
-                element={
-                  <DashboardLayout>
-                    <CommonCalendar />
-                  </DashboardLayout>
-                }
-              />
-            </Route>
+                <Route
+                  path="documents"
+                  element={
+                    <DashboardLayout>
+                      <DocumentCenter />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="calendar"
+                  element={
+                    <DashboardLayout>
+                      <CommonCalendar />
+                    </DashboardLayout>
+                  }
+                />
+              </Route>
 
-            {/* Estimation Department */}
-            <Route path="/estimation" element={<RoleProtectedRoute />}>
-              <Route
-                path=""
-                element={
-                  <DashboardLayout>
-                    <EstimationDashboard />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="documents"
-                element={
-                  <DashboardLayout>
-                    <DocumentCenter />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="calendar"
-                element={
-                  <DashboardLayout>
-                    <CommonCalendar />
-                  </DashboardLayout>
-                }
-              />
-            </Route>
+              {/* Estimation Department */}
+              <Route path="/estimation" element={<RoleProtectedRoute />}>
+                <Route
+                  path=""
+                  element={
+                    <DashboardLayout>
+                      <EstimationDashboard />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents"
+                  element={
+                    <DashboardLayout>
+                      <DocumentCenter />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="calendar"
+                  element={
+                    <DashboardLayout>
+                      <CommonCalendar />
+                    </DashboardLayout>
+                  }
+                />
+              </Route>
 
-            {/* Documentation Team */}
-            <Route path="/documentation" element={<RoleProtectedRoute />}>
-              <Route
-                path=""
-                element={
-                  <DashboardLayout>
-                    <DocumentationDashboard />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="documents"
-                element={
-                  <DashboardLayout>
-                    <DocumentCenter />
-                  </DashboardLayout>
-                }
-              />
+              {/* Documentation Team */}
+              <Route path="/documentation" element={<RoleProtectedRoute />}>
+                <Route
+                  path=""
+                  element={
+                    <DashboardLayout>
+                      <DocumentationDashboard />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents"
+                  element={
+                    <DashboardLayout>
+                      <DocumentCenter />
+                    </DashboardLayout>
+                  }
+                />
 
-              <Route
-                path="calendar"
-                element={
-                  <DashboardLayout>
-                    <CommonCalendar />
-                  </DashboardLayout>
-                }
-              />
-            </Route>
+                <Route
+                  path="calendar"
+                  element={
+                    <DashboardLayout>
+                      <CommonCalendar />
+                    </DashboardLayout>
+                  }
+                />
+              </Route>
 
-            {/* Working Team */}
-            <Route path="/working" element={<RoleProtectedRoute />}>
-              <Route
-                path=""
-                element={
-                  <DashboardLayout>
-                    <WorkerDashboard />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="documents"
-                element={
-                  <DashboardLayout>
-                    <DocumentCenter />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="calendar"
-                element={
-                  <DashboardLayout>
-                    <CommonCalendar />
-                  </DashboardLayout>
-                }
-              />
-            </Route>
+              {/* Working Team */}
+              <Route path="/working" element={<RoleProtectedRoute />}>
+                <Route
+                  path=""
+                  element={
+                    <DashboardLayout>
+                      <WorkerDashboard />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents"
+                  element={
+                    <DashboardLayout>
+                      <DocumentCenter />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="calendar"
+                  element={
+                    <DashboardLayout>
+                      <CommonCalendar />
+                    </DashboardLayout>
+                  }
+                />
+              </Route>
 
-            {/* Admin (example, can be expanded) */}
-            <Route path="/admin" element={<RoleProtectedRoute />}>
-              <Route
-                path=""
-                element={
-                  <DashboardLayout>
-                    <AdminProjectsDashboard />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="documents"
-                element={
-                  <DashboardLayout>
-                    <DocumentCenter />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="members"
-                element={
-                  <DashboardLayout>
-                    <AdminMembers />
-                  </DashboardLayout>
-                }
-              />
-              <Route
-                path="calendar"
-                element={
-                  <DashboardLayout>
-                    <CommonCalendar />
-                  </DashboardLayout>
-                }
-              />
-            </Route>
+              {/* Admin (example, can be expanded) */}
+              <Route path="/admin" element={<RoleProtectedRoute />}>
+                <Route
+                  path=""
+                  element={
+                    <DashboardLayout>
+                      <AdminProjectsDashboard />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="documents"
+                  element={
+                    <DashboardLayout>
+                      <DocumentCenter />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="members"
+                  element={
+                    <DashboardLayout>
+                      <AdminMembers />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="calendar"
+                  element={
+                    <DashboardLayout>
+                      <CommonCalendar />
+                    </DashboardLayout>
+                  }
+                />
+              </Route>
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthVerification>
-    </TooltipProvider>
-  </AuthProvider>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthVerification>
+      </TooltipProvider>
+    </AuthProvider>
+  </ConfirmDialogProvider>
 );
 
 export default App;

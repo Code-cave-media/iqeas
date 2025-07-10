@@ -18,6 +18,7 @@ const roleToPath: Record<string, string> = {
 
 const Login = () => {
   const { login, user } = useAuth();
+  console.log(user)
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

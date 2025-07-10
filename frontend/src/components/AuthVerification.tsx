@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { API_ENDPOINT } from "@/config/backend";
 import Loading from "./atomic/Loading";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const AuthVerification: React.FC<PropsWithChildren> = ({ children }) => {
   const { makeApiCall, fetching, isFetched } = useAPICall();
@@ -20,8 +21,9 @@ const AuthVerification: React.FC<PropsWithChildren> = ({ children }) => {
       authToken,
       "verifying"
     );
-    if (response.status == 201) {
-      console.log(response)
+    console.log(response);
+    if (response.status == 200) {
+      console.log(response);
       login(response.data, authToken);
     }
     setIsCheckedUser(true);
