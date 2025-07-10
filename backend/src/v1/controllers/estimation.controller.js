@@ -2,6 +2,7 @@ import {
   createEstimation,
   getEstimationById,
   updateEstimation,
+  getProjectsSentToPM
 } from "../services/estimation.service.js";
 import { formatResponse } from "../utils/response.js";
 
@@ -97,6 +98,28 @@ export const updateEstimationHandler = async (req, res) => {
     );
   } catch (error) {
     console.error("Error updating estimation:", error);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
+  }
+};
+
+
+
+export const getPMProjects = async (req, res) => {
+  try {
+    const projects = await getProjectsSentToPM();
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Projects sent to PM fetched successfully",
+        data: projects,
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching PM projects:", error);
     return res
       .status(500)
       .json(

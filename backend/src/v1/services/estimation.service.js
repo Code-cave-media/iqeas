@@ -107,3 +107,9 @@ export async function updateEstimation(id, data) {
   const result = await pool.query(query, values);
   return result.rows[0];
 }
+
+export async function getProjectsSentToPM() {
+  const query = `SELECT * FROM estimations WHERE sent_to_pm = true ORDER BY created_at DESC;`;
+  const result = await pool.query(query);
+  return result.rows;
+}
