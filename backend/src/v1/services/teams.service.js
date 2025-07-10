@@ -6,12 +6,13 @@ export async function createTeam({
   active = true,
   role = "",
   users = [],
+  leader_id,
 }) {
   const result = await pool.query(
-    `INSERT INTO teams (title, description, active, role, users)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO teams (title, description, active, role, users, leader_id)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [title, description, active, role, JSON.stringify(users)]
+    [title, description, active, role, JSON.stringify(users), leader_id]
   );
 
   return result.rows[0];
