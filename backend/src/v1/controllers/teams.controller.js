@@ -7,7 +7,13 @@ import { formatResponse } from "../utils/response.js";
 
 export const createTeamHandler = async (req, res) => {
   try {
-    const { title, users = [], active = true, role = "member" } = req.body;
+    const {
+      title,
+      users = [],
+      active = true,
+      role = "member",
+      leader_id,
+    } = req.body;
 
     if (!title) {
       return res
@@ -15,7 +21,7 @@ export const createTeamHandler = async (req, res) => {
         .json(formatResponse({ statusCode: 400, detail: "Title is required" }));
     }
 
-    const team = await createTeam({ title, active, role, users });
+    const team = await createTeam({ title, active, role, users, leader_id });
 
     return res.status(201).json(
       formatResponse({
