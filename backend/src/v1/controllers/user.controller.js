@@ -3,14 +3,16 @@ import {
   createUser,
   updateUserActiveStatus,
   getAllUsers,
+  updateUserData,
+  DeleteUser,
 } from "../services/user.service.js";
 
 import { getAllTeams } from "../services/teams.service.js";
 
 export const createNewUser = async (req, res) => {
   const { email, phoneNumber, name, role, active } = req.body;
-
-  if (!email || !phoneNumber || !name || !role || !active) {
+  console.log(email, phoneNumber, name, role, active);
+  if (!email || !phoneNumber || !name || !role || active === null) {
     return res.status(400).json(
       formatResponse({
         statusCode: 400,
@@ -99,5 +101,64 @@ export const getUsersController = async (req, res) => {
       .json(
         formatResponse({ statusCode: 500, detail: "Internal Server Error" })
       );
+  }
+};
+
+export const EditUserDataController = async (req, res) => {
+  const { id } = req.params;
+  const { name, email, phoneNumber, active, role } = req.body;
+
+  if (!id) {
+    return res
+      .status(400)
+      .json(formatResponse({ statusCode: 400, detail: "User id is required" }));
+  }
+
+  try {
+    const updatedUser = await updateUserData(id, {
+      name,
+      email,
+      phoneNumber,
+      active,
+      role,
+    });
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "User updated successfully",
+        data: updatedUser,
+      })
+    );
+  } catch (error) {
+    console.error("Error updating user:", error.message);
+    return res
+      .status(500)
+      .json(formatResponse({ statusCode: 500, detail: error.message }));
+  }
+};
+
+export const DeleteUserController = async (res, red) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res
+        .status(400)
+        .json(
+          formatResponse({ statusCode: 400, detail: "User id is required" })
+        );
+    }
+    await DeleteUser(id);
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "User deleted successfully",
+        data: null,
+      })
+    );
+  } catch (error) {
+    console.error("Error updating user:", error.message);
+    return res
+      .status(500)
+      .json(formatResponse({ statusCode: 500, detail: error.message }));
   }
 };
