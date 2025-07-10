@@ -19,13 +19,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<IUser | null>({
-    email: "",
-    id: "1",
-    name: "irshad",
-    phone: "000",
-    role: "pm",
-  });
+  const [user, setUser] = useState<IUser | null>(null);
+
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isCheckedToken, setIsCheckedToken] = useState(false);
@@ -38,10 +33,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     setIsCheckedToken(true);
   }, []);
-  const login = (user: IUser, token?: string) => {};
+  const login = (user: IUser, token?: string) => {
+    setUser(user);
+    setAuthToken(token);
+    localStorage.setItem("auth_token", token);
+    };
   const logout = () => {
     localStorage.removeItem("auth_token");
-    setIsAuthenticated(false);
+    setUser(null);
+    setAuthToken(null)
   };
 
   if (!isCheckedToken) {
