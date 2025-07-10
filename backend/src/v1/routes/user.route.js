@@ -9,6 +9,10 @@ import { authenticateToken } from "../middleware/authMiddleware.js";
 import { allowRoles } from "../utils/verification.js";
 import { DeleteUser } from "../services/user.service.js";
 
+
+import { authenticateToken } from "../middleware/authMiddleware.js"
+import { allowRoles } from "../utils/verification.js";
+
 const router = express.Router();
 
 router.post(
@@ -38,5 +42,6 @@ router.patch(
   allowRoles("admin"),
   EditUserDataController
 );
+
 
 export default router;
