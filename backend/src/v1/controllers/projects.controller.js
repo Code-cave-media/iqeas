@@ -2,7 +2,9 @@ import {
   createProject,
   updateProjectPartial,
   getProjectByPagination,
+  getProjectsSentToEstimation,
 } from "../services/projects.service.js";
+
 import { formatResponse } from "../utils/response.js";
 
 export const createNewProject = async (req, res) => {
@@ -85,3 +87,23 @@ export async function getProjectsPaginatedController(req, res) {
       );
   }
 }
+
+export const getEstimationProjects = async (req, res) => {
+  try {
+    const projects = await getProjectsSentToEstimation();
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Projects sent to estimation fetched successfully",
+        data: projects,
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching estimation projects:", error);
+    return res
+      .status(500)
+      .json(
+        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
+      );
+  }
+};
