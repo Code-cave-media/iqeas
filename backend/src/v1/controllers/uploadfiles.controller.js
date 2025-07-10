@@ -1,10 +1,11 @@
-import { saveUploadedFile } from "../services/upload.service.js";
+import { saveUploadedFile } from "../services/uploadfiles.service.js";
 import { formatResponse } from "../utils/response.js";
 
 export const uploadFileHandler = async (req, res) => {
   try {
-    const { label, uploaded_by } = req.body;
+    const { label } = req.body;
     const file = req.file;
+    const uploaded_by = req.user.id; 
 
     if (!file) {
       return res

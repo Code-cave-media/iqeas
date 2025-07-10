@@ -55,6 +55,7 @@ export const EditTeamDataController = async (req, res) => {
       title,
       active,
       users,
+      is_deleted,
     });
     return res.status(200).json(
       formatResponse({

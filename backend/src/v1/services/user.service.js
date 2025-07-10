@@ -74,7 +74,7 @@ export async function DeleteUser(id) {
 }
 export async function getAllUsers() {
   const result = await pool.query(
-    `SELECT id, email, name, role, phonenumber, active, created_at FROM users ORDER BY created_at DESC`
+    `SELECT id, email, name, role, phonenumber, active, created_at FROM users where is_deleted = false ORDER BY created_at DESC`
   );
   return result.rows;
 }
