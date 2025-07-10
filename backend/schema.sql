@@ -11,6 +11,7 @@ CREATE TABLE users (
     active BOOLEAN DEFAULT TRUE NOT NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'rfq', 'estimation', 'pm', 'working', 'documentation')),
     password VARCHAR(128) NOT NULL
+    is_deleted BOOLEAN DEFAULT FALSE
 );
 
 -- =====================
@@ -25,6 +26,7 @@ CREATE TABLE teams (
     users JSONB DEFAULT '[]',         
     active BOOLEAN DEFAULT TRUE,
     role TEXT DEFAULT ''
+    leader_id INTEGER NOT NULL
 );
 
 
