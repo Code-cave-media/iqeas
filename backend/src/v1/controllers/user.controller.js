@@ -34,7 +34,7 @@ export const createNewUser = async (req, res) => {
       formatResponse({
         statusCode: 201,
         detail: "User created successfully",
-        data: { user },
+        data: user,
       })
     );
   } catch (e) {
