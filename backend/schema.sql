@@ -125,7 +125,7 @@ CREATE TABLE estimations_uploaded_files (
 );
 
 -- =====================
--- PROJECT TIMELINES
+-- PROJECT TIMELINES 
 -- =====================
 CREATE TABLE project_timelines (
     id SERIAL PRIMARY KEY,

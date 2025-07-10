@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     id: "1",
     name: "irshad",
     phone: "000",
-    role: "pm",
+    role: "rfq",
   });
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
