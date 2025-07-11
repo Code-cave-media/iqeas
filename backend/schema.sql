@@ -147,7 +147,7 @@ CREATE TABLE estimation_clarification_logs (
     clarification TEXT NOT NULL
 );
 -- =====================
--- PROJECT TIMELINES
+-- PROJECT TIMELINES 
 -- =====================
 CREATE TABLE project_timelines (
     id SERIAL PRIMARY KEY,
