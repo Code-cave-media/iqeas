@@ -9,7 +9,8 @@ import { formatResponse } from "../utils/response.js";
 
 export const createNewProject = async (req, res) => {
   try {
-    const project = await createProject(req.body);
+    const userId = req.user.id; // Assuming user ID is in req.user
+    const project = await createProject({...req.body,user_id: userId});
     return res.status(201).json(
       formatResponse({
         statusCode: 201,
@@ -85,6 +86,7 @@ export async function getProjectsPaginatedController(req, res) {
       .json(
         formatResponse({ statusCode: 500, detail: "Internal Server Error" })
       );
+      console.error("Error fetching projects:", error.message);
   }
 }
 

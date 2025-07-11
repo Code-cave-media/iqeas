@@ -10,11 +10,14 @@ import teamsRoute from "./routes/teams.route.js";
 import taskRoute from "./routes/task.route.js";
 import taskActivityLogRoute from "./routes/task_activity_log.route.js";
 import chatRoute from "./routes/chat.route.js";
+import uploadFileRoute from "./routes/uploadfiles.route.js";
+import cors from "cors"; // <-- Import cors
 
 const app = express();
+app.use(cors()); // <-- Use cors middleware
 app.use(express.json());
 
-app.use("/api/v1", authRoute);
+app.use("/api/v1", authRoute); 
 app.use("/api/v1", userRoute);
 app.use("/api/v1", projectRoute);
 app.use("/api/v1", projectMoreInfoRoute);
@@ -25,5 +28,6 @@ app.use("/api/v1", teamsRoute);
 app.use("/api/v1", taskRoute);
 app.use("/api/v1", taskActivityLogRoute);
 app.use("/api/v1", chatRoute);
+app.use("/api/v1", uploadFileRoute);
 
 export default app;
