@@ -1,5 +1,4 @@
 import pool from "../config/db.js";
-
 export async function createEstimation(data) {
   const {
     project_id,
@@ -11,7 +10,7 @@ export async function createEstimation(data) {
     approval_date = null,
     approved = false,
     sent_to_pm = false,
-    forward_to = null,
+    forward_to_id = null,
     notes = null,
     updates = null,
     uploaded_file_ids = [],
@@ -21,11 +20,11 @@ export async function createEstimation(data) {
     INSERT INTO estimations (
       project_id, user_id, status, log, cost,
       deadline, approval_date, approved, sent_to_pm,
-      forward_to, notes, updates
+      forward_to_id, notes, updates
     ) VALUES (
-      $1, $2, $3, $4, $5, $6,
-      $7, $8, $9, $10,
-      $11, $12, $13
+      $1, $2, $3, $4, $5,
+      $6, $7, $8, $9, $10,
+      $11, $12
     ) RETURNING *;
   `;
 
@@ -39,24 +38,25 @@ export async function createEstimation(data) {
     approval_date,
     approved,
     sent_to_pm,
-    forward_to,
+    forward_to_id,
     notes,
     updates,
   ];
 
   const result = await pool.query(query, values);
+  const estimation = result.rows[0];
 
   if (uploaded_file_ids.length > 0) {
     const promises = uploaded_file_ids.map((fileId) =>
       pool.query(
         `INSERT INTO estimation_uploaded_files (estimation_id, uploaded_file_id) VALUES ($1, $2)`,
-        [id, fileId]
+        [estimation.id, fileId]
       )
     );
     await Promise.all(promises);
   }
 
-  return result.rows[0];
+  return estimation;
 }
 
 export async function getEstimationById(id) {
@@ -110,6 +110,18 @@ export async function updateEstimation(id, data) {
 
 export async function getProjectsSentToPM() {
   const query = `SELECT * FROM estimations WHERE sent_to_pm = true ORDER BY created_at DESC;`;
+  const result = await pool.query(query);
+  return result.rows;
+}
+
+export async function getProjectsApproved() {
+  const query = `SELECT * FROM estimations WHERE approved = false ORDER BY created_at DESC;`;
+  const result = await pool.query(query);
+  return result.rows;
+}
+
+export async function getProjectsDraft() {
+  const query = `SELECT * FROM estimations WHERE status = 'draft' ORDER BY created_at DESC;`;
   const result = await pool.query(query);
   return result.rows;
 }
