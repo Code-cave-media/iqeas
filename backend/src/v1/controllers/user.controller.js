@@ -3,25 +3,38 @@ import {
   createUser,
   updateUserActiveStatus,
   getAllUsers,
+  updateUserData,
+  DeleteUser,
 } from "../services/user.service.js";
 
 import { getAllTeams } from "../services/teams.service.js";
 
 export const createNewUser = async (req, res) => {
-  const { email, phonenumber, name, role } = req.body;
-
-  if (!email || !phonenumber || !name || !role) {
-    return res.status(400).json(formatResponse(400, "Missing required fields"));
+  const { email, phoneNumber, name, role, active } = req.body;
+  console.log(email, phoneNumber, name, role, active);
+  if (!email || !phoneNumber || !name || !role || active === null) {
+    return res.status(400).json(
+      formatResponse({
+        statusCode: 400,
+        detail: "Missing required fields",
+      })
+    );
   }
 
   try {
-    const { user } = await createUser(email, phonenumber, name, role);
-
+    const { user, password } = await createUser(
+      email,
+      phoneNumber,
+      name,
+      role,
+      active
+    );
+    console.log(password);
     return res.status(201).json(
       formatResponse({
         statusCode: 201,
         detail: "User created successfully",
-        data: { user },
+        data: user,
       })
     );
   } catch (e) {
@@ -63,9 +76,7 @@ export const toggleUserStatus = async (req, res) => {
 
     return res
       .status(500)
-      .json(
-        formatResponse({ statusCode: 500, detail: "Internal Server Error" })
-      );
+      .json(formatResponse({ statusCode: 500, detail: error.message }));
   }
 };
 
@@ -90,5 +101,64 @@ export const getUsersController = async (req, res) => {
       .json(
         formatResponse({ statusCode: 500, detail: "Internal Server Error" })
       );
+  }
+};
+
+export const EditUserDataController = async (req, res) => {
+  const { id } = req.params;
+  const { name, email, phoneNumber, active, role, is_deleted } = req.body;
+
+  if (!id) {
+    return res
+      .status(400)
+      .json(formatResponse({ statusCode: 400, detail: "User id is required" }));
+  }
+
+  try {
+    const updatedUser = await updateUserData(id, {
+      name,
+      email,
+      phoneNumber,
+      active,
+      role,
+    });
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "User updated successfully",
+        data: updatedUser,
+      })
+    );
+  } catch (error) {
+    console.error("Error updating user:", error.message);
+    return res
+      .status(500)
+      .json(formatResponse({ statusCode: 500, detail: error.message }));
+  }
+};
+
+export const DeleteUserController = async (res, red) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res
+        .status(400)
+        .json(
+          formatResponse({ statusCode: 400, detail: "User id is required" })
+        );
+    }
+    await DeleteUser(id);
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "User deleted successfully",
+        data: null,
+      })
+    );
+  } catch (error) {
+    console.error("Error updating user:", error.message);
+    return res
+      .status(500)
+      .json(formatResponse({ statusCode: 500, detail: error.message }));
   }
 };
