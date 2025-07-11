@@ -121,7 +121,7 @@ export async function getProjectsApproved() {
 }
 
 export async function getProjectsDraft() {
-  const query = `SELECT * FROM estimations WHERE status = draft ORDER BY created_at DESC;`;
+  const query = `SELECT * FROM estimations WHERE status = 'draft' ORDER BY created_at DESC;`;
   const result = await pool.query(query);
   return result.rows;
 }

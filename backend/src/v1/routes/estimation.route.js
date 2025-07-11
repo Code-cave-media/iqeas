@@ -10,8 +10,8 @@ import {
 const router = express.Router();
 
 router.post("/estimation", createEstimationHandler);
-router.get("/estimation/:id", getEstimationHandler);
-router.patch("/estimation/:id", updateEstimationHandler);
+router.get("/get/estimation/:id", getEstimationHandler);
+router.patch("/patch/estimation/:id", updateEstimationHandler);
 router.get("/estimation/pm", getPMProjects);
 router.get("/estimation/approves", getApproved); // This is the new route
 router.get("/estimation/draft", getDraft); // This is the new route

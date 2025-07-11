@@ -6,7 +6,7 @@ import {
 
 const router = express.Router();
 
-router.post("/task_activity_log", postTaskActivity);
-router.get("/:task_id", getTaskActivities);
+router.post("/post/task_activity_log", postTaskActivity);
+router.get("/get/task_activity_log/:task_id", getTaskActivities);
 
 export default router;
