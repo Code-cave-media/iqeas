@@ -4,273 +4,158 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Invoice</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <style>
-      @media print {
-        html,
-        body {
-          width: 210mm;
-          height: 297mm;
-          margin: 0;
-          padding: 0;
-          font-size: 10pt;
-        }
-        #printable {
-          width: 210mm;
-          height: 297mm;
-          transform: scale(1);
-          transform-origin: top left;
-          overflow: hidden;
-        }
-        header,
-        section,
-        footer,
-        table,
-        tr,
-        td,
-        th {
-          page-break-inside: avoid;
-          page-break-after: avoid;
-          page-break-before: avoid;
-        }
-        footer {
-          position: fixed;
-          bottom: 0;
-          width: 210mm;
-          height: 80px;
-        }
-        #zoom-controls {
-          display: none !important;
-        }
-      }
-      #printable {
-        --scale: 1;
-        transform-origin: top left;
-        transform: scale(var(--scale));
-      }
-      table {
-        font-size: 9pt;
-      }
-      th, td {
-        padding: 2px !important;
-      }
-    </style>
+    <link rel="stylesheet" href="https://jumpshare.com/s/HSzl7mFlEzVYt7aKOhNM" />
   </head>
-  <body class="text-sm">
-    <section class="flex justify-center">
-      <section>
-        <!-- <div
-          id="zoom-controls"
-          style="
-            position: fixed;
-            right: 12px;
-            top: 12px;
-            z-index: 9999;
-            background: #fff;
-            border: 1px solid #e5e7eb;
-            padding: 8px;
-            border-radius: 6px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-          "
-        >
-          <button id="zoom-out" aria-label="Zoom out">-</button>
-          <button id="zoom-reset" aria-label="Reset zoom">1x</button>
-          <button id="zoom-in" aria-label="Zoom in">+</button>
-          <button id="print-btn" style="margin-left: 0.5rem">Print</button>
-        </div> -->
-        <div id="printable" class="max-w-[210mm]">
-          <header class="w-full pb-2">
-            <img
-              src="https://jegdjcrxqqxzcmboiblb.supabase.co/storage/v1/object/public/test/bg.png"
-              alt="header"
-              class="h-30 w-full"
-            />
-            <img
-              src="https://jegdjcrxqqxzcmboiblb.supabase.co/storage/v1/object/public/test/logo.png"
-              alt="header"
-              class="w-24 absolute top-6 left-6"
-            />
-            <h3
-              class="absolute top-0 text-white left-1/2 -translate-x-1/2 text-2xl font-bold"
-            >
-              TAX INVOICE
-            </h3>
-            <div class="absolute right-0 top-10">
-              <div>
-                <h2 class="text-lg">
-                  {{companyName}}
-                </h2>
-                <h3 class="text-xs">{{cin}}</h3>
-                <h3 class="text-xs">{{addressLine1}}</h3>
-                <h3 class="text-xs">{{addressLine2}}</h3>
-                <h3 class="text-xs">GSTN : {{gstn}}</h3>
-              </div>
-            </div>
-          </header>
-          <section class="py-1 px-2">
-            <div class="text-left text-xs">
-              <div class="flex justify-between">
-                <p>
-                  Invoice Reference : <strong>{{invoiceReference}}</strong>
-                </p>
-                <p>Date : <strong>{{invoiceDate}}</strong></p>
-              </div>
-              <div class="flex justify-between">
-                <p>
-                  Payment Application No : <strong>{{paymentAppNo}}</strong>
-                </p>
-                <p>Date : <strong>{{paymentDate}}</strong></p>
-              </div>
-              <div class="flex justify-between">
-                <p>
-                  Buyer P.O/Quotation Ref : <strong>{{poRef}}</strong>
-                </p>
-                <p>Billing Period : <strong>{{billingPeriod}}</strong></p>
-              </div>
-            </div>
-          </section>
-          <section class="px-2 pb-10">
-            <p class="pb-1 text-blue-800 text-xs">Bill To:</p>
-            <div class="flex justify-between">
-              <div class="text-left">
-                <h3 class="text-xs">{{buyerName}}</h3>
-                <h3 class="text-xs">{{buyerAddress}}</h3>
-                <h3 class="text-xs">
-                  Email : <span class="text-blue-600">{{buyerEmail}}</span>
-                </h3>
-                <h3 class="text-xs">
-                  GSTN / TRN :
-                  <span class="text-blue-600">{{buyerGstn}}</span>
-                </h3>
-              </div>
-              <div class="text-left">
-                <h3 class="text-xs">
-                  <span class="text-blue-600">Project No:</span> {{projectNo}}
-                </h3>
-                <h3 class="text-xs">
-                  <span class="text-blue-600">Project Name:</span>
-                  {{projectName}}
-                </h3>
-                <h3 class="text-xs">
-                  <span class="text-blue-600">Project Value:</span>
-                  {{projectValue}}
-                </h3>
-                <h3 class="text-xs">
-                  <span class="text-blue-600">Variation Amount:</span>
-                  {{variationAmount}}
-                </h3>
-              </div>
-            </div>
-          </section>
-          <section class="px-2">
-            <table class="w-full border-collapse text-xs">
-              <thead class="bg-blue-900 text-white">
-                <tr>
-                  <th class="border border-gray-400 p-1">Sl No.</th>
-                  <th class="border border-gray-400 p-1">Description</th>
-                  <th class="border border-gray-400 p-1">Previous Progress</th>
-                  <th class="border border-gray-400 p-1">Received Amount</th>
-                  <th class="border border-gray-400 p-1">Current Progress</th>
-                  <th class="border border-gray-400 p-1">Current Amount</th>
-                  <th class="border border-gray-400 p-1">Current Tax</th>
-                </tr>
-              </thead>
-              <tbody>
-                {{itemsTable}}
-              </tbody>
-            </table>
-          </section>
-          <div class="px-2">
-            <div class="flex justify-between my-2 px-2 text-xs">
-              <p>
-                Total in Words :
-                <strong class="text-blue-600">{{totalInWords}}</strong>
-              </p>
-            </div>
+
+  <body>
+    <main>
+      <span class="background-image">
+        <img src="https://i.ibb.co/7f8QLwx/backgroun-image.png" alt="" />
+      </span>
+
+      <!-- Header -->
+      <div>
+        <img
+          src="https://i.ibb.co/v5CtxcT/header.png"
+          width="689"
+          height="177"
+          alt=""
+        />
+      </div>
+
+      <div class="container">
+        <div class="underline"></div>
+
+        <!-- Top Section -->
+        <div class="top">
+          <div class="left">
+            <article>
+              <p>Invoice Reference</p>
+              <span>: {{invoiceReference}}</span>
+            </article>
+            <article>
+              <p>Payment Application No</p>
+              <span>: {{paymentApplicationNo}}</span>
+            </article>
+            <article>
+              <p>Buyer P.O/Quotation Ref</p>
+              <span>: {{buyerPO}}</span>
+            </article>
           </div>
-          <div class="mt-2 mx-4 border border-gray-400 text-xs p-2">
-            <p>
-              We declare that : This Invoice reflects the actual service price,
-              complies with contract terms, confirms all particulars are
-              accurate, and being digitally generated, does not require
-              signature
-            </p>
+          <div class="right">
+            <article>
+              <p>Invoice Date</p>
+              <span>: {{invoiceDate}}</span>
+            </article>
+            <article>
+              <p>Payment Application Date</p>
+              <span>: {{paymentApplicationDate}}</span>
+            </article>
           </div>
-          <footer class="w-full py-80 p-2">
-            <div class="relative flex justify-between items-start">
-              <img
-                src="https://jegdjcrxqqxzcmboiblb.supabase.co/storage/v1/object/public/test/stamp.png"
-                alt="IQEAS Logo"
-                class="w-24 h-24"
-              />
-              <div class="text-right text-xs">
-                <p class="font-semibold">
-                  Payment Terms:
-                  <span class="font-normal">{{paymentTerms}}</span>
-                </p>
-                <h3 class="font-bold text-sm mt-2">Account Details</h3>
-                <div class="mt-1 space-y-0.5">
-                  <p>
-                    <span class="font-semibold">Remittance Through DD:</span>
-                    {{remittanceName}}
-                  </p>
-                  <p>
-                    <span class="font-semibold">Account Number:</span>
-                    {{accountNumber}}
-                  </p>
-                  <p>
-                    <span class="font-semibold">Bank Name and Branch:</span>
-                    {{bankName}}
-                  </p>
-                  <p>
-                    <span class="font-semibold">IFSC Code:</span>
-                    {{ifscCode}}
-                  </p>
-                  <p>
-                    <span class="font-semibold">Swift Code:</span> {{swiftCode}}
-                  </p>
-                </div>
-                <p class="mt-2">
-                  For
-                  <strong>{{companyName}}</strong>
-                </p>
-              </div>
-            </div>
-            <div class="text-xs mt-2">
-              <div class="flex flex-wrap">
-                <div class="flex items-center space-x-1">
-                  <span class="text-blue-500">📍</span>
-                  <p>{{addressLine1}}, {{addressLine2}}</p>
-                </div>
-                <div class="flex items-center space-x-1 mt-1">
-                  <span class="text-blue-500">📧</span>
-                  <p>
-                    <a
-                      href="mailto:{{email}}"
-                      class="text-blue-600 hover:underline"
-                      >{{email}}</a
-                    >,
-                    <a
-                      href="{{website}}"
-                      class="text-blue-600 hover:underline"
-                      >{{website}}</a
-                    >
-                  </p>
-                </div>
-                <div class="flex items-center space-x-1 mt-1">
-                  <span class="text-blue-500">📞</span>
-                  <p>{{phone}}</p>
-                </div>
-              </div>
-            </div>
-            <img
-              src="https://jegdjcrxqqxzcmboiblb.supabase.co/storage/v1/object/public/test/bt_bg.png"
-              alt="footer"
-              class="h-8 w-full mt-2"
-            />
-          </footer>
         </div>
-      </section>
-    </section>
+
+        <div class="underline" style="margin-top: 10px"></div>
+
+        <!-- Billing Section -->
+        <div class="billing">
+          <div class="left">
+            <p class="heading">Bill To :</p>
+            <div>
+              <p><strong>{{clientName}}</strong></p>
+              <p>{{clientAddress}}</p>
+              <p>Email : {{clientEmail}}</p>
+              <p>GSTN / TRN : {{clientGSTN}}</p>
+            </div>
+          </div>
+          <div class="right">
+            <article>
+              <p>Line / Type of Business</p>
+              <span>: {{businessType}}</span>
+            </article>
+            <article>
+              <p>State / Country of Origin</p>
+              <span>: {{originCountry}}</span>
+            </article>
+            <article>
+              <p>Country of Consignee/Buyer</p>
+              <span>: {{buyerCountry}}</span>
+            </article>
+            <article>
+              <p>Mode of material & transport</p>
+              <span>: {{transportMode}}</span>
+            </article>
+            <article>
+              <p>Project No</p>
+              <span>: {{projectNo}}</span>
+            </article>
+            <article>
+              <p>Project Name</p>
+              <span>: {{projectName}}</span>
+            </article>
+          </div>
+        </div>
+
+        <!-- Invoice Table -->
+        <div class="invoice-table">
+          <table>
+            <thead>
+              <tr>
+                <th class="sl-col">Sl No.</th>
+                <th>Item & Description of work</th>
+                <th>HSN/HAC</th>
+                <th>Qty.</th>
+                <th class="unit-col">Unit</th>
+                <th>Project Value</th>
+                <th class="total-col">Total Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{itemsTable}}
+            </tbody>
+          </table>
+
+          <!-- Totals -->
+          <table class="totals">
+            <tr>
+              <td>Net Total</td>
+              <td>{{netTotal}}</td>
+            </tr>
+            <tr>
+              <td>CGST - (9%)</td>
+              <td>{{cgst}}</td>
+            </tr>
+            <tr>
+              <td>SGST / UTGST - (9%)</td>
+              <td>{{sgst}}</td>
+            </tr>
+            <tr>
+              <td>IGST - (18%)</td>
+              <td>{{igst}}</td>
+            </tr>
+            <tr class="highlight-row grand-total">
+              <td>Grand Total</td>
+              <td><strong>{{grandTotal}}</strong></td>
+            </tr>
+            <tr class="highlight-row">
+              <td class="total-words" colspan="2">
+                Total in Words : {{totalInWords}}
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Footer Note -->
+        <div class="table-bottom">
+          We declare that: This Invoice reflects the actual service price,
+          complies with contract terms, confirms all particulars are accurate,
+          and being digitally generated, does not require signature.
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div>
+        <img src="https://i.ibb.co/7dckmCpn/footer.png" width="689" alt="" />
+      </div>
+    </main>
   </body>
 </html>
