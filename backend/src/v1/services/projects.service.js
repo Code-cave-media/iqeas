@@ -211,6 +211,64 @@ export async function getProjectByPagination(
   };
 }
 
+export async function getProjectShortDetailsById(projectId, client) {
+  if (!client) {
+    throw new Error("Database client is required");
+  }
+
+  const query = `
+    SELECT 
+      p.*,
+
+      json_build_object(
+        'id', u.id,
+        'name', u.name,
+        'email', u.email,
+        'phone', u.phone
+      ) AS user,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', uf.id,
+          'file', uf.file,
+          'label', uf.label
+        ))
+        FROM projects_uploaded_files puf
+        JOIN uploaded_files uf ON puf.uploaded_file_id = uf.id
+        WHERE puf.project_id = p.id
+      ), '[]'::json) AS uploaded_files,
+
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', pm.id,
+          'notes', pm.notes,
+          'enquiry', pm.enquiry,
+          'uploaded_files', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', uf2.id,
+              'file', uf2.file,
+              'label', uf2.label
+            ))
+            FROM project_more_info_uploaded_files pmuf
+            JOIN uploaded_files uf2 ON pmuf.uploaded_file_id = uf2.id
+            WHERE pmuf.project_more_info_id = pm.id
+          ), '[]'::json)
+        ))
+        FROM project_more_info pm
+        WHERE pm.project_id = p.id
+      ), '[]'::json) AS add_more_infos
+
+    FROM projects p
+    LEFT JOIN users u ON p.user_id = u.id
+    WHERE p.id = $1
+    LIMIT 1;
+  `;
+
+  const result = await client.query(query, [projectId]);
+  return result.rows[0] || null;
+}
+
+
 export async function getProjectsEstimationProjects({
   page = 1,
   size = 10,
@@ -964,6 +1022,14 @@ export async function addProjectDeliveryFiles(projectId, fileIds, client) {
   const { rows } = await client.query(
     `SELECT id, label, file FROM uploaded_files WHERE id = ANY($1::int[])`,
     [fileIds]
+  );
+
+  // update the project status
+  console.log("updating project");
+  updateProjectPartial(
+    projectId,
+    { status: "delivered", progress: 100 },
+    client
   );
 
   return rows;
