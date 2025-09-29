@@ -11,7 +11,7 @@ function formatNumber(num) {
 }
 
 export async function htmlToPdf(invoiceData) {
-  const templatePath = path.join(__dirname, "template.html");
+  const templatePath = path.join(__dirname, "template_copy.html");
   let html = fs.readFileSync(templatePath, "utf8");
 
   // Replace image paths with Supabase URLs (assuming online hosting)

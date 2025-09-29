@@ -183,3 +183,8 @@ main {
   height: 505px;
   aspect-ratio: auto 566 / 505;
 }
+
+
+.main__tag{
+  transform: scale(0.8);
+}
