@@ -1,11 +1,9 @@
--- =====================
--- USERS
--- =====================
+
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    name VARCHAR(100) NOT NULL,grer
+    name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(15),
     user_id VARCHAR(1024),
@@ -16,9 +14,6 @@ CREATE TABLE users (
     base_salary DECIMAL DEFAULT 0   
 );
 
--- =====================
--- TEAMS
--- =====================
 CREATE TABLE teams (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -27,7 +22,7 @@ CREATE TABLE teams (
     description TEXT DEFAULT '',
     users JSONB DEFAULT '[]',         
     active BOOLEAN DEFAULT TRUE,
-    role TEXT DEFAULT ''
+    role TEXT DEFAULT '',
     leader_id INTEGER NOT NULL
 );
 
@@ -41,9 +36,7 @@ CREATE TABLE teams_users (
 
 
 
--- =====================
--- UPLOADED FILES
--- =====================
+
 
 CREATE TABLE uploaded_files (
     id SERIAL PRIMARY KEY,
@@ -55,9 +48,6 @@ CREATE TABLE uploaded_files (
     status VARCHAR(20) NOT NULL DEFAULT 'under_review' CHECK (status IN ('draft', 'under_review', 'approved', 'rejected'))
 );
 
--- =====================
--- PROJECTS
--- =====================
 CREATE TABLE projects (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -110,9 +100,7 @@ CREATE TABLE project_rejection_uploaded_files (
     uploaded_file_id INTEGER NOT NULL REFERENCES uploaded_files(id) ON DELETE CASCADE,
     PRIMARY KEY (project_rejection_id, uploaded_file_id)
 );
--- =====================
--- PROJECT MORE INFO
--- =====================
+
 CREATE TABLE project_more_info (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -128,9 +116,6 @@ CREATE TABLE project_more_info_uploaded_files (
     PRIMARY KEY (project_more_info_id, uploaded_file_id)
 );
 
--- =====================
--- ESTIMATIONS
--- =====================
 CREATE TABLE estimations (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -141,6 +126,7 @@ CREATE TABLE estimations (
     cost NUMERIC(10, 2),
     deadline DATE,
     approval_date DATE,
+    log TEXT,
     approved BOOLEAN DEFAULT FALSE NOT NULL,
     sent_to_pm BOOLEAN DEFAULT FALSE NOT NULL,
     notes TEXT,
@@ -161,21 +147,18 @@ CREATE TABLE estimation_uploaded_files (
     PRIMARY KEY (estimation_id, uploaded_file_id)
 );
 
---===========================================================================
---                            This is the new sql 
---===========================================================================
 
 
 CREATE TABLE stages (
     id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    name VARCHAR(20) NOT NULL CHECK (name IN ('IDC', 'IFR', 'IFA', 'AFC')),
-    weight NUMERIC(5,2) NOT NULL,          -- % contribution to progress
-    allocated_hours INT NOT NULL,         -- time allocated for the stage
+    name VARCHAR(20) NOT NULL ,
+    weight NUMERIC(5,2) NOT NULL,   
+    allocated_hours INT NOT NULL,      
     created_at TIMESTAMPTZ DEFAULT NOW(),
     status VARCHAR(20),
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    revision VARCHAR(50),
+    revision VARCHAR(50)
 );
 
 CREATE TABLE drawings (
@@ -232,9 +215,7 @@ CREATE TABLE final_files (
 
 
 
---===========================================================================
---                            Human Resources
---===========================================================================
+
 CREATE TABLE attendance (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
