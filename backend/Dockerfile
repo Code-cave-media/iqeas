@@ -1,26 +1,13 @@
-# Dockerfile (for pure Node, no build)
-FROM node:20-alpine AS deps
+FROM node:20-alpine
+
 WORKDIR /app
 
-# copy lockfiles first for caching
-COPY package.json package-lock.json ./
-RUN npm ci --only=production
+COPY package*.json ./
 
-FROM node:20-alpine AS runtime
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-WORKDIR /app
+RUN npm install --production
 
-# Copy only production node_modules from deps image
-COPY --from=deps /app/node_modules ./node_modules
-COPY package.json ./
-
-# Copy source
 COPY . .
 
-ENV NODE_ENV=production
-ENV PORT=8080
-USER appuser
 EXPOSE 8080
 
-# Adjust start command to your package.json "start" script or entry file
 CMD ["npm", "start"]
