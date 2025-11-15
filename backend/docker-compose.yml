@@ -42,7 +42,7 @@ services:
       retries: 5
 
   certbot:
-    image: certbot/certbot:2.7.0
+    image: certbot/certbot:latest
     container_name: certbot
     restart: always
     volumes:
