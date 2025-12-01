@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Folder,
@@ -15,7 +15,12 @@ import {
   ListChecks,
   FilePlus2,
   BarChart3,
+  ChevronDown,
+  User,
 } from "lucide-react";
+import { API_ENDPOINT } from "@/config/backend";
+import { useAPICall } from "@/hooks/useApiCall";
+import toast from "react-hot-toast";
 
 const menuConfig = {
   pm: [
@@ -26,7 +31,6 @@ const menuConfig = {
       icon: BookOpen,
       match: ["/pm/documents/"],
     },
-    // { label: "Calendar", to: "/pm/calendar", icon: Calendar },
   ],
   rfq: [
     { label: "Dashboard", to: "/rfq", icon: Home },
@@ -36,7 +40,6 @@ const menuConfig = {
       icon: BookOpen,
       match: ["/rfq/documents/"],
     },
-    // { label: "Calendar", to: "/rfq/calendar", icon: Calendar },
   ],
   estimation: [
     { label: "Estimation Tracker", to: "/estimation", icon: BarChart3 },
@@ -46,7 +49,6 @@ const menuConfig = {
       icon: BookOpen,
       match: ["/estimation/documents/"],
     },
-    // { label: "Calendar", to: "/estimation/calendar", icon: Calendar },
   ],
   documentation: [
     {
@@ -61,7 +63,6 @@ const menuConfig = {
       icon: BookOpen,
       match: ["/documentation/documents/"],
     },
-    // { label: "Calendar", to: "/documentation/calendar", icon: Calendar },
   ],
   working: [
     {
@@ -76,7 +77,6 @@ const menuConfig = {
       icon: BookOpen,
       match: ["/working/documents/"],
     },
-    // { label: "Calendar", to: "/working/calendar", icon: Calendar },
   ],
   admin: [
     {
@@ -95,7 +95,6 @@ const menuConfig = {
       icon: BookOpen,
       match: ["/admin/documents/"],
     },
-    // { label: "Calendar", to: "/admin/calendar", icon: Calendar },
   ],
 };
 
@@ -108,14 +107,30 @@ const roleLabels: Record<string, string> = {
   admin: "Admin",
 };
 
-const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
-  const { user, logout } = useAuth();
+type UserType = { id: string; name: string; role: string; email: string };
+
+// Added optional onUserSwitch prop so parent can react when a user is switched
+const DashboardLayout = ({
+  children,
+  onUserSwitch,
+}: {
+  children: React.ReactNode;
+  onUserSwitch?: (user: UserType) => void;
+}) => {
+  const { user, logout, login, authToken } = useAuth();
   const role = user?.role?.toLowerCase() || "";
   const links = menuConfig[role] || [];
   const roleLabel = roleLabels[role] || role;
   const { pathname } = useLocation();
   const [openMenu, setOpenMenu] = useState(false);
-  console.log(pathname);
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const { makeApiCall, fetching, isFetched } = useAPICall();
+  const navigate = useNavigate();
+  // refs for detecting outside clicks
+  const desktopDropdownRef = useRef<HTMLDivElement | null>(null);
+  const mobileDropdownRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     setOpenMenu(false);
   }, [pathname]);
@@ -123,9 +138,88 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   // Disable background scroll on mobile menu open
   useEffect(() => {
     document.body.style.overflow = openMenu ? "hidden" : "";
-    
   }, [openMenu]);
-  
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+  useEffect(() => {
+    if (!userDropdownOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        desktopDropdownRef.current &&
+        !desktopDropdownRef.current.contains(target) &&
+        mobileDropdownRef.current &&
+        !mobileDropdownRef.current.contains(target)
+      ) {
+        setUserDropdownOpen(false);
+      }
+
+      // if only one ref exists, also handle that case
+      if (desktopDropdownRef.current && !mobileDropdownRef.current) {
+        if (!desktopDropdownRef.current.contains(target))
+          setUserDropdownOpen(false);
+      }
+      if (mobileDropdownRef.current && !desktopDropdownRef.current) {
+        if (!mobileDropdownRef.current.contains(target))
+          setUserDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [userDropdownOpen]);
+
+  // ------------------
+  // Quick user switching helpers
+  // ------------------
+  const fetchUsers = async () => {
+    const response = await makeApiCall(
+      "GET",
+      API_ENDPOINT.GET_ALL_SWITCH_USER,
+      {},
+      "application/json",
+      authToken,
+      "verifying"
+    );
+    console.log(response);
+    if (response.status == 200) {
+      console.log(response);
+      setUsers(response.data.users);
+      console.log("set");
+    }
+    console.log("done");
+  };
+
+  // 2) switchUser: called when user selects someone from the dropdown
+  const switchUser = async (u: UserType) => {
+    const response = await makeApiCall(
+      "post",
+      API_ENDPOINT.SWITCH_USER,
+      {
+        email: u.email,
+      },
+      "application/json",
+      authToken,
+      "login"
+    );
+    console.log(response);
+    if (response.status == 200) {
+      console.log(response.data, response.data);
+      login(response.data.user, response.data.token);
+      toast.success(`User switched to ${response.data.user.name} successfully`);
+      navigate("/");
+    } else {
+      toast.error("Credentials invalid, try again");
+    }
+  };
+
+  // When opening the user dropdown fetch users if not already fetched
+  const toggleUserDropdown = () => {
+    const willOpen = !userDropdownOpen;
+    setUserDropdownOpen(willOpen);
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -158,29 +252,129 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   `}
         style={{ minWidth: "16rem" }}
       >
-        <div className="flex h-full flex-col flex-1 justify-between">
+        <div className="flex h-full flex-col flex-1 justify-between relative">
           <div>
-            <div className="md:hidden flex justify-between p-3">
-              <h2 className="text-lg font-bold text-blue-700 mb-1">
-                {roleLabel}
-              </h2>
-              <button
-                onClick={() => setOpenMenu(false)}
-                aria-label="Close menu"
-                className="text-slate-500 hover:text-red-500"
-              >
-                <X size={24} />
-              </button>
+            <div className="md:hidden flex justify-between p-3 relative">
+              {/* Mobile header: name with role in brackets (smaller, responsive) */}
+              <div className="flex-1 pr-2">
+                <h2 className="text-lg font-bold text-blue-700 mb-1 truncate">
+                  <span className="block truncate">{user.name}</span>
+                  <span className="block text-xs sm:text-sm text-slate-500">
+                    ({roleLabel})
+                  </span>
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Mobile: user switch button visible on small screens */}
+                <div className="relative" ref={mobileDropdownRef}>
+                  <button
+                    onClick={toggleUserDropdown}
+                    className="flex items-center gap-2 rounded-md px-2 py-1 border border-slate-200 hover:bg-slate-50"
+                    aria-expanded={userDropdownOpen}
+                  >
+                    <User size={16} />
+                    <ChevronDown size={16} />
+                  </button>
+
+                  {/* Mobile dropdown — align to right side of the sidebar / screen */}
+                  {userDropdownOpen && (
+                    <div className="absolute -right-8 top-12 mt-2 w-56 bg-white border rounded shadow-lg z-50 md:hidden">
+                      <div className="p-2">
+                        <div className="text-xs text-slate-500 mb-2">
+                          Available users
+                        </div>
+                        <div className="max-h-48 overflow-auto">
+                          {users.map((u) => (
+                            <button
+                              key={u.id}
+                              onClick={() => switchUser(u)}
+                              className="w-full text-left px-3 py-2 rounded hover:bg-slate-100"
+                            >
+                              <div className="font-medium">{u.name}</div>
+                              <div className="text-xs text-slate-500">
+                                {u.role}
+                              </div>
+                            </button>
+                          ))}
+                          {users.length === 0 && (
+                            <div className="px-3 py-2 text-sm text-slate-500">
+                              No users
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setOpenMenu(false)}
+                  aria-label="Close menu"
+                  className="text-slate-500 hover:text-red-500"
+                >
+                  <X size={24} />
+                </button>
+              </div>
             </div>
 
             {/* Sidebar content */}
             <div>
-              <div className="max-md:hidden p-2 pb-2 border-b border-slate-100">
-                <h2 className="text-2xl max-sm:text-lg font-bold text-blue-700 mb-1">
-                  {roleLabel}
-                </h2>
+              <div className="max-md:hidden flex-col p-2 pb-2 border-b border-slate-100 flex justify-between">
+                <div className="flex-1">
+                  {/* Desktop header: name with role in brackets (smaller, responsive) */}
+                  <h2 className="text-2xl md:text-2xl sm:text-xl font-bold text-blue-700 mb-1 truncate">
+                    <span className="block truncate">{user.name}</span>
+                    <span className="block text-sm md:text-xs text-slate-500">
+                      ({roleLabel})
+                    </span>
+                  </h2>
+                </div>
+
+                {/* Quick User Switch Dropdown (desktop) — hidden on small screens */}
+                <div className="relative" ref={desktopDropdownRef}>
+                  <button
+                    onClick={toggleUserDropdown}
+                    className="flex items-center gap-2 rounded-md px-2 py-1 border border-slate-200 hover:bg-slate-50"
+                    aria-expanded={userDropdownOpen}
+                  >
+                    <User size={16} />
+                    <span className="text-sm">Switch user</span>
+                    <ChevronDown size={16} />
+                  </button>
+
+                  {userDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white border rounded shadow-lg z-50">
+                      <div className="p-2">
+                        <div className="text-xs text-slate-500 mb-2">
+                          Available users
+                        </div>
+                        <div className="max-h-48 overflow-auto">
+                          {users.map((u) => (
+                            <button
+                              key={u.id}
+                              onClick={() => switchUser(u)}
+                              className="w-full text-left px-3 py-2 rounded hover:bg-slate-100"
+                            >
+                              <div className="font-medium">{u.name}</div>
+                              <div className="text-xs text-slate-500">
+                                {u.role}
+                              </div>
+                            </button>
+                          ))}
+                          {users.length === 0 && (
+                            <div className="px-3 py-2 text-sm text-slate-500">
+                              No users
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <nav className="flex flex-col space-y-1">
+
+              <nav className="flex flex-col space-y-1 p-3">
                 {links.map(({ label, match, to, icon: Icon }) => {
                   const isMatch =
                     (Array.isArray(match) &&

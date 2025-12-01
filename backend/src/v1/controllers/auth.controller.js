@@ -1,4 +1,4 @@
-import { loginUser, resetPassword } from "../services/auth.service.js";
+import { loginUser, resetPassword, switchUser } from "../services/auth.service.js";
 import { verifyJwtToken } from "../utils/jwt.js";
 import { formatResponse } from "../utils/response.js";
 import { sentForgotMail } from "../services/auth.service.js";
@@ -96,6 +96,42 @@ export const forgotPasswordController = async (req, res) => {
   }
 };
 
+export const switchUserController = async(req,res) =>{
+  // we don't need to do extra security because this user already logged user so he can switch to it
+  const { email } = req.body;
+  try {
+    const { token, user } = await switchUser({email});
+
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Login successful",
+        data: {
+          token,
+          user,
+        },
+      })
+    );
+  } catch (error) {
+    if (error.message === "Invalid credentials") {
+      return res.status(400).json(
+        formatResponse({
+          statusCode: 400,
+          detail: error.message,
+        })
+      );
+    }
+
+    console.log("Login error", error);
+    return res.status(500).json(
+      formatResponse({
+        statusCode: 500,
+        detail: "Server error",
+      })
+    );
+  }
+
+}
 export const resetPasswordController = async (req, res) => {
   const { newPassword, token } = req.body;
 
