@@ -5,6 +5,8 @@ export const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1`;
 export const API_ENDPOINT = {
   VERIFY_USER: `${API_URL}/auth/me `,
   LOGIN: `${API_URL}/auth/login`,
+  SWITCH_USER: `${API_URL}/auth/switch-user`,
+
   ADD_NEW_USER: `${API_URL}/admin/create/create-user`,
   EDIT_USER_STATUS: (id: any) => `${API_URL}/admin/user/${id}/status`,
   CREATE_PROJECT: `${API_URL}/projects`,
@@ -74,5 +76,6 @@ export const API_ENDPOINT = {
   ACTION_LEAVE: (id) => `${API_URL}/leave/${id}`,
   GET_DOCUMENT_PROJECTS: (page, size, search) =>
     `${API_URL}/document/projects?page=${page}&size=${size}&search=${search}`,
-  CREATE_INVOICE:(id:any)=> `${API_URL}/estimation/invoice/${id}`
+  CREATE_INVOICE: (id: any) => `${API_URL}/estimation/invoice/${id}`,
+  GET_ALL_SWITCH_USER: `${API_URL}/auth/all-users`,
 };
