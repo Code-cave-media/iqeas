@@ -42,10 +42,46 @@ export async function loginUser({ email, password }) {
       phone: user.phone,
       role: user.role,
       active: user.active,
+      name:user.name
     },
   };
 }
 
+export async function switchUser({email}){
+  const result = await pool.query(
+    "SELECT * FROM users WHERE email = $1",
+    [email]
+  );
+  const user = result.rows[0];
+  console.log(user)
+  if (!user) {
+    throw new Error("Invalid credentials");
+  }
+  const token = jwt.sign(
+    {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      name:user.name
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "720h" }
+  );
+
+  return {
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      active: user.active,
+      name:user.name
+    },
+  };
+}
 export async function sentForgotMail(email) {
   try {
     const result = await pool.query(
