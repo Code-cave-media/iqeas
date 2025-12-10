@@ -48,15 +48,11 @@ app.use("/api/v1", leaveRoute);
 
 const PORT = process.env.PORT || 8080;
 
-// call seed function on startup
-(async () => {
-  await createInitialAdmin();
-})();
+// (async () => {
+//   await createInitialAdmin();
+// })();
 
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
-
-  // // run seed after server starts
-  // await createInitialAdmin();
 });
 export default app;

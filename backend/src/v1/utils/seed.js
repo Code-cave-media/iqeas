@@ -3,7 +3,7 @@ import { createUser } from "../services/user.service.js";
 
 
 async function createInitialAdmin() {
-  const client = await pool.connect();
+  const client =  await pool.connect();
 
   try {
     const result = await client.query(

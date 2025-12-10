@@ -18,6 +18,7 @@ import {
   Trash2,
   Info,
   Send,
+  Blocks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -129,8 +130,9 @@ export const RFCDashboard = () => {
     read_for_estimation: 0,
   });
 
+  const [listView, setListView] = useState(false)
+
   useEffect(() => {
-    // Fetch projects data from API with pagination and search
     const fetchProjects = async () => {
       const response = await makeApiCall(
         "get",
@@ -159,6 +161,17 @@ export const RFCDashboard = () => {
       setForm({ ...form, [name]: value });
     }
   };
+
+  // dev: aromal
+  // this is my code just to catch up  
+
+  
+  const islistView = () => {
+    setListView(true)
+  }
+  
+  
+  
 
   // Start new project entry
   const startNewProject = () => {
@@ -257,75 +270,75 @@ export const RFCDashboard = () => {
   // Refactor submitMoreInfo to upload files and send the correct payload
   const submitMoreInfo = async () => {
     try {
-       if (!moreInfoProject) return;
-    console.log(validateRequiredFields(moreInfoForm, ["enquiry", "notes"]));
-    if (validateRequiredFields(moreInfoForm, ["enquiry", "notes"]).length > 0) {
-      toast.error("Fill all the required fields");
-      return;
-    }
-    // Upload files
-    const uploadedFileIds = [];
-    for (const uf of moreInfoForm.files) {
-      if (uf.file) {
-        const uploaded = await uploadFile(uf.file, uf.label);
-        if (uploaded && uploaded.id) {
-          uploadedFileIds.push(uploaded.id);
-        } else {
-          toast.error("Failed to upload files");
-          return;
+      if (!moreInfoProject) return;
+      console.log(validateRequiredFields(moreInfoForm, ["enquiry", "notes"]));
+      if (
+        validateRequiredFields(moreInfoForm, ["enquiry", "notes"]).length > 0
+      ) {
+        toast.error("Fill all the required fields");
+        return;
+      }
+      // Upload files
+      const uploadedFileIds = [];
+      for (const uf of moreInfoForm.files) {
+        if (uf.file) {
+          const uploaded = await uploadFile(uf.file, uf.label);
+          if (uploaded && uploaded.id) {
+            uploadedFileIds.push(uploaded.id);
+          } else {
+            toast.error("Failed to upload files");
+            return;
+          }
         }
       }
-    }
-    // Prepare data
-    const data = {
-      project_id: moreInfoProject.id,
-      notes: moreInfoForm.notes,
-      enquiry: moreInfoForm.enquiry,
-      uploaded_file_ids: uploadedFileIds,
-    };
-    // Call API
-    const response = await makeApiCall(
-      "post",
-      API_ENDPOINT.PROJECT_ADD_MORE_INFO,
-      data,
-      "application/json",
-      authToken,
-      "addMoreInfo"
-    );
-    if (response.status === 201) {
-      toast.success("Additional info added!");
-      setProjects((prev) =>
-        prev.map((item) => {
-          if (item.id === moreInfoProject.id) {
-            if(item.add_more_infos){
-
-              return {
-                ...item,
-                add_more_infos: [response.data, ...item.add_more_infos],
-              };
-            }else{
-              return {
-                ...item,
-                add_more_infos: [response.data],
-              };
-            }
-          }
-          return item;
-        })
+      // Prepare data
+      const data = {
+        project_id: moreInfoProject.id,
+        notes: moreInfoForm.notes,
+        enquiry: moreInfoForm.enquiry,
+        uploaded_file_ids: uploadedFileIds,
+      };
+      // Call API
+      const response = await makeApiCall(
+        "post",
+        API_ENDPOINT.PROJECT_ADD_MORE_INFO,
+        data,
+        "application/json",
+        authToken,
+        "addMoreInfo"
       );
-      setMoreInfoProject(null);
-      setMoreInfoForm({
-        files: [],
-        notes: "",
-        enquiry: "",
-      });
-    } else {
-      toast.error("Failed to add more info");
-    }
+      if (response.status === 201) {
+        toast.success("Additional info added!");
+        setProjects((prev) =>
+          prev.map((item) => {
+            if (item.id === moreInfoProject.id) {
+              if (item.add_more_infos) {
+                return {
+                  ...item,
+                  add_more_infos: [response.data, ...item.add_more_infos],
+                };
+              } else {
+                return {
+                  ...item,
+                  add_more_infos: [response.data],
+                };
+              }
+            }
+            return item;
+          })
+        );
+        setMoreInfoProject(null);
+        setMoreInfoForm({
+          files: [],
+          notes: "",
+          enquiry: "",
+        });
+      } else {
+        toast.error("Failed to add more info");
+      }
     } catch (error) {
       window.location.reload();
     }
-   
   };
 
   const uploadFile = async (file: File, label: string) => {
@@ -407,7 +420,6 @@ export const RFCDashboard = () => {
         </Button>
       </div>
 
-      {/* Modal/Form for New Project */}
       {showForm && (
         <Dialog open={showForm} onOpenChange={() => setShowForm(false)}>
           <DialogContent className="">
@@ -719,7 +731,7 @@ export const RFCDashboard = () => {
       )}
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 quick___stats">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
@@ -778,118 +790,186 @@ export const RFCDashboard = () => {
           >
             <Search size={18} />
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              if (listView === true) {
+                setListView(false);
+              } else {
+                setListView(true);
+              }
+            }}
+            className="px-2"
+            aria-label="collapse"
+          >
+            <Blocks size={18} className="text-neutrl-500" />
+          </Button>
         </div>
       </div>
 
       {/* RFQ Cards */}
-      {fetching && fetchType == "getProjects" ? (
+      {fetching && fetchType === "getProjects" ? (
         <Loading full={false} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => (
-            <Card
-              key={project.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer p-2 mb-4"
-            >
-              <CardHeader className="pb-4 mb-2 border-b border-slate-100">
-                <div className="flex justify-between items-start gap-4">
-                  <div className="space-y-2">
-                    <CardTitle className="text-lg">
+        <>
+          {listView ? (
+            <div className="space-y-4">
+              {filteredProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="p-4 border rounded-lg cursor-pointer hover:bg-slate-50 flex justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-semibold">
                       {project.project_id}
-                    </CardTitle>
-                    <p className="text-base font-bold text-slate-800 mb-1">
-                      {project.name}
                     </p>
-                    <p className="text-slate-600 font-semibold flex items-center gap-1">
-                      <User size={14} /> {project.client_name}
-                    </p>
-                    <div className="text-xs text-slate-500 flex items-center gap-1">
-                      <Building2 size={12} /> {project.client_company}
-                    </div>
-                    <div className="text-xs text-slate-500 flex items-center gap-1">
-                      <MapPin size={12} /> {project.location}
-                    </div>
-                    <p className="text-xs text-slate-500 flex items-center gap-1">
-                      <Calendar size={12} /> Received:{" "}
+
+                    <p className="text-sky-800">{project.name}</p>
+
+                    <p className="text-slate-500 text-sm ">
+                      Received:{" "}
                       {project.received_date
                         ? new Date(project.received_date).toLocaleDateString()
                         : "-"}
                     </p>
-                    <div className="text-xs text-slate-500 flex items-center gap-1">
-                      <FileText size={12} /> {project.project_type}
-                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-3">
-                    <Badge
-                      className="capitalize"
-                      {...getPriorityBadgeProps(project.priority)}
-                    >
-                      {project.priority}
-                    </Badge>
-                    <Badge
-                      className="capitalize"
-                      {...getStatusBadgeProps(project.status)}
-                    >
-                      {project.status}
-                    </Badge>
-                    <div className="flex gap-2 mt-2">
-                      {/* <Button
-                        size="icon"
-                        variant="ghost"
-                      
-                        title="Edit"
+                  <div>
+                    <div className="flex gap-3 mt-5 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDetailsProject(project)}
                       >
-                        <Edit size={16} />
-                      </Button> */}
-                      {/* <Button
-                        size="icon"
-                        variant="ghost"
-                        
-                        title="Delete"
+                        <Info size={14} className="mr-1" /> Details
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setMoreInfoProject(project)}
                       >
-                        <Trash2 size={16} />
-                      </Button> */}
+                        <StickyNote size={14} className="mr-1" /> Add More Info
+                      </Button>
+
+                      {!project.send_to_estimation && (
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          loading={fetching && fetchType === "sentToEstimation"}
+                          onClick={() => handleSentToEstimation(project.id)}
+                        >
+                          <Send size={14} className="mr-1" /> Send to Estimation
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-3 mt-5 flex-wrap">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setDetailsProject(project)}
-                  >
-                    <Info size={14} className="mr-1" /> Details
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setMoreInfoProject(project)}
-                  >
-                    <StickyNote size={14} className="mr-1" /> Add More Info
-                  </Button>
-                  {!project.send_to_estimation && (
-                    <Button
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                      loading={fetching && fetchType == "sentToEstimation"}
-                      onClick={() => {
-                        handleSentToEstimation(project.id);
-                      }}
-                    >
-                      <Send size={14} className="mr-1" /> Send to Estimation
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProjects.map((project) => (
+                <Card
+                  key={project.id}
+                  className="hover:shadow-lg transition-shadow cursor-pointer p-2 mb-4"
+                >
+                  <CardHeader className="pb-4 mb-2 border-b border-slate-100">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-2">
+                        <CardTitle className="text-lg">
+                          {project.project_id}
+                        </CardTitle>
+
+                        <p className="text-base font-bold text-slate-800 mb-1">
+                          {project.name}
+                        </p>
+
+                        <p className="text-slate-600 font-semibold flex items-center gap-1">
+                          <User size={14} /> {project.client_name}
+                        </p>
+
+                        <div className="text-xs text-slate-500 flex items-center gap-1">
+                          <Building2 size={12} /> {project.client_company}
+                        </div>
+
+                        <div className="text-xs text-slate-500 flex items-center gap-1">
+                          <MapPin size={12} /> {project.location}
+                        </div>
+
+                        <p className="text-xs text-slate-500 flex items-center gap-1">
+                          <Calendar size={12} /> Received:{" "}
+                          {project.received_date
+                            ? new Date(
+                                project.received_date
+                              ).toLocaleDateString()
+                            : "-"}
+                        </p>
+
+                        <div className="text-xs text-slate-500 flex items-center gap-1">
+                          <FileText size={12} /> {project.project_type}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-3">
+                        <Badge
+                          className="capitalize"
+                          {...getPriorityBadgeProps(project.priority)}
+                        >
+                          {project.priority}
+                        </Badge>
+
+                        <Badge
+                          className="capitalize"
+                          {...getStatusBadgeProps(project.status)}
+                        >
+                          {project.status}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 mt-5 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDetailsProject(project)}
+                      >
+                        <Info size={14} className="mr-1" /> Details
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setMoreInfoProject(project)}
+                      >
+                        <StickyNote size={14} className="mr-1" /> Add More Info
+                      </Button>
+
+                      {!project.send_to_estimation && (
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          loading={fetching && fetchType === "sentToEstimation"}
+                          onClick={() => handleSentToEstimation(project.id)}
+                        >
+                          <Send size={14} className="mr-1" /> Send to Estimation
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
       )}
+
       {!fetching && filteredProjects.length === 0 && (
         <div className="text-center py-12">
           <div className="text-slate-400 mb-4">No RFQ projects found.</div>
         </div>
       )}
+
       {/* Pagination Controls */}
       {!fetching && totalPages > 1 && (
         <div className="flex justify-center mt-8 gap-2">
@@ -915,7 +995,6 @@ export const RFCDashboard = () => {
         </div>
       )}
 
-      {/* Details View Modal */}
       {detailsProject && (
         <Dialog
           open={!!detailsProject}
@@ -938,9 +1017,7 @@ export const RFCDashboard = () => {
                 {detailsProject.project_id}
               </div>
             </DialogHeader>
-            {/* Header */}
 
-            {/* Content */}
             <div className="px-6 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm mb-6">
                 <div>
