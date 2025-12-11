@@ -19,6 +19,7 @@ import {
   Info,
   Send,
   Blocks,
+  ListCollapse,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,7 +131,7 @@ export const RFCDashboard = () => {
     read_for_estimation: 0,
   });
 
-  const [listView, setListView] = useState(false)
+  const [listView, setListView] = useState(false);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -163,15 +164,11 @@ export const RFCDashboard = () => {
   };
 
   // dev: aromal
-  // this is my code just to catch up  
+  // this is my code just to catch up
 
-  
   const islistView = () => {
-    setListView(true)
-  }
-  
-  
-  
+    setListView(true);
+  };
 
   // Start new project entry
   const startNewProject = () => {
@@ -803,7 +800,11 @@ export const RFCDashboard = () => {
             className="px-2"
             aria-label="collapse"
           >
-            <Blocks size={18} className="text-neutrl-500" />
+            {listView ? (
+              <ListCollapse size={18} className="text-neutrl-500" />
+            ) : (
+              <Blocks size={18} className="text-neutrl-500" />
+            )}
           </Button>
         </div>
       </div>
@@ -814,57 +815,53 @@ export const RFCDashboard = () => {
       ) : (
         <>
           {listView ? (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {filteredProjects.map((project) => (
-                <div
+                <a
                   key={project.id}
-                  className="p-4 border rounded-lg cursor-pointer hover:bg-slate-50 flex justify-between"
+                  href={`/rfq/${project.id}`}
+                  className="p-2 border rounded-lg cursor-pointer hover:bg-slate-50 flex items-center justify-between h-10"
                 >
-                  <div>
-                    <p className="text-sm font-semibold">
+                  <div className="flex items-center gap-10">
+                    <p className="text-sm font-semibold w-20">
                       {project.project_id}
                     </p>
 
-                    <p className="text-sky-800">{project.name}</p>
+                    <p className="text-sky-800 w-40 truncate">{project.name}</p>
 
-                    <p className="text-slate-500 text-sm ">
+                    <p className="text-slate-500 text-sm w-32">
                       Received:{" "}
                       {project.received_date
                         ? new Date(project.received_date).toLocaleDateString()
                         : "-"}
                     </p>
                   </div>
-                  <div>
-                    <div className="flex gap-3 mt-5 flex-wrap">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setDetailsProject(project)}
-                      >
-                        <Info size={14} className="mr-1" /> Details
-                      </Button>
 
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setMoreInfoProject(project)}
-                      >
-                        <StickyNote size={14} className="mr-1" /> Add More Info
-                      </Button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-200"
+                      onClick={() => setDetailsProject(project)}
+                    >
+                      <Info size={14} />
+                    </button>
 
-                      {!project.send_to_estimation && (
-                        <Button
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                          loading={fetching && fetchType === "sentToEstimation"}
-                          onClick={() => handleSentToEstimation(project.id)}
-                        >
-                          <Send size={14} className="mr-1" /> Send to Estimation
-                        </Button>
-                      )}
-                    </div>
+                    <button
+                      className="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-200"
+                      onClick={() => setMoreInfoProject(project)}
+                    >
+                      <StickyNote size={14} />
+                    </button>
+
+                    {!project.send_to_estimation && (
+                      <button
+                        onClick={() => handleSentToEstimation(project.id)}
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded whitespace-nowrap h-7 flex items-center"
+                      >
+                        <Send size={10} className="mr-1" /> Send to estimation
+                      </button>
+                    )}
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           ) : (

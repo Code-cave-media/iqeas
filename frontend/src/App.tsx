@@ -30,6 +30,8 @@ import ProjectPublicInfo from "./components/ProjectPublicInfo";
 import SalaryManagement from "./components/SalaryManagement";
 import AttendanceManagement from "./components/AttendanceManagement";
 import LeaveManagement from "./components/LeaveManagement";
+import DetailedRFQ from "./components/ui/detailed_rfq_project_page";
+import RFQLayout from "./components/RFQLayout";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -85,7 +87,7 @@ const App = () => (
                     </DashboardLayout>
                   }
                 />
-               
+
                 <Route
                   path="documents/:project_id"
                   element={
@@ -104,7 +106,6 @@ const App = () => (
                 />
               </Route>
 
-              {/* RFQ Team */}
               <Route path="/rfq" element={<RoleProtectedRoute />}>
                 <Route
                   path=""
@@ -112,6 +113,14 @@ const App = () => (
                     <DashboardLayout>
                       <RFCDashboard />
                     </DashboardLayout>
+                  }
+                />
+                <Route
+                  path=":project_id"
+                  element={
+                    <RFQLayout>
+                      <DetailedRFQ />
+                    </RFQLayout>
                   }
                 />
 
