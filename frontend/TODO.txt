@@ -1,0 +1,1 @@
+* toogle view should be implemented block icon to list-collapse icon
