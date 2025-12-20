@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -10,19 +11,13 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-
-const rfqLinks = [
-  { label: "Enquiry", to: "", icon: FileSearch },
-  { label: "Estimation", to: "/rfq/estimation", icon: Calculator },
-  { label: "PO", to: "/rfq/po", icon: FileCheck2 },
-  { label: "Invoice", to: "/rfq/invoice", icon: Receipt },
-  { label: "Payment", to: "/rfq/payment", icon: IndianRupee },
-];
+import { useParams } from "react-router-dom";
 
 const RFQLayout = ({ children }: { children: React.ReactNode }) => {
   const { logout, user } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { project_id } = useParams();
 
   useEffect(() => {
     if (!user) {
@@ -34,6 +29,17 @@ const RFQLayout = ({ children }: { children: React.ReactNode }) => {
     }
   }, [user]);
 
+  const rfqLinks = [
+    { label: "Enquiry", to: "", icon: FileSearch },
+    {
+      label: "Estimation",
+      to: `/rfq/${project_id}/estimation`,
+      icon: Calculator,
+    },
+    { label: "PO", to: `/rfq/${project_id}/po`, icon: FileCheck2 },
+    { label: "Invoice", to: `/rfq/${project_id}/invoice`, icon: Receipt },
+    { label: "Payment", to: `/rfq/${project_id}/payment`, icon: IndianRupee },
+  ];
   return (
     <div className="flex h-screen overflow-hidden">
       <aside className="w-64 h-full bg-white border-r border-slate-200 flex flex-col">

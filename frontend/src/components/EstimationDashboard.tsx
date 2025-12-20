@@ -58,8 +58,24 @@ import { formatRevenue, toReadableText } from "@/utils/utils";
 import ShowFile from "./ShowFile";
 import { validateRequiredFields } from "@/utils/validation";
 import { Item } from "@radix-ui/react-select";
+import { useNavigate } from "react-router-dom";
 
 export const EstimationDashboard = () => {
+  const navigate = useNavigate();
+  interface EstimationDeliverable {
+    sno: number;
+    drawing_no: string;
+    title: string;
+    deliverables: string;
+    discipline: string;
+    hours?: number;
+    amount?: number;
+  }
+  const [deliverables, setDeliverables] = useState<EstimationDeliverable[]>([]);
+  const [deliverablesLoading, setDeliverablesLoading] = useState(false);
+  const [deliverablesError, setDeliverablesError] = useState("");
+  const [hoursEdit, setHoursEdit] = useState<{ [sno: number]: number }>({});
+
   // State for the Ready for Execution toggle in the Approved form
   const [projects, setProjects] = useState<IEstimationProject[]>([]);
   const [cards, setCards] = useState({
@@ -107,11 +123,10 @@ export const EstimationDashboard = () => {
       clientGSTN: "",
 
       // Project Section
-        projectNo: "",
-        projectName: "",
+      projectNo: "",
+      projectName: "",
 
-
-        // Totals Section
+      // Totals Section
       netTotal: "",
       cgst: "",
       sgst: "",
@@ -176,66 +191,66 @@ export const EstimationDashboard = () => {
   // Add state for estimation modal mode and editing
   const [editEstimationData, setEditEstimationData] = useState(null);
 
-    useEffect(() => {
-      const getProjects = async () => {
-        // Add page and pageSize to API call if supported
-        const response = await makeApiCall(
-          "get",
-          API_ENDPOINT.GET_ALL_ESTIMATION_PROJECTS(searchTerm, page, 20),
-          {},
-          "application/json",
-          authToken,
-          "getProjects"
-        );
-        if (response.status == 200) {
-          setProjects(response.data.projects);
-          setTotalPages(response.data.total_pages);
-          setCards(response.data.cards);
-        } else {
-          toast.error("Failed to fetch projects");
-        }
-      };
-      getProjects();
-    }, [searchTerm, page]);
-    // Helper to advance workflow step for a project
-    const getUsers = async () => {
+  useEffect(() => {
+    const getProjects = async () => {
+      // Add page and pageSize to API call if supported
       const response = await makeApiCall(
         "get",
-        API_ENDPOINT.GET_USERS_BY_ROLE("pm"),
+        API_ENDPOINT.GET_ALL_ESTIMATION_PROJECTS(searchTerm, page, 20),
         {},
         "application/json",
         authToken,
-        "getUsersAndTeams"
+        "getProjects"
       );
-      if (response.status === 200) {
-        setUsers(response.data || []);
-      }
-    };
-    const handleStatusTransition = async (project, nextStatus) => {
-      if (nextStatus === "Rejected") {
-        if (users.length == 0) {
-          getUsers();
-        }
-        openRejectModal(project);
-      } else if (nextStatus === "Approved") {
-        resetApprovedForm();
-        if (users.length == 0) {
-          getUsers();
-        }
-        setSelectedProject(project);
+      if (response.status == 200) {
+        setProjects(response.data.projects);
+        setTotalPages(response.data.total_pages);
+        setCards(response.data.cards);
       } else {
-        await changeProjectStatus(project, nextStatus);
+        toast.error("Failed to fetch projects");
       }
     };
-    // Handlers for project modal fields
-    const handleFieldChange = (field, value) => {
-      setSelectedProject((p) => ({ ...p, [field]: value }));
-      setApprovedForm((f) => ({ ...f, [field]: value }));
-    };
+    getProjects();
+  }, [searchTerm, page, authToken, makeApiCall]);
+  // Helper to advance workflow step for a project
+  const getUsers = async () => {
+    const response = await makeApiCall(
+      "get",
+      API_ENDPOINT.GET_USERS_BY_ROLE("pm"),
+      {},
+      "application/json",
+      authToken,
+      "getUsersAndTeams"
+    );
+    if (response.status === 200) {
+      setUsers(response.data || []);
+    }
+  };
+  const handleStatusTransition = async (project, nextStatus) => {
+    if (nextStatus === "Rejected") {
+      if (users.length == 0) {
+        getUsers();
+      }
+      openRejectModal(project);
+    } else if (nextStatus === "Approved") {
+      resetApprovedForm();
+      if (users.length == 0) {
+        getUsers();
+      }
+      setSelectedProject(project);
+    } else {
+      await changeProjectStatus(project, nextStatus);
+    }
+  };
+  // Handlers for project modal fields
+  const handleFieldChange = (field, value) => {
+    setSelectedProject((p) => ({ ...p, [field]: value }));
+    setApprovedForm((f) => ({ ...f, [field]: value }));
+  };
 
-    const handleFileChange = (field, e) => {
-      setApprovedForm((f) => ({ ...f, [field]: e.target.files[0] }));
-    };
+  const handleFileChange = (field, e) => {
+    setApprovedForm((f) => ({ ...f, [field]: e.target.files[0] }));
+  };
 
   const SubmitEstimation = async () => {
     // Validation
@@ -296,6 +311,7 @@ export const EstimationDashboard = () => {
     );
     if ([201, 200].includes(response.status)) {
       toast.success(response.detail);
+
       setProjects((prev) =>
         prev.map((item) => {
           if (item.id == selectedProject.id) {
@@ -308,6 +324,7 @@ export const EstimationDashboard = () => {
           return item;
         })
       );
+
       setCards({
         ...cards,
         total_value: cards.total_value + response.data.estimation.cost,
@@ -315,10 +332,11 @@ export const EstimationDashboard = () => {
           cards.completed_estimations +
           (response.data.estimation.sent_to_pm ? 1 : 0),
         pending_estimations:
-          cards.completed_estimations +
+          cards.pending_estimations +
           (response.data.estimation.sent_to_pm ? -1 : 0),
       });
       setSelectedProject(null);
+      navigate(`/estimation/${selectedProject.id}/details`);
     } else {
       toast.error("Failed to save estimation");
     }
@@ -430,6 +448,9 @@ export const EstimationDashboard = () => {
     }
   };
   const resetEditEstimation = () => {
+    setDeliverables([]);
+    setDeliverablesError("");
+    setHoursEdit({});
     setSelectedProject(null);
     setEstimationFiles([]);
     setEditEstimationData(null);
@@ -438,7 +459,7 @@ export const EstimationDashboard = () => {
   };
 
   const openInvoiceModal = (project) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     setInvoiceModal({
       open: true,
       project,
@@ -476,7 +497,6 @@ export const EstimationDashboard = () => {
         grandTotal: "",
         totalInWords: "",
 
-        // Dynamic Items Table
         items: [
           {
             slNo: 1,
@@ -609,22 +629,30 @@ export const EstimationDashboard = () => {
     // Here you can implement the API call to create the invoice
     console.log("Creating invoice:", invoiceModal.invoiceData);
     const response = await makeApiCall(
-      "POST",API_ENDPOINT.CREATE_INVOICE(invoiceModal.project.estimation.id),invoiceModal.invoiceData,"application/json",authToken,"createInvoice"
-    )
-    if(response.status==201 || response.status == 200){
-      // check already exist Invoice as uploaded file 
-      const existingInvoiceIndex = invoiceModal.project.estimation.uploaded_files.findIndex(
-        file => file.label?.toLowerCase() === "invoice".toLowerCase()
-      );
-      
+      "POST",
+      API_ENDPOINT.CREATE_INVOICE(invoiceModal.project.estimation.id),
+      invoiceModal.invoiceData,
+      "application/json",
+      authToken,
+      "createInvoice"
+    );
+    if (response.status == 201 || response.status == 200) {
+      // check already exist Invoice as uploaded file
+      const existingInvoiceIndex =
+        invoiceModal.project.estimation.uploaded_files.findIndex(
+          (file) => file.label?.toLowerCase() === "invoice".toLowerCase()
+        );
+
       if (existingInvoiceIndex !== -1) {
         // Update existing invoice file
-        const updatedFiles = [...invoiceModal.project.estimation.uploaded_files];
+        const updatedFiles = [
+          ...invoiceModal.project.estimation.uploaded_files,
+        ];
         updatedFiles[existingInvoiceIndex] = {
           ...updatedFiles[existingInvoiceIndex],
-          file: response.data.file
+          file: response.data.file,
         };
-        
+
         // Update the project state
         setProjects((prev) =>
           prev.map((item) => {
@@ -633,21 +661,19 @@ export const EstimationDashboard = () => {
                 ...item,
                 estimation: {
                   ...item.estimation,
-                  uploaded_files: updatedFiles
-                }
+                  uploaded_files: updatedFiles,
+                },
               };
             }
             return item;
           })
         );
       } else {
-
-        
         const updatedFiles = [
           ...invoiceModal.project.estimation.uploaded_files,
-          response.data
+          response.data,
         ];
-        
+
         // Update the project state
         setProjects((prev) =>
           prev.map((item) => {
@@ -656,19 +682,18 @@ export const EstimationDashboard = () => {
                 ...item,
                 estimation: {
                   ...item.estimation,
-                  uploaded_files: updatedFiles
-                }
+                  uploaded_files: updatedFiles,
+                },
               };
             }
             return item;
           })
         );
       }
-      
+
       toast.success("Invoice created successfully!");
       closeInvoiceModal();
       window.location.reload();
-
     } else {
       toast.error("Failed to create invoice");
     }
@@ -787,12 +812,86 @@ export const EstimationDashboard = () => {
     }
     func();
   };
+
+  // Fetch deliverables when selectedProject changes (for estimation modal)
   useEffect(() => {
     setApprovedForm((f) => ({
       ...f,
       uploadedFiles: estimationFiles,
     }));
-  }, [estimationFiles]);
+    if (selectedProject && selectedProject.estimation) {
+      setDeliverablesLoading(true);
+      setDeliverablesError("");
+      makeApiCall(
+        "get",
+        API_ENDPOINT.UPDATES_GET_RFQ_DELIVERABLES(selectedProject.project_id),
+        {},
+        "application/json",
+        authToken,
+        "getDeliverables"
+      ).then((response) => {
+        if (response.status === 200) {
+          setDeliverables(response.data || []);
+          // Pre-fill hoursEdit with current hours
+          const hoursMap: { [sno: number]: number } = {};
+          (response.data || []).forEach((d: EstimationDeliverable) => {
+            if (d.hours !== undefined && d.hours !== null)
+              hoursMap[d.sno] = d.hours;
+          });
+          setHoursEdit(hoursMap);
+        } else {
+          setDeliverablesError("Failed to fetch deliverables");
+        }
+        setDeliverablesLoading(false);
+      });
+    } else {
+      setDeliverables([]);
+      setHoursEdit({});
+    }
+  }, [selectedProject, authToken, makeApiCall, estimationFiles]);
+  // Handler to update hoursEdit state
+  const handleHoursChange = (sno: number, value: string) => {
+    setHoursEdit((prev) => {
+      const num = value === "" ? 0 : Number(value);
+      return { ...prev, [sno]: isNaN(num) ? 0 : num };
+    });
+  };
+
+  // Handler to submit hours to backend
+  const handleSubmitHours = async () => {
+    if (!selectedProject) return;
+    // Prepare deliverables array for PATCH
+    const deliverablesToUpdate = deliverables.map((d) => ({
+      sno: d.sno,
+      hours: hoursEdit[d.sno] ?? d.hours ?? 0,
+    }));
+    let url, key;
+    if (selectedProject.estimation) {
+      url = API_ENDPOINT.UPDATES_ADD_HOURS(selectedProject.estimation.id);
+      key = "addHoursToDeliverables";
+    } else {
+      url = API_ENDPOINT.UPDATES_ADD_HOURS_BY_PROJECT(
+        selectedProject.project_id
+      );
+      key = "addHoursToDeliverablesByProject";
+    }
+    const response = await makeApiCall(
+      "patch",
+      url,
+      { deliverables: deliverablesToUpdate },
+      "application/json",
+      authToken,
+      key
+    );
+    if (response.status === 200) {
+      toast.success("Hours updated successfully");
+      setDeliverables((prev) =>
+        prev.map((d) => ({ ...d, hours: hoursEdit[d.sno] ?? d.hours ?? 0 }))
+      );
+    } else {
+      toast.error(response.detail || "Failed to update hours");
+    }
+  };
 
   if (!isFetched) {
     return <Loading full />;
@@ -852,6 +951,7 @@ export const EstimationDashboard = () => {
   };
   const handleSentToAdmin = async (project) => {
     await changeProjectStatus(project, "sent_to_admin");
+    navigate(`/estimation/${project.id}/details`);
   };
   console.log(editEstimationData);
   return (
@@ -1195,7 +1295,10 @@ export const EstimationDashboard = () => {
                       return null;
                     }
                     // Default: show previous workflow buttons
-                    if (project.estimation_status === "not_started" || project.estimation_status === "draft") {
+                    if (
+                      project.estimation_status === "not_started" ||
+                      project.estimation_status === "draft"
+                    ) {
                       return (
                         <Button
                           size="sm"
@@ -1281,7 +1384,77 @@ export const EstimationDashboard = () => {
                 Estimation Workflow for {selectedProject.name}
               </h2>
             </DialogHeader>
-            <div className=" px-6 pb-4">
+            <div className="px-6 pb-4">
+              {/* Deliverables Table (if estimation exists) */}
+              {selectedProject.estimation && (
+                <div className="mb-6">
+                  <h3 className="font-semibold mb-2">Deliverables</h3>
+                  {deliverablesLoading ? (
+                    <div className="text-blue-500">Loading deliverables...</div>
+                  ) : deliverablesError ? (
+                    <div className="text-red-500">{deliverablesError}</div>
+                  ) : deliverables.length === 0 ? (
+                    <div className="text-gray-400">No deliverables found.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border text-xs">
+                        <thead>
+                          <tr className="bg-slate-100">
+                            <th className="border px-2 py-1">S.No</th>
+                            <th className="border px-2 py-1">Drawing No</th>
+                            <th className="border px-2 py-1">Title</th>
+                            <th className="border px-2 py-1">Deliverable</th>
+                            <th className="border px-2 py-1">Discipline</th>
+                            <th className="border px-2 py-1">Hours</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {deliverables.map((d) => (
+                            <tr key={d.sno}>
+                              <td className="border px-2 py-1 text-center">
+                                {d.sno}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {d.drawing_no}
+                              </td>
+                              <td className="border px-2 py-1">{d.title}</td>
+                              <td className="border px-2 py-1">
+                                {d.deliverables}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {d.discipline}
+                              </td>
+                              <td className="border px-2 py-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  className="border rounded px-1 py-0.5 w-16 text-right"
+                                  value={hoursEdit[d.sno] ?? d.hours ?? ""}
+                                  onChange={(e) =>
+                                    handleHoursChange(d.sno, e.target.value)
+                                  }
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div className="flex justify-end mt-2">
+                        <Button
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={handleSubmitHours}
+                          loading={
+                            fetching && fetchType === "addHoursToDeliverables"
+                          }
+                        >
+                          Save Hours
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
                 {/* Cost Estimate */}
                 <div>
@@ -2069,7 +2242,8 @@ export const EstimationDashboard = () => {
                 </Button>
                 <div className="text-center mt-2">
                   <p className="text-xs text-slate-500 italic">
-                    Note: If you create a new invoice even after creating one before, the previous invoice will be automatically deleted.
+                    Note: If you create a new invoice even after creating one
+                    before, the previous invoice will be automatically deleted.
                   </p>
                 </div>
               </div>
@@ -2079,87 +2253,114 @@ export const EstimationDashboard = () => {
       )}
 
       {/* Invoice Modal */}
-      <Dialog open={invoiceModal.open}  onOpenChange={closeInvoiceModal}>
+      <Dialog open={invoiceModal.open} onOpenChange={closeInvoiceModal}>
         <DialogContent className="max-w-3xl p-0 bg-white rounded-xl shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl px-8 py-5 font-bold text-green-700">
               Create Invoice
             </DialogTitle>
           </DialogHeader>
-          
-           <div className="space-y-6 p-6">
-             {/* Top Section */}
-             <div className="grid grid-cols-2 gap-4">
-               <div>
-                 <label className="block text-sm font-medium mb-1">
-                   Invoice Reference
-                 </label>
-                 <Input
-                   value={invoiceModal.invoiceData.invoiceReference}
-                   onChange={(e) => handleInvoiceFieldChange("invoiceReference", e.target.value)}
-                   placeholder="Enter invoice reference"
-                 />
-               </div>
-                 
-               <div>
-                 <label className="block text-sm font-medium mb-1">
-                   Invoice Date
-                 </label>
-                 <Input
-                   type="date"
-                   value={invoiceModal.invoiceData.invoiceDate}
-                   onChange={(e) => handleInvoiceFieldChange("invoiceDate", e.target.value)}
-                 />
-               </div>
+
+          <div className="space-y-6 p-6">
+            {/* Top Section */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                 <label className="block text-sm font-medium mb-1">
-                   Payment Application No
-                 </label>
-                 <Input
-                   value={invoiceModal.invoiceData.paymentApplicationNo}
-                   onChange={(e) => handleInvoiceFieldChange("paymentApplicationNo", e.target.value)}
-                   placeholder="Enter payment application number"
-                 />
-               </div>
-              
-              
-                <div>
-                 <label className="block text-sm font-medium mb-1">
-                   Payment Application Date
-                 </label>
-                 <Input
-                   type="date"
-                   value={invoiceModal.invoiceData.paymentApplicationDate}
-                   onChange={(e) => handleInvoiceFieldChange("paymentApplicationDate", e.target.value)}
-                 />
-               </div>
-                 <div>
-                  <label className="block text-sm font-medium mb-1">QuotationRef</label>
-                  <Input
-                    value={invoiceModal.invoiceData.quotationRef}
-                    onChange={(e) => handleInvoiceFieldChange("quotationRef", e.target.value)}
-                    placeholder="Enter quotation reference"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">QuotationRefDate</label>
-                  <Input
-                    type="date"
-                    value={invoiceModal.invoiceData.quotationRefDate}
-                    onChange={(e) => handleInvoiceFieldChange("quotationRefDate", e.target.value)}
-                  />
-                </div>
-             </div>
+                <label className="block text-sm font-medium mb-1">
+                  Invoice Reference
+                </label>
+                <Input
+                  value={invoiceModal.invoiceData.invoiceReference}
+                  onChange={(e) =>
+                    handleInvoiceFieldChange("invoiceReference", e.target.value)
+                  }
+                  placeholder="Enter invoice reference"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Invoice Date
+                </label>
+                <Input
+                  type="date"
+                  value={invoiceModal.invoiceData.invoiceDate}
+                  onChange={(e) =>
+                    handleInvoiceFieldChange("invoiceDate", e.target.value)
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Payment Application No
+                </label>
+                <Input
+                  value={invoiceModal.invoiceData.paymentApplicationNo}
+                  onChange={(e) =>
+                    handleInvoiceFieldChange(
+                      "paymentApplicationNo",
+                      e.target.value
+                    )
+                  }
+                  placeholder="Enter payment application number"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Payment Application Date
+                </label>
+                <Input
+                  type="date"
+                  value={invoiceModal.invoiceData.paymentApplicationDate}
+                  onChange={(e) =>
+                    handleInvoiceFieldChange(
+                      "paymentApplicationDate",
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  QuotationRef
+                </label>
+                <Input
+                  value={invoiceModal.invoiceData.quotationRef}
+                  onChange={(e) =>
+                    handleInvoiceFieldChange("quotationRef", e.target.value)
+                  }
+                  placeholder="Enter quotation reference"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  QuotationRefDate
+                </label>
+                <Input
+                  type="date"
+                  value={invoiceModal.invoiceData.quotationRefDate}
+                  onChange={(e) =>
+                    handleInvoiceFieldChange("quotationRefDate", e.target.value)
+                  }
+                />
+              </div>
+            </div>
 
             {/* Client / Billing Section */}
             <div className="border-t pt-4">
-              <h3 className="text-lg font-semibold mb-3 text-slate-700">Client / Billing Information</h3>
+              <h3 className="text-lg font-semibold mb-3 text-slate-700">
+                Client / Billing Information
+              </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Client Name</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Client Name
+                  </label>
                   <Input
                     value={invoiceModal.invoiceData.clientName}
-                    onChange={(e) => handleInvoiceFieldChange("clientName", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("clientName", e.target.value)
+                    }
                     placeholder="Enter client name"
                     maxLength={50}
                   />
@@ -2170,7 +2371,9 @@ export const EstimationDashboard = () => {
                   </label>
                   <Textarea
                     value={invoiceModal.invoiceData.clientAddress1}
-                    onChange={(e) => handleInvoiceFieldChange("clientAddress1", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("clientAddress1", e.target.value)
+                    }
                     placeholder="Enter client address1"
                     rows={2}
                     maxLength={60}
@@ -2183,7 +2386,9 @@ export const EstimationDashboard = () => {
                   </label>
                   <Textarea
                     value={invoiceModal.invoiceData.clientAddress2}
-                    onChange={(e) => handleInvoiceFieldChange("clientAddress2", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("clientAddress2", e.target.value)
+                    }
                     placeholder="Enter client address2"
                     rows={2}
                     maxLength={60}
@@ -2191,20 +2396,28 @@ export const EstimationDashboard = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Client Email</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Client Email
+                  </label>
                   <Input
                     type="email"
                     value={invoiceModal.invoiceData.clientEmail}
-                    onChange={(e) => handleInvoiceFieldChange("clientEmail", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("clientEmail", e.target.value)
+                    }
                     placeholder="Enter client email"
                     maxLength={50}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Client GSTN/TRN</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Client GSTN/TRN
+                  </label>
                   <Input
                     value={invoiceModal.invoiceData.clientGSTN}
-                    onChange={(e) => handleInvoiceFieldChange("clientGSTN", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("clientGSTN", e.target.value)
+                    }
                     placeholder="Enter GSTN/TRN"
                   />
                 </div>
@@ -2213,63 +2426,99 @@ export const EstimationDashboard = () => {
 
             {/* Project Section */}
             <div className="border-t pt-4">
-              <h3 className="text-lg font-semibold mb-3 text-slate-700">Project Information</h3>
+              <h3 className="text-lg font-semibold mb-3 text-slate-700">
+                Project Information
+              </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Project No.</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Project No.
+                  </label>
                   <Input
                     value={invoiceModal.invoiceData.projectNo}
-                    onChange={(e) => handleInvoiceFieldChange("projectNo", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("projectNo", e.target.value)
+                    }
                     placeholder="Enter project number"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Project Name</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Project Name
+                  </label>
                   <Input
                     value={invoiceModal.invoiceData.projectName}
-                    onChange={(e) => handleInvoiceFieldChange("projectName", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("projectName", e.target.value)
+                    }
                     placeholder="Enter project name"
                     maxLength={40}
                   />
                 </div>
-              
               </div>
             </div>
 
             {/* Business Information Section */}
             <div className="border-t pt-4">
-              <h3 className="text-lg font-semibold mb-3 text-slate-700">Business Information</h3>
+              <h3 className="text-lg font-semibold mb-3 text-slate-700">
+                Business Information
+              </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Line / Type of Business</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Line / Type of Business
+                  </label>
                   <Input
                     value={invoiceModal.invoiceData.lineOfBusiness}
-                    onChange={(e) => handleInvoiceFieldChange("lineOfBusiness", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("lineOfBusiness", e.target.value)
+                    }
                     placeholder="Enter line of business"
                     maxLength={40}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">State / Country of Origin</label>
+                  <label className="block text-sm font-medium mb-1">
+                    State / Country of Origin
+                  </label>
                   <Input
                     value={invoiceModal.invoiceData.stateCountryOfOrigin}
-                    onChange={(e) => handleInvoiceFieldChange("stateCountryOfOrigin", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange(
+                        "stateCountryOfOrigin",
+                        e.target.value
+                      )
+                    }
                     placeholder="Enter state/country of origin"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Country of Consignee/Buyer</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Country of Consignee/Buyer
+                  </label>
                   <Input
                     value={invoiceModal.invoiceData.countryOfConsignee}
-                    onChange={(e) => handleInvoiceFieldChange("countryOfConsignee", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange(
+                        "countryOfConsignee",
+                        e.target.value
+                      )
+                    }
                     placeholder="Enter country of consignee/buyer"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Mode of material & transport</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Mode of material & transport
+                  </label>
                   <Input
                     value={invoiceModal.invoiceData.modeOfMaterialTransport}
-                    onChange={(e) => handleInvoiceFieldChange("modeOfMaterialTransport", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange(
+                        "modeOfMaterialTransport",
+                        e.target.value
+                      )
+                    }
                     placeholder="Enter mode of material & transport"
                     maxLength={40}
                   />
@@ -2280,7 +2529,9 @@ export const EstimationDashboard = () => {
             {/* Invoice Items */}
             <div className="border-t pt-4">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-semibold text-slate-700">Invoice Items</h3>
+                <h3 className="text-lg font-semibold text-slate-700">
+                  Invoice Items
+                </h3>
                 <Button
                   size="sm"
                   variant="outline"
@@ -2291,12 +2542,17 @@ export const EstimationDashboard = () => {
                   + Add Item ({invoiceModal.invoiceData.items.length}/5)
                 </Button>
               </div>
-              
+
               <div className="space-y-4">
                 {invoiceModal.invoiceData.items.map((item, index) => (
-                  <div key={index} className="border rounded-lg p-4 bg-slate-50">
+                  <div
+                    key={index}
+                    className="border rounded-lg p-4 bg-slate-50"
+                  >
                     <div className="flex justify-between items-center mb-3">
-                      <span className="font-medium text-slate-700">Item {item.slNo}</span>
+                      <span className="font-medium text-slate-700">
+                        Item {item.slNo}
+                      </span>
                       {invoiceModal.invoiceData.items.length > 1 && (
                         <Button
                           size="sm"
@@ -2308,59 +2564,107 @@ export const EstimationDashboard = () => {
                         </Button>
                       )}
                     </div>
-                    
-                     <div className="grid grid-cols-2 gap-4">
-                       <div>
-                         <label className="block text-sm font-medium mb-1">Description</label>
-                         <Textarea
-                           value={item.description}
-                           onChange={(e) => handleInvoiceItemChange(index, "description", e.target.value)}
-                           placeholder="Enter work description"
-                           rows={2}
-                           maxLength={100}
-                         />
-                       </div>
-                       <div>
-                         <label className="block text-sm font-medium mb-1">HSN</label>
-                         <Input
-                           value={item.hsn}
-                           onChange={(e) => handleInvoiceItemChange(index, "hsn", e.target.value)}
-                           placeholder="Enter HSN code"
-                         />
-                       </div>
-                       <div>
-                         <label className="block text-sm font-medium mb-1">Qty</label>
-                         <Input
-                           value={item.qty}
-                           onChange={(e) => handleInvoiceItemChange(index, "qty", e.target.value)}
-                           placeholder="Enter quantity"
-                         />
-                       </div>
-                       <div>
-                         <label className="block text-sm font-medium mb-1">Unit</label>
-                         <Input
-                           value={item.unit}
-                           onChange={(e) => handleInvoiceItemChange(index, "unit", e.target.value)}
-                           placeholder="Enter unit"
-                         />
-                       </div>
-                       <div>
-                         <label className="block text-sm font-medium mb-1">Project Value</label>
-                         <Input
-                           value={item.projectValue}
-                           onChange={(e) => handleInvoiceItemChange(index, "projectValue", e.target.value)}
-                           placeholder="Enter project value"
-                         />
-                       </div>
-                       <div>
-                         <label className="block text-sm font-medium mb-1">Total Amount</label>
-                         <Input
-                           value={item.totalAmount}
-                           onChange={(e) => handleInvoiceItemChange(index, "totalAmount", e.target.value)}
-                           placeholder="Enter total amount"
-                         />
-                       </div>
-                     </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Description
+                        </label>
+                        <Textarea
+                          value={item.description}
+                          onChange={(e) =>
+                            handleInvoiceItemChange(
+                              index,
+                              "description",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Enter work description"
+                          rows={2}
+                          maxLength={100}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          HSN
+                        </label>
+                        <Input
+                          value={item.hsn}
+                          onChange={(e) =>
+                            handleInvoiceItemChange(
+                              index,
+                              "hsn",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Enter HSN code"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Qty
+                        </label>
+                        <Input
+                          value={item.qty}
+                          onChange={(e) =>
+                            handleInvoiceItemChange(
+                              index,
+                              "qty",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Enter quantity"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Unit
+                        </label>
+                        <Input
+                          value={item.unit}
+                          onChange={(e) =>
+                            handleInvoiceItemChange(
+                              index,
+                              "unit",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Enter unit"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Project Value
+                        </label>
+                        <Input
+                          value={item.projectValue}
+                          onChange={(e) =>
+                            handleInvoiceItemChange(
+                              index,
+                              "projectValue",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Enter project value"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Total Amount
+                        </label>
+                        <Input
+                          value={item.totalAmount}
+                          onChange={(e) =>
+                            handleInvoiceItemChange(
+                              index,
+                              "totalAmount",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Enter total amount"
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -2368,13 +2672,19 @@ export const EstimationDashboard = () => {
 
             {/* Totals Section */}
             <div className="border-t pt-4">
-              <h3 className="text-lg font-semibold mb-3 text-slate-700">Totals</h3>
+              <h3 className="text-lg font-semibold mb-3 text-slate-700">
+                Totals
+              </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Net Total</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Net Total
+                  </label>
                   <Input
                     value={invoiceModal.invoiceData.netTotal}
-                    onChange={(e) => handleInvoiceFieldChange("netTotal", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("netTotal", e.target.value)
+                    }
                     placeholder="Enter net total"
                   />
                 </div>
@@ -2382,7 +2692,9 @@ export const EstimationDashboard = () => {
                   <label className="block text-sm font-medium mb-1">CGST</label>
                   <Input
                     value={invoiceModal.invoiceData.cgst}
-                    onChange={(e) => handleInvoiceFieldChange("cgst", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("cgst", e.target.value)
+                    }
                     placeholder="Enter CGST"
                   />
                 </div>
@@ -2390,7 +2702,9 @@ export const EstimationDashboard = () => {
                   <label className="block text-sm font-medium mb-1">SGST</label>
                   <Input
                     value={invoiceModal.invoiceData.sgst}
-                    onChange={(e) => handleInvoiceFieldChange("sgst", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("sgst", e.target.value)
+                    }
                     placeholder="Enter SGST"
                   />
                 </div>
@@ -2398,23 +2712,33 @@ export const EstimationDashboard = () => {
                   <label className="block text-sm font-medium mb-1">IGST</label>
                   <Input
                     value={invoiceModal.invoiceData.igst}
-                    onChange={(e) => handleInvoiceFieldChange("igst", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("igst", e.target.value)
+                    }
                     placeholder="Enter IGST"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Grand Total</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Grand Total
+                  </label>
                   <Input
                     value={invoiceModal.invoiceData.grandTotal}
-                    onChange={(e) => handleInvoiceFieldChange("grandTotal", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("grandTotal", e.target.value)
+                    }
                     placeholder="Enter grand total"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Total in Words</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Total in Words
+                  </label>
                   <Input
                     value={invoiceModal.invoiceData.totalInWords}
-                    onChange={(e) => handleInvoiceFieldChange("totalInWords", e.target.value)}
+                    onChange={(e) =>
+                      handleInvoiceFieldChange("totalInWords", e.target.value)
+                    }
                     placeholder="Enter total in words"
                   />
                 </div>
@@ -2423,7 +2747,11 @@ export const EstimationDashboard = () => {
           </div>
 
           <DialogFooter className="pt-6 px-8 py-5">
-            <Button variant="outline" onClick={closeInvoiceModal} disabled={fetching && fetchType == "createInvoice"} >
+            <Button
+              variant="outline"
+              onClick={closeInvoiceModal}
+              disabled={fetching && fetchType == "createInvoice"}
+            >
               Cancel
             </Button>
             <Button

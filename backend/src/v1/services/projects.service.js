@@ -16,7 +16,7 @@ export async function createProject(projectData, userId, client) {
     priority,
     contact_person,
     contact_person_phone,
-    contact_person_email,
+    contact_person_email,  
     notes,
     status = "draft",
     send_to_estimation = false,

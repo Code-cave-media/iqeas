@@ -19,7 +19,18 @@ import attendanceRoute from "./routes/attendance.routes.js";
 import salaryRoute from "./routes/salary.routes.js";
 import leaveRoute from "./routes/leave.route.js";
 
-import cors from "cors"; // <-- Import cors
+// Workflow Updates Routes
+import updatesPORoute from "./updates/routes/updates_po.routes.js";
+import updatesRFQDeliverablesRoute from "./updates/routes/updates_rfqDeliverables.routes.js";
+import updatesEstimationDeliverablesRoute from "./updates/routes/updates_estimationDeliverables.routes.js";
+import updatesEstimationWorkflowRoute from "./updates/routes/updates_estimationWorkflow.routes.js";
+import updatesWorkAllocationRoute from "./updates/routes/updates_workAllocation.routes.js";
+import updatesTimeTrackingRoute from "./updates/routes/updates_timeTracking.routes.js";
+import updatesWeeklyTimesheetRoute from "./updates/routes/updates_weeklyTimesheet.routes.js";
+import updatesStageBillingRoute from "./updates/routes/updates_stageBilling.routes.js";
+import UpdatesGetId from "./updates/routes/includes.route.js";
+
+import cors from "cors";
 import createInitialAdmin from "./utils/seed.js";
 
 const app = express();
@@ -45,6 +56,17 @@ app.use("/api/v1", documentFileRoute);
 app.use("/api/v1", attendanceRoute);
 app.use("/api/v1", salaryRoute);
 app.use("/api/v1", leaveRoute);
+
+// Workflow Updates Routes
+app.use("/api/v1/updates", updatesPORoute);
+app.use("/api/v1/updates", updatesRFQDeliverablesRoute);
+app.use("/api/v1/updates", updatesEstimationDeliverablesRoute);
+app.use("/api/v1/updates", updatesEstimationWorkflowRoute);
+app.use("/api/v1/updates", updatesWorkAllocationRoute);
+app.use("/api/v1/updates", updatesTimeTrackingRoute);
+app.use("/api/v1/updates", updatesWeeklyTimesheetRoute);
+app.use("/api/v1/updates", updatesStageBillingRoute);
+app.use("/api/v1/updates", UpdatesGetId);
 
 const PORT = process.env.PORT || 8080;
 

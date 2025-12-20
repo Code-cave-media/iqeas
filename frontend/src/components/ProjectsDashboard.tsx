@@ -44,7 +44,7 @@ export const ProjectsDashboard = () => {
     completed_works: 0,
     pending_works: 0,
   });
-  const isAdmin = user.role == "admin";
+const isAdmin = user?.role === "admin";
 
   // Fetch projects only when searchTerm, page, or statusFilter changes
   useEffect(() => {

@@ -26,6 +26,26 @@ export const API_ENDPOINT = {
   GET_TEAMS_BY_ROLE: (role: any) => `${API_URL}/teams/role/${role}`,
   GET_ALL_ESTIMATION_PROJECTS: (query, page, size) =>
     `${API_URL}/projects/estimation?page=${page}&size=${size}&query=${query}`,
+  UPDATES_CREATE_RFQ_DELIVERABLES: (project_id: any) =>
+    `${API_URL}/updates/projects/${project_id}/rfq-deliverables`,
+  UPDATES_GET_RFQ_DELIVERABLES: (project_id: any) =>
+    `${API_URL}/updates/projects/${project_id}/rfq-deliverables`,
+  UPDATES_ADD_HOURS: (project_id: any) =>
+    `${API_URL}/updates/estimation/${project_id}/add-hours`,
+  UPDATES_ADD_HOURS_BY_PROJECT: (project_id: any) =>
+    `${API_URL}/updates/projects/${project_id}/rfq-deliverables/add-hours`,
+  UPDATES_ADD_AMOUNTS: (project_id: any) =>
+    `${API_URL}/updates/estimation/${project_id}/add-amounts`,
+  UPDATES_GET_ESTIMATION_TABLE: (estimation_id: any) =>
+    `${API_URL}/updates/estimation/${estimation_id}/table`,
+  UPDATES_SEND_ESTIMATION_TO_ADMIN: (id: any) =>
+    `${API_URL}/updates/estimation/${id}/send-to-admin`,
+  UPDATES_ADMIN_VERIFY: (id: any) =>
+    `${API_URL}/updates/estimation/${id}/admin-verify`,
+  UPDATES_SEND_TO_PROPOSALS: (id: any) =>
+    `${API_URL}/updates/estimation/${id}/send-to-proposals`,
+  UPDATES_SEND_TO_CLIENT: (id: any) =>
+    `${API_URL}/updates/estimation/${id}/send-to-client`,
   CREATE_ESTIMATION: `${API_URL}/estimation`,
   EDIT_ESTIMATION: (id: any) => `${API_URL}/patch/estimation/${id}`,
   CREATE_PROJECT_REJECTION: `${API_URL}/projects/reject`,
@@ -78,4 +98,9 @@ export const API_ENDPOINT = {
     `${API_URL}/document/projects?page=${page}&size=${size}&search=${search}`,
   CREATE_INVOICE: (id: any) => `${API_URL}/estimation/invoice/${id}`,
   GET_ALL_SWITCH_USER: `${API_URL}/auth/all-users`,
+  GET_ID_FROM_PROJECT_ID_NAME: (project_id: string) =>
+    `${API_URL}/updates/projects/${project_id}/to_id`,
+
+  SEND_DELIVERABLES_TO_ADMIN: (project_id: string) =>
+    `${API_URL}/updates/estimation/deliverables/send-to-admin/${project_id}`,
 };

@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { API_ENDPOINT } from "@/config/backend";
 import { useAPICall } from "@/hooks/useApiCall";
 import { useAuth } from "@/contexts/AuthContext";
 import ShowFile from "@/components/ShowFile";
 import Submission from "@/components/Submission";
 import { useParams } from "react-router-dom";
-import { useEffect } from "react";
 import Loading from "@/components/atomic/Loading";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -14,12 +13,11 @@ import {
   Phone,
   Mail,
   FileText,
-  Info,
   ClipboardList,
   CheckCircle2,
   Clock,
-  Send,
   AlertCircle,
+  Pencil,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
@@ -32,30 +30,121 @@ import {
 import { useConfirmDialog } from "./ui/alert-dialog";
 
 const ProjectTrack: React.FC = () => {
-  const { projectId } = useParams();
-  const [project, setProject] = useState(null);
-  const { makeApiCall, fetching, fetchType, isFetched } = useAPICall();
+  const { projectId } = useParams<{ projectId: string }>();
+  const [project, setProject] = useState<any>(null);
+  const { makeApiCall, fetching, fetchType } = useAPICall();
   const { authToken, user } = useAuth();
-  const isAdmin = user.role == "admin";
+  const isAdmin = user.role === "admin";
   const confirmDialog = useConfirmDialog();
 
-  const [selectedStepIdx, setSelectedStepIdx] = useState(null);
+  const [selectedStepIdx, setSelectedStepIdx] = useState<number | null>(null);
+
   type DeliveryFile = { id: number; label: string; url: string };
-  const [files, setFiles] = useState<DeliveryFile[]>([]); // Store files for delivery
-  const [enableDelivery, setEnableDelivery] = useState(false); // Control Make Delivery button
+  const [files, setFiles] = useState<DeliveryFile[]>([]);
+  const [enableDelivery, setEnableDelivery] = useState(false);
   const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
   const [selectedDeliveryFiles, setSelectedDeliveryFiles] = useState<number[]>(
     []
   );
   const [showCorrectionDialog, setShowCorrectionDialog] = useState(false);
   const [correctionText, setCorrectionText] = useState("");
-  // useEffect(() => {
-  //   document.getElementsByTagName("main")[0].style.overflowY = "hidden";
 
-  // }, []);
+  type RFQDeliverable = {
+    id: number;
+    sno?: number;
+    drawing_no?: string;
+    title?: string;
+    discipline?: string;
+    deliverables?: string;
+    hours?: number;
+    amount?: number | string | null; // Consistent field name
+  };
 
+  const [rfqDeliverables, setRfqDeliverables] = useState<RFQDeliverable[]>([]);
+  const [loadingRFQ, setLoadingRFQ] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Handle amount change locally - FIXED
+  const handleCostChange = (id: number, value: string) => {
+    setRfqDeliverables((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, amount: value === "" ? null : Number(value) || "" }
+          : item
+      )
+    );
+  };
+
+  // Save amounts to backend - FIXED
+  const saveCost = async () => {
+    if (!projectId) return;
+
+    const payload = rfqDeliverables
+      .filter(
+        (d) => d.amount !== null && d.amount !== "" && !isNaN(Number(d.amount))
+      )
+      .map((d) => ({
+        sno: d.sno || 0,
+        amount: Number(d.amount),
+      }));
+
+    if (payload.length === 0) {
+      toast.error("Please enter at least one valid amount before saving");
+      return;
+    }
+
+    setSaving(true);
+
+    const response = await makeApiCall(
+      "patch",
+      API_ENDPOINT.UPDATES_ADD_AMOUNTS(projectId),
+      { deliverables: payload },
+      "application/json",
+      authToken,
+      "addCost"
+    );
+
+    if (response?.status === 200) {
+      toast.success("Amounts saved successfully");
+      setEditingId(null);
+    } else {
+      toast.error(response?.data?.detail || "Failed to save amounts");
+    }
+
+    setSaving(false);
+  };
+
+  // Fetch RFQ Deliverables
+  useEffect(() => {
+    if (!project?.id) return;
+
+    const fetchRFQDeliverables = async () => {
+      setLoadingRFQ(true);
+      const response = await makeApiCall(
+        "get",
+        API_ENDPOINT.UPDATES_CREATE_RFQ_DELIVERABLES(project.id),
+        {},
+        "application/json",
+        authToken,
+        "getRFQDeliverables"
+      );
+
+      if (response?.status === 200 && Array.isArray(response.data)) {
+        setRfqDeliverables(response.data);
+      } else {
+        setRfqDeliverables([]);
+      }
+      setLoadingRFQ(false);
+    };
+
+    fetchRFQDeliverables();
+  }, [project?.id, makeApiCall, authToken]);
+
+  // Fetch Project
   useEffect(() => {
     const fetchProject = async () => {
+      if (!projectId) return;
       const response = await makeApiCall(
         "get",
         API_ENDPOINT.GET_PROJECT_BY_ID(projectId),
@@ -69,15 +158,16 @@ const ProjectTrack: React.FC = () => {
       }
     };
     fetchProject();
-    // eslint-disable-next-line
-  }, [projectId]);
+  }, [projectId, makeApiCall, authToken]);
+
+  // Enable delivery button
   useEffect(() => {
     if (project) {
       setEnableDelivery(project.status.toLowerCase() === "completed");
     }
   }, [project]);
 
-  if ((fetching && fetchType == "getProject") || !project) {
+  if ((fetching && fetchType === "getProject") || !project) {
     return <Loading />;
   }
 
@@ -85,10 +175,9 @@ const ProjectTrack: React.FC = () => {
     {
       label: "Project Creation",
       key: "creation",
-      getCompleted: (project) => project.status !== "draft",
-      renderContent: (project, stepStatus) => (
-        <div className="rounded-2xl shadow-lg border bg-white ">
-          {/* Header */}
+      getCompleted: (project: any) => project.status !== "draft",
+      renderContent: (project: any) => (
+        <div className="rounded-2xl shadow-lg border bg-white">
           <div className="flex items-center justify-between px-6 py-4 rounded-t-2xl bg-gradient-to-r from-blue-600 to-blue-400">
             <div className="flex items-center gap-3">
               <FileText className="text-white" size={28} />
@@ -98,7 +187,7 @@ const ProjectTrack: React.FC = () => {
               {project.project_id}
             </span>
           </div>
-          {/* Details Grid */}
+
           <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 border-b">
             <div>
               <span className="font-medium text-slate-700">Client Name:</span>{" "}
@@ -128,7 +217,7 @@ const ProjectTrack: React.FC = () => {
             </div>
             <div>
               <span className="font-medium text-slate-700">Received Date:</span>{" "}
-              <span className="text-slate-900 capitalize">
+              <span className="text-slate-900">
                 {new Date(project.received_date).toLocaleString()}
               </span>
             </div>
@@ -139,7 +228,7 @@ const ProjectTrack: React.FC = () => {
               </span>
             </div>
           </div>
-          {/* Contact Section */}
+
           <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4 border-b">
             <div className="flex items-center gap-2">
               <User className="text-blue-700" size={18} />
@@ -153,7 +242,7 @@ const ProjectTrack: React.FC = () => {
             <div className="flex items-center gap-2">
               <Phone className="text-blue-700" size={18} />
               <span className="font-medium text-slate-700">Phone:</span>{" "}
-              <span className="text-slate-900 capitalize">
+              <span className="text-slate-900">
                 {project.contact_person_phone}
               </span>
             </div>
@@ -165,7 +254,7 @@ const ProjectTrack: React.FC = () => {
               </span>
             </div>
           </div>
-          {/* Notes/Description */}
+
           <div className="px-6 py-4 border-b">
             <div className="text-xs text-slate-500 mb-1">Notes</div>
             <div className="bg-slate-50 rounded p-3 text-slate-800 capitalize">
@@ -174,7 +263,7 @@ const ProjectTrack: React.FC = () => {
               )}
             </div>
           </div>
-          {/* Uploaded Files */}
+
           <div className="px-6 py-4 border-b">
             <div className="flex items-center gap-2 mb-1">
               <FileText className="text-blue-700" size={18} />
@@ -183,8 +272,8 @@ const ProjectTrack: React.FC = () => {
               </span>
             </div>
             <div className="flex flex-wrap gap-2 ml-1">
-              {project.uploaded_files && project.uploaded_files.length > 0 ? (
-                project.uploaded_files.map((file, i) => (
+              {project.uploaded_files?.length > 0 ? (
+                project.uploaded_files.map((file: any, i: number) => (
                   <ShowFile
                     key={file.id || i}
                     label={file.label}
@@ -198,13 +287,14 @@ const ProjectTrack: React.FC = () => {
               )}
             </div>
           </div>
+
           {Array.isArray(project.more_info) && project.more_info.length > 0 && (
             <div className="px-6 py-4 border-b">
               <div className="text-sm font-semibold text-blue-600 mb-3">
                 Additional Info
               </div>
               <div className="flex flex-col gap-4">
-                {project.more_info.map((info, index) => (
+                {project.more_info.map((info: any, index: number) => (
                   <div
                     key={info.id || index}
                     className="border rounded-lg p-4 bg-slate-50 shadow-sm"
@@ -241,7 +331,7 @@ const ProjectTrack: React.FC = () => {
                           Uploaded Files:
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {info.uploaded_files.map((file, i) => (
+                          {info.uploaded_files.map((file: any, i: number) => (
                             <ShowFile
                               key={file.id || i}
                               label={file.label}
@@ -256,14 +346,14 @@ const ProjectTrack: React.FC = () => {
               </div>
             </div>
           )}
-          {/* Progression Bar */}
+
           <div className="px-6 py-4 flex items-center gap-3">
             <Progress
-              value={project.status == "draft" ? 50 : 100}
+              value={project.status === "draft" ? 50 : 100}
               className="h-2 bg-gray-200 flex-1"
             />
             <span className="text-xs font-mono text-slate-600">
-              {project.status == "draft" ? 50 : 100}
+              {project.status === "draft" ? 50 : 100}%
             </span>
           </div>
         </div>
@@ -273,11 +363,10 @@ const ProjectTrack: React.FC = () => {
       label: "Project Estimation",
       key: "estimation",
       status: project.estimation_status,
-      getCompleted: (project) =>
-        project.estimation && project.estimation.sent_to_pm == true,
-      renderContent: (project, stepStatus) => (
+      getCompleted: (project: any) =>
+        project.estimation && project.estimation.sent_to_pm === true,
+      renderContent: (project: any) => (
         <div className="rounded-2xl shadow-lg border bg-white">
-          {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 rounded-t-2xl bg-gradient-to-r from-green-600 to-green-400">
             <div className="flex items-center gap-3">
               <FileText className="text-white" size={28} />
@@ -289,7 +378,7 @@ const ProjectTrack: React.FC = () => {
               {project.project_id}
             </span>
           </div>
-          {/* If no estimation, show message */}
+
           {!project.estimation ? (
             <div className="flex flex-col items-center justify-center py-12 text-slate-400">
               <FileText size={40} className="mb-2" />
@@ -299,7 +388,6 @@ const ProjectTrack: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Details Grid */}
               <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 border-b">
                 <div>
                   <span className="font-medium text-slate-700">Status:</span>{" "}
@@ -358,7 +446,7 @@ const ProjectTrack: React.FC = () => {
                   </span>
                 </div>
               </div>
-              {/* Log, Notes, Updates */}
+
               <div className="px-6 py-4 border-b grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <div className="text-xs text-slate-500 mb-1">Log</div>
@@ -387,7 +475,7 @@ const ProjectTrack: React.FC = () => {
                   </div>
                 </div>
               </div>
-              {/* Uploaded Files */}
+
               <div className="px-6 py-4 border-b">
                 <div className="flex items-center gap-2 mb-1">
                   <FileText className="text-green-700" size={18} />
@@ -396,16 +484,16 @@ const ProjectTrack: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2 ml-1">
-                  {project.estimation &&
-                  project.estimation.uploaded_files &&
-                  project.estimation.uploaded_files.length > 0 ? (
-                    project.estimation.uploaded_files.map((file, i) => (
-                      <ShowFile
-                        key={file.id || i}
-                        label={file.label}
-                        url={file.file}
-                      />
-                    ))
+                  {project.estimation.uploaded_files?.length > 0 ? (
+                    project.estimation.uploaded_files.map(
+                      (file: any, i: number) => (
+                        <ShowFile
+                          key={file.id || i}
+                          label={file.label}
+                          url={file.file}
+                        />
+                      )
+                    )
                   ) : (
                     <span className="text-slate-400 text-xs">
                       No files uploaded.
@@ -413,45 +501,150 @@ const ProjectTrack: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* RFQ Deliverables Table */}
+              <div className="px-6 py-4 border-b">
+                <div className="flex items-center gap-2 mb-4">
+                  <ClipboardList className="text-indigo-600" size={18} />
+                  <span className="text-sm font-semibold text-slate-700">
+                    RFQ Deliverables
+                  </span>
+                </div>
+
+                {loadingRFQ ? (
+                  <div className="text-slate-400 text-sm">
+                    Loading deliverables...
+                  </div>
+                ) : rfqDeliverables.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <div className="mb-4">
+                      <Button
+                        onClick={saveCost}
+                        disabled={saving}
+                        className="rounded-lg bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+                      >
+                        {saving ? "Saving..." : "Save Amounts"}
+                      </Button>
+                    </div>
+
+                    <table className="w-full text-sm border rounded-lg overflow-hidden">
+                      <thead className="bg-slate-100 text-slate-700">
+                        <tr>
+                          <th className="px-3 py-2 text-left">#</th>
+                          <th className="px-3 py-2 text-left">Drawing No</th>
+                          <th className="px-3 py-2 text-left">Title</th>
+                          <th className="px-3 py-2 text-left">Discipline</th>
+                          <th className="px-3 py-2 text-left">Deliverables</th>
+                          <th className="px-3 py-2 text-left">Hours</th>
+                          <th className="px-3 py-2 text-left">Amount (₹)</th>
+                          <th className="px-3 py-2 text-left">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rfqDeliverables.map((item, index) => (
+                          <tr
+                            key={item.id}
+                            className="border-t hover:bg-slate-50"
+                          >
+                            <td className="px-3 py-2">
+                              {item.sno ?? index + 1}
+                            </td>
+                            <td className="px-3 py-2">
+                              {item.drawing_no || "—"}
+                            </td>
+                            <td className="px-3 py-2">{item.title || "—"}</td>
+                            <td className="px-3 py-2">
+                              {item.discipline || "—"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {item.deliverables || "—"}
+                            </td>
+                            <td className="px-3 py-2">{item.hours || "—"}</td>
+                            <td className="px-3 py-2">
+                              {editingId === item.id ? (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={item.amount ?? ""}
+                                  onChange={(e) =>
+                                    handleCostChange(item.id, e.target.value)
+                                  }
+                                  className="w-32 rounded-md border px-2 py-1 text-sm focus:border-black focus:outline-none"
+                                  placeholder="Enter amount"
+                                  autoFocus
+                                />
+                              ) : (
+                                <span className="font-medium">
+                                  {item.amount != null
+                                    ? `₹${Number(item.amount).toLocaleString()}`
+                                    : "—"}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2">
+                              {editingId === item.id ? (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingId(null)}
+                                >
+                                  Cancel
+                                </Button>
+                              ) : (
+                                <button
+                                  onClick={() => setEditingId(item.id)}
+                                  className="p-1 text-gray-500 hover:text-black transition"
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-slate-400 text-sm">
+                    No RFQ deliverables found for this project.
+                  </div>
+                )}
+              </div>
+
+              {/* Corrections */}
               <div className="px-6 py-4 border-b">
                 <div className="font-semibold text-blue-700 mb-1 flex items-center gap-2">
                   <AlertCircle size={18} className="text-blue-500" />
-                  Corrections:{" "}
-                  {!project.estimation.corrections && (
-                    <span className="text-xs text-gray-400">
-                      No Correction made
-                    </span>
-                  )}
+                  Corrections:
                 </div>
                 <div className="space-y-3">
                   {project.estimation.corrections &&
                   project.estimation.corrections.length > 0 ? (
-                    project.estimation.corrections.map((corr, i) => (
-                      <div
-                        key={corr.id}
-                        className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col md:flex-row md:items-start gap-2 shadow-sm"
-                      >
-                        <div className="flex items-center gap-2 mb-1 md:mb-0">
-                          <AlertCircle
-                            size={18}
-                            className="text-blue-400 shrink-0"
-                          />
-                          <span className="font-semibold text-blue-800 text-xs md:text-sm ">
-                            Correction #
-                            {project.estimation.corrections.length - i}
-                          </span>
-                        </div>
+                    project.estimation.corrections.map(
+                      (corr: any, i: number) => (
                         <div
-                          className="flex-1 text-slate-800 text-sm md:text-base max-w-full break-words"
-                          style={{ maxWidth: "600px", wordBreak: "break-word" }}
+                          key={corr.id}
+                          className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col md:flex-row md:items-start gap-2 shadow-sm"
                         >
-                          {corr.correction}
+                          <div className="flex items-center gap-2 mb-1 md:mb-0">
+                            <AlertCircle
+                              size={18}
+                              className="text-blue-400 shrink-0"
+                            />
+                            <span className="font-semibold text-blue-800 text-xs md:text-sm">
+                              Correction #
+                              {project.estimation.corrections.length - i}
+                            </span>
+                          </div>
+                          <div className="flex-1 text-slate-800 text-sm md:text-base break-words">
+                            {corr.correction}
+                          </div>
+                          <div className="text-xs text-gray-500 ml-auto whitespace-nowrap">
+                            {new Date(corr.created_at).toLocaleString()}
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500 ml-auto whitespace-nowrap">
-                          {new Date(corr.created_at).toLocaleString()}
-                        </div>
-                      </div>
-                    ))
+                      )
+                    )
                   ) : (
                     <div className="text-gray-400 ml-2 text-xs">
                       No corrections made.
@@ -459,25 +652,24 @@ const ProjectTrack: React.FC = () => {
                   )}
                 </div>
               </div>
-              {/* Progression Bar */}
+
               <div className="px-6 py-4 pt-4 flex items-center gap-3">
                 <Progress
                   value={
-                    project.status == "estimating" ? project.progress : 100
+                    project.status === "estimating" ? project.progress : 100
                   }
                   className="h-2 bg-gray-200 flex-1"
                 />
                 <span className="text-xs font-mono text-slate-600">
-                  {project.status == "estimating" ? project.progress : 100}%
+                  {project.status === "estimating" ? project.progress : 100}%
                 </span>
               </div>
-              {/* Admin Action Buttons */}
+
               {project.estimation_status === "sent_to_admin" && isAdmin && (
                 <div className="w-full flex flex-col sm:flex-row gap-2 mt-6 px-6 pb-4">
                   <Button
                     className="bg-red-600 hover:bg-red-700 text-white flex-1"
                     onClick={handleCloseProject}
-                    loading={fetching && fetchType == "EditCloseProject"}
                   >
                     Close this project
                   </Button>
@@ -490,24 +682,22 @@ const ProjectTrack: React.FC = () => {
                   <Button
                     className="bg-green-600 hover:bg-green-700 text-white flex-1"
                     onClick={handleApproveProject}
-                    loading={fetching && fetchType == "ApproveEstimation"}
-                    disabled={fetching && fetchType == "ApproveEstimation"}
                   >
                     Approve
                   </Button>
                 </div>
               )}
-              {/* Correction Request Dialog */}
+
               <Dialog
                 open={showCorrectionDialog}
                 onOpenChange={setShowCorrectionDialog}
               >
                 <DialogContent>
-                  <DialogHeader className="px-6 py-4">
+                  <DialogHeader>
                     <DialogTitle>Correction Request</DialogTitle>
                   </DialogHeader>
                   <div className="p-6">
-                    <div className="mb-4 ">
+                    <div className="mb-4">
                       <label className="block font-medium mb-1">
                         Correction Details
                       </label>
@@ -523,21 +713,12 @@ const ProjectTrack: React.FC = () => {
                       <Button
                         variant="outline"
                         onClick={() => setShowCorrectionDialog(false)}
-                        disabled={
-                          fetching && fetchType == "createEstimationCorrection"
-                        }
                       >
                         Cancel
                       </Button>
                       <Button
                         className="bg-yellow-600 hover:bg-yellow-700 text-white"
                         onClick={handleCorrectionRequest}
-                        loading={
-                          fetching && fetchType == "createEstimationCorrection"
-                        }
-                        disabled={
-                          fetching && fetchType == "createEstimationCorrection"
-                        }
                       >
                         Send Correction
                       </Button>
@@ -553,8 +734,9 @@ const ProjectTrack: React.FC = () => {
     {
       label: "Project Working",
       key: "working",
-      getCompleted: (project) => project.status.toLowerCase() != "working",
-      renderContent: (project) => (
+      getCompleted: (project: any) =>
+        project.status.toLowerCase() !== "working",
+      renderContent: (project: any) => (
         <div className="space-y-2">
           <div className="flex flex-row justify-between items-center">
             <h2 className="text-xl font-bold text-blue-800 mb-2">
@@ -568,8 +750,8 @@ const ProjectTrack: React.FC = () => {
     {
       label: "Project Delivery",
       key: "delivery",
-      getCompleted: (project) => project.status == "delivered",
-      renderContent: (project) => (
+      getCompleted: (project: any) => project.status === "delivered",
+      renderContent: (project: any) => (
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold text-blue-800 mb-2">
@@ -577,19 +759,13 @@ const ProjectTrack: React.FC = () => {
             </h2>
             {!isAdmin &&
               enableDelivery &&
-              project.delivery_files.length == 0 && (
-                <Button
-                  className="text-white font-semibold px-4 py-2 rounded shadow"
-                  onClick={handleMakeDeliveryClick}
-                  loading={fetching && fetchType == "getDeliveryFiles"}
-                >
-                  Make Delivery
-                </Button>
+              project.delivery_files.length === 0 && (
+                <Button onClick={handleMakeDeliveryClick}>Make Delivery</Button>
               )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {project.delivery_files && project.delivery_files.length > 0 ? (
-              project.delivery_files.map((file, i) => (
+            {project.delivery_files?.length > 0 ? (
+              project.delivery_files.map((file: any, i: number) => (
                 <ShowFile
                   key={file.id || i}
                   label={file.label}
@@ -606,19 +782,17 @@ const ProjectTrack: React.FC = () => {
       ),
     },
   ];
-  const getStepStatus = (project) => {
+
+  const getStepStatus = (project: any) => {
     let foundCurrent = false;
     return STEP_CONFIG.map((step, idx) => {
       const completed = step.getCompleted(project);
-      if (foundCurrent) {
+      if (foundCurrent)
         return { ...step, completed: false, current: false, notStarted: true };
-      }
       if (completed)
         return { ...step, completed: true, current: false, notStarted: false };
-      else {
-        foundCurrent = true;
-        return { ...step, completed: false, current: true, notStarted: false };
-      }
+      foundCurrent = true;
+      return { ...step, completed: false, current: true, notStarted: false };
     });
   };
 
@@ -631,9 +805,8 @@ const ProjectTrack: React.FC = () => {
       : defaultStepIdx !== -1
       ? defaultStepIdx
       : 0;
-  const currentStep = steps[currentStepIdx] || steps[-1];
+  const currentStep = steps[currentStepIdx];
 
-  // Handler for file selection in delivery dialog
   const handleFileToggle = (fileId: number) => {
     setSelectedDeliveryFiles((prev) =>
       prev.includes(fileId)
@@ -642,7 +815,6 @@ const ProjectTrack: React.FC = () => {
     );
   };
 
-  // Handler for delivery submit
   const handleDeliverySubmit = async () => {
     const response = await makeApiCall(
       "post",
@@ -660,99 +832,79 @@ const ProjectTrack: React.FC = () => {
       });
       setShowDeliveryDialog(false);
     } else {
-      toast.error("Failed to fetch final files");
-      setShowDeliveryDialog(true);
+      toast.error("Failed to submit delivery");
     }
   };
 
-  // Fetch delivery files when Make Delivery is clicked
   const handleMakeDeliveryClick = async () => {
-    if (files.length != 0) {
+    if (files.length > 0) {
       setShowDeliveryDialog(true);
       return;
     }
-    try {
-      const response = await makeApiCall(
-        "get",
-        API_ENDPOINT.GET_ALL_DELIVERY_FILES(project.id),
-        {},
-        "application/json",
-        authToken,
-        "getDeliveryFiles"
-      );
-      if (response.status === 200 && Array.isArray(response.data)) {
-        setFiles(response.data);
-      } else {
-        setFiles([]);
-        toast.error("Failed to fetch final files");
-      }
-      setShowDeliveryDialog(true);
-    } catch (err) {
+    const response = await makeApiCall(
+      "get",
+      API_ENDPOINT.GET_ALL_DELIVERY_FILES(project.id),
+      {},
+      "application/json",
+      authToken,
+      "getDeliveryFiles"
+    );
+    if (response.status === 200 && Array.isArray(response.data)) {
+      setFiles(response.data);
+    } else {
       setFiles([]);
-      setShowDeliveryDialog(true);
+      toast.error("Failed to fetch files");
     }
+    setShowDeliveryDialog(true);
   };
 
   const handleCloseProject = async () => {
     const confirmed = await confirmDialog({
       title: "Close Project",
-      description: `Are you sure you want to close this project?`,
+      description: "Are you sure?",
       confirmText: "Close",
-      cancelText: "Cancel",
     });
     if (confirmed) {
       const response = await makeApiCall(
         "patch",
         API_ENDPOINT.EDIT_PROJECT(project.id),
-        {
-          estimation_status: "rejected",
-          status: "rejected",
-        },
+        { estimation_status: "rejected", status: "rejected" },
         "application/json",
-        authToken,
-        `EditCloseProject`
+        authToken
       );
-      if (response.status == 200) {
+      if (response.status === 200) {
         setProject({
           ...project,
-          estimation_status: response.data.estimation_status,
-          progress: response.data.progress,
+          estimation_status: "rejected",
+          status: "rejected",
         });
-        toast.success("Successfully marked as closed");
-      } else {
-        toast.error(`Failed to mark as closed`);
+        toast.success("Project closed");
       }
     }
   };
+
   const handleApproveProject = async () => {
-    const data = {
-      project_id: project.id,
-      approved: true,
-      sent_to_pm: true,
-    };
     const response = await makeApiCall(
       "patch",
       API_ENDPOINT.EDIT_ESTIMATION(project.estimation.id),
-      data,
+      { project_id: project.id, approved: true, sent_to_pm: true },
       "application/json",
-      authToken,
-      "ApproveEstimation"
+      authToken
     );
-    if (response.status == 200) {
+    if (response.status === 200) {
       setProject({
         ...project,
         estimation_status: "approved",
         status: "working",
-        estimation: { ...project.estimation, sent_to_pm: true, approved: true },
+        estimation: { ...project.estimation, approved: true, sent_to_pm: true },
       });
-      toast.success(response.detail);
-    } else {
-      toast.error("Failed to update estimation");
+      toast.success("Project approved");
     }
   };
+
   const handleCorrectionRequest = async () => {
-    if (!correctionText) {
-      toast.error("Correction is required");
+    if (!correctionText.trim()) {
+      toast.error("Correction text is required");
       return;
     }
     const response = await makeApiCall(
@@ -764,38 +916,34 @@ const ProjectTrack: React.FC = () => {
         project_id: project.id,
       },
       "application/json",
-      authToken,
-      "createEstimationCorrection"
+      authToken
     );
-    if (response.status == 201) {
-      setProject((prevProject) => ({
-        ...prevProject,
-        estimation_status: response.data.project.estimation_status,
-        progress: response.data.project.progress,
+    if (response.status === 201) {
+      setProject((prev: any) => ({
+        ...prev,
         estimation: {
-          ...prevProject.estimation,
+          ...prev.estimation,
           corrections: [
             response.data.estimationCorrection,
-            ...(prevProject.estimation.corrections || []),
+            ...(prev.estimation.corrections || []),
           ],
         },
       }));
-      toast.success("Successfully submitted correction request");
+      toast.success("Correction request sent");
       setShowCorrectionDialog(false);
       setCorrectionText("");
     } else {
-      toast.success("Failed to submit correction request");
+      toast.error("Failed to send correction");
     }
   };
+
   return (
-    <div className="w-full h-full flex flex-col bg-slate-50 ">
-      {/* Step Content */}
+    <div className="w-full h-full flex flex-col bg-slate-50">
       <div className="w-full flex flex-col items-center pt-8 pb-4 px-2 md:px-8">
-        <div className="w-full max-w-full overflow-x-auto whitespace-nowrap flex flex-row items-start justify-between gap-1 md:gap-8 relative">
+        <div className="w-full max-w-full overflow-x-auto whitespace-nowrap flex flex-row items-start justify-between gap-8 relative">
           {steps.map((step, idx) => {
             const Icon = STEP_ICONS[idx] || FileText;
             let circleColor = "bg-gray-200 text-gray-500";
-            let border = "border-transparent";
             let iconColor = "text-gray-400";
             let labelColor = "text-gray-500";
             let shadow = "";
@@ -804,62 +952,52 @@ const ProjectTrack: React.FC = () => {
               iconColor = "text-white";
               labelColor = "text-green-700 font-semibold";
             } else if (step.current) {
-              circleColor = "bg-yellow-400 text-white ";
-              border = "border-2 border-blue-700";
+              circleColor = "bg-yellow-400 text-white";
               iconColor = "text-white";
               labelColor = "text-yellow-700 font-semibold";
               shadow = "shadow-lg";
             }
-            const status = step.status;
-            if (status == "rejected") {
+            if (step.status === "rejected") {
               circleColor = "bg-red-500 text-white";
-              border = "border-2 border-red-600";
-              iconColor = "text-white";
               labelColor = "text-red-700 font-semibold";
               shadow = "shadow-lg";
             }
+
             return (
               <button
                 key={step.key}
-                className={`relative inline-flex md:flex flex-col items-center group focus:outline-none bg-transparent transition-all duration-150 ${
-                  idx < steps.length - 1 ? "mr-2 md:mr-0" : ""
-                }`}
-                style={{ minWidth: 50 }}
+                className="relative inline-flex md:flex flex-col items-center group focus:outline-none bg-transparent"
                 onClick={() => setSelectedStepIdx(idx)}
-                type="button"
-                tabIndex={0}
                 disabled={step.notStarted}
               >
-                {/* Horizontal line */}
                 {idx < steps.length - 1 && (
-                  <span className="absolute top-1/2 left-full w-full h-0.5 md:h-1 bg-gradient-to-r from-gray-200 to-gray-100 z-0 -translate-y-1/2" />
+                  <span className="absolute top-1/2 left-full w-full h-1 bg-gradient-to-r from-gray-200 to-gray-100 z-0 -translate-y-1/2" />
                 )}
-                {/* Step circle with icon */}
                 <span
-                  className={`z-10 w-8 h-8 md:w-14 md:h-14 flex items-center justify-center rounded-full border-4 ${border} ${circleColor} ${shadow} transition-all duration-150`}
+                  className={`z-10 w-14 h-14 flex items-center justify-center rounded-full border-4 border-transparent ${circleColor} ${shadow}`}
                 >
-                  <Icon className={`w-4 h-4 md:w-7 md:h-7 ${iconColor}`} />
+                  <Icon className={`w-7 h-7 ${iconColor}`} />
                 </span>
                 <span
-                  className={`mt-1 md:mt-2 text-[10px] md:text-base ${labelColor} tracking-wide text-center`}
+                  className={`mt-2 text-base ${labelColor} tracking-wide text-center`}
                 >
                   {step.label}
                 </span>
                 {step.completed && (
-                  <div className="text-[10px] md:text-xs text-green-600 mt-1 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4" />
+                  <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <CheckCircle2 size={16} />
                     Completed
                   </div>
                 )}
                 {step.current && (
-                  <div className="text-[10px] md:text-xs text-yellow-600 mt-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                  <div className="text-xs text-yellow-600 mt-1 flex items-center gap-1">
+                    <Clock size={16} />
                     Current
                   </div>
                 )}
                 {step.notStarted && (
-                  <div className="text-[10px] md:text-xs text-gray-400 mt-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                  <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                    <Clock size={16} />
                     Not Started
                   </div>
                 )}
@@ -868,14 +1006,16 @@ const ProjectTrack: React.FC = () => {
           })}
         </div>
       </div>
-      <div className="flex-1 bg-white flex justify-center items-start px-0 md:px-0  h-full  max-h-screen overflow-y-auto ">
-        <div className="w-full bg-white rounded-2xl  p-2 md:p-8 border min-h-[30px] flex flex-col justify-start mt-2 ">
-          {currentStep.renderContent(project, currentStep)}
+
+      <div className="flex-1 bg-white flex justify-center items-start px-0 md:px-8 overflow-y-auto">
+        <div className="w-full bg-white rounded-2xl p-2 md:p-8 border min-h-[30px] flex flex-col justify-start mt-2">
+          {currentStep.renderContent(project)}
         </div>
       </div>
+
       <Dialog open={showDeliveryDialog} onOpenChange={setShowDeliveryDialog}>
         <DialogContent>
-          <DialogHeader className="px-6 py-4">
+          <DialogHeader>
             <DialogTitle>Select Files for Delivery</DialogTitle>
           </DialogHeader>
           <div className="p-6">
@@ -911,8 +1051,6 @@ const ProjectTrack: React.FC = () => {
               <Button
                 className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={handleDeliverySubmit}
-                loading={fetching && fetchType == "addDeliverySubmit"}
-                disabled={fetching && fetchType == "addDeliverySubmit"}
               >
                 Submit Delivery
               </Button>

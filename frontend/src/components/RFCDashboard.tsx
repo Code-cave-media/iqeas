@@ -153,7 +153,7 @@ export const RFCDashboard = () => {
     };
     fetchProjects();
   }, [searchTerm, page]);
-  // Handle form field changes
+
   const handleFormChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "uploadedFiles") {
@@ -163,14 +163,6 @@ export const RFCDashboard = () => {
     }
   };
 
-  // dev: aromal
-  // this is my code just to catch up
-
-  const islistView = () => {
-    setListView(true);
-  };
-
-  // Start new project entry
   const startNewProject = () => {
     setForm({
       ...initialForm,
@@ -819,7 +811,7 @@ export const RFCDashboard = () => {
               {filteredProjects.map((project) => (
                 <a
                   key={project.id}
-                  href={`/rfq/${project.id}`}
+                  href={`/rfq/${project.id}/enquiry`}
                   className="p-2 border rounded-lg cursor-pointer hover:bg-slate-50 flex items-center justify-between h-10"
                 >
                   <div className="flex items-center gap-10">
@@ -852,14 +844,16 @@ export const RFCDashboard = () => {
                       <StickyNote size={14} />
                     </button>
 
-                    {!project.send_to_estimation && (
-                      <button
-                        onClick={() => handleSentToEstimation(project.id)}
-                        className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded whitespace-nowrap h-7 flex items-center"
+                    {/* {!project.send_to_estimation && ( */}
+                    <a href={`/rfq/${project.id}/enquiry`}>
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
                       >
-                        <Send size={10} className="mr-1" /> Send to estimation
-                      </button>
-                    )}
+                        <Send size={14} className="mr-1" /> View project
+                      </Button>
+                    </a>
+                    {/* )} */}
                   </div>
                 </a>
               ))}
@@ -926,7 +920,7 @@ export const RFCDashboard = () => {
                     </div>
 
                     <div className="flex gap-3 mt-5 flex-wrap">
-                      <Button
+                      {/* <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setDetailsProject(project)}
@@ -940,18 +934,18 @@ export const RFCDashboard = () => {
                         onClick={() => setMoreInfoProject(project)}
                       >
                         <StickyNote size={14} className="mr-1" /> Add More Info
-                      </Button>
+                      </Button> */}
 
-                      {!project.send_to_estimation && (
+                      {/* {!project.send_to_estimation && ( */}
+                      <a href={`/rfq/${project.id}/enquiry`}>
                         <Button
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
-                          loading={fetching && fetchType === "sentToEstimation"}
-                          onClick={() => handleSentToEstimation(project.id)}
                         >
-                          <Send size={14} className="mr-1" /> Send to Estimation
+                          <Send size={14} className="mr-1" /> View project
                         </Button>
-                      )}
+                      </a>
+                      {/* )} */}
                     </div>
                   </CardHeader>
                 </Card>

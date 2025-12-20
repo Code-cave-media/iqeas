@@ -1,0 +1,1046 @@
+{
+  "info": {
+    "name": "IQEAS Workflow Testing",
+    "description": "Complete workflow testing from start to finish",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "project_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "estimation_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "po_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "work_allocation_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "stage_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "billing_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Setup",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('token', response.data.token);",
+                  "    pm.collectionVariables.set('project_id', response.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"your_password\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Beginning Workflow",
+      "item": [
+        {
+          "name": "Create Project",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('project_id', response.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coco 1 Project\",\n  \"received_date\": \"2025-01-15\",\n  \"client_name\": \"John Doe\",\n  \"client_company\": \"ABC Construction\",\n  \"location\": \"Mumbai, India\",\n  \"project_type\": \"plant\",\n  \"priority\": \"high\",\n  \"contact_person\": \"John Doe\",\n  \"contact_person_phone\": \"+91-1234567890\",\n  \"contact_person_email\": \"john@abcconstruction.com\",\n  \"notes\": \"Initial enquiry for Coco 1 project\",\n  \"uploaded_files\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send to Estimation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"send_to_estimation\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                "{{project_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Estimation (Hours Only - No Cost)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('estimation_id', response.data.estimation.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": {{project_id}},\n  \"status\": \"draft\",\n  \"deadline\": \"2025-03-15\",\n  \"notes\": \"Initial estimation for Coco 1 project - hours only\",\n  \"uploaded_file_ids\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/estimation",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "estimation"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Estimation Deliverables (Table 0.0)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deliverables\": [\n    {\n      \"sno\": 1,\n      \"drawing_no\": \"453453453\",\n      \"title\": \"Door\",\n      \"deliverables\": \"Door Panel Cutout\",\n      \"discipline\": \"Arch\",\n      \"hours\": 10,\n      \"amount\": 5000\n    },\n    {\n      \"sno\": 2,\n      \"drawing_no\": \"3154363\",\n      \"title\": \"Wall panel\",\n      \"deliverables\": \"Wall Panel Detailed Drawing\",\n      \"discipline\": \"Arch\",\n      \"hours\": 5,\n      \"amount\": 25000\n    },\n    {\n      \"sno\": 3,\n      \"drawing_no\": \"453453453\",\n      \"title\": \"Insulation\",\n      \"deliverables\": \"Insulation Detailed Drawing\",\n      \"discipline\": \"Arch\",\n      \"hours\": 3,\n      \"amount\": 1500\n    },\n    {\n      \"sno\": 4,\n      \"drawing_no\": \"413653\",\n      \"title\": \"Flooring\",\n      \"deliverables\": \"Flooring Detailed Drawing\",\n      \"discipline\": \"Arch\",\n      \"hours\": 8,\n      \"amount\": 2500\n    },\n    {\n      \"sno\": 5,\n      \"drawing_no\": \"41333453\",\n      \"title\": \"Insulation\",\n      \"deliverables\": \"Insulation MTO\",\n      \"discipline\": \"Arch\",\n      \"hours\": 12,\n      \"amount\": 6000\n    },\n    {\n      \"sno\": 6,\n      \"drawing_no\": \"45363\",\n      \"title\": \"Flooring\",\n      \"deliverables\": \"Flooring MTO\",\n      \"discipline\": \"Arch\",\n      \"hours\": 1,\n      \"amount\": 8200\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/estimation/{{estimation_id}}/deliverables",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "estimation",
+                "{{estimation_id}}",
+                "deliverables"
+              ]
+            }
+          }
+        },
+        {
+          "name": "View Estimation Table (Table 0.0)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/estimation/{{estimation_id}}/table",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "estimation",
+                "{{estimation_id}}",
+                "table"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Estimation to Admin",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": {{project_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/estimation/{{estimation_id}}/send-to-admin",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "estimation",
+                "{{estimation_id}}",
+                "send-to-admin"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Verifies and Adds Cost",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": {{project_id}},\n  \"cost\": 48200,\n  \"terms_and_conditions\": \"Payment terms: 30 days net\",\n  \"notes\": \"Cost verified and added by admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/estimation/{{estimation_id}}/admin-verify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "estimation",
+                "{{estimation_id}}",
+                "admin-verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send from Admin to Proposals",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": {{project_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/estimation/{{estimation_id}}/send-to-proposals",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "estimation",
+                "{{estimation_id}}",
+                "send-to-proposals"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send from Proposals to Client",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": {{project_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/estimation/{{estimation_id}}/send-to-client",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "estimation",
+                "{{estimation_id}}",
+                "send-to-client"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. PO Handling",
+      "item": [
+        {
+          "name": "Create PO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('po_id', response.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": {{project_id}},\n  \"po_number\": \"PO-2025-001\",\n  \"received_date\": \"2025-01-20\",\n  \"notes\": \"PO received from client\",\n  \"terms_and_conditions\": \"Payment terms: 30 days\",\n  \"uploaded_file_ids\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                ""
+              ]
+            }
+          }
+        },
+        {
+          "name": "Forward PO to Admin",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/{{po_id}}/forward-to-admin",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "{{po_id}}",
+                "forward-to-admin"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Forward PO to PM",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/{{po_id}}/forward-to-pm",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "{{po_id}}",
+                "forward-to-pm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept PO",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/{{po_id}}/accept",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "{{po_id}}",
+                "accept"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Work Allocation",
+      "item": [
+        {
+          "name": "Create Stages",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stages\": [\n    {\"name\": \"IDC\", \"weight\": 20, \"allocated_hours\": 0},\n    {\"name\": \"IFR\", \"weight\": 20, \"allocated_hours\": 0},\n    {\"name\": \"IFA\", \"weight\": 20, \"allocated_hours\": 0},\n    {\"name\": \"IFC\", \"weight\": 20, \"allocated_hours\": 0},\n    {\"name\": \"AS-Built\", \"weight\": 20, \"allocated_hours\": 0}\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workflow/projects/{{project_id}}/stages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "workflow",
+                "projects",
+                "{{project_id}}",
+                "stages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Work Allocation (10% Reduction)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.length > 0) {",
+                  "        pm.collectionVariables.set('work_allocation_id', response.data[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estimation_id\": {{estimation_id}},\n  \"stages\": [\"IDC\", \"IFR\", \"IFA\", \"IFC\", \"AS-Built\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/projects/{{project_id}}/work-allocation",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "projects",
+                "{{project_id}}",
+                "work-allocation"
+              ]
+            }
+          }
+        },
+        {
+          "name": "View Work Allocation Table (Table 1.0)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/projects/{{project_id}}/work-allocation/table",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "projects",
+                "{{project_id}}",
+                "work-allocation",
+                "table"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign Work Person",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"work_person_id\": 2\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/work-allocation/{{work_allocation_id}}/assign",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "work-allocation",
+                "{{work_allocation_id}}",
+                "assign"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Designer Work",
+      "item": [
+        {
+          "name": "View Designer Dashboard (Table 2.0)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/projects/{{project_id}}/designer-dashboard",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "projects",
+                "{{project_id}}",
+                "designer-dashboard"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Start Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deliverable_id\": {{work_allocation_id}},\n  \"drawing_log_id\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/time-tracking/start",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "time-tracking",
+                "start"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pause Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deliverable_id\": {{work_allocation_id}},\n  \"drawing_log_id\": null,\n  \"time_spent\": 1.5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/time-tracking/pause",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "time-tracking",
+                "pause"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resume Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deliverable_id\": {{work_allocation_id}},\n  \"drawing_log_id\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/time-tracking/resume",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "time-tracking",
+                "resume"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Finish Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deliverable_id\": {{work_allocation_id}},\n  \"drawing_log_id\": null,\n  \"time_spent\": 1.5,\n  \"notes\": \"Completed task\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/time-tracking/finish",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "time-tracking",
+                "finish"
+              ]
+            }
+          }
+        },
+        {
+          "name": "View Updated Dashboard (with Consumed Time)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/projects/{{project_id}}/designer-dashboard",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "projects",
+                "{{project_id}}",
+                "designer-dashboard"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Weekly Timesheet",
+      "item": [
+        {
+          "name": "Get Weekly Timesheet",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/timesheet/weekly?week_start_date=2025-01-20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "timesheet",
+                "weekly"
+              ],
+              "query": [
+                {
+                  "key": "week_start_date",
+                  "value": "2025-01-20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit Weekly Timesheet",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/timesheet/weekly/:id/submit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "timesheet",
+                "weekly",
+                ":id",
+                "submit"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Stage-Based Billing",
+      "item": [
+        {
+          "name": "Generate Stage Invoice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('billing_id', response.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/projects/{{project_id}}/stages/{{stage_id}}/invoice",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "projects",
+                "{{project_id}}",
+                "stages",
+                "{{stage_id}}",
+                "invoice"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Forward Invoice to Proposal",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/billings/{{billing_id}}/forward-to-proposal",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "billings",
+                "{{billing_id}}",
+                "forward-to-proposal"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Forward Invoice to Client",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/billings/{{billing_id}}/forward-to-client",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "billings",
+                "{{billing_id}}",
+                "forward-to-client"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark Invoice as Paid",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_amount\": 5000,\n  \"payment_date\": \"2025-01-30\",\n  \"payment_method\": \"Bank Transfer\",\n  \"reference_number\": \"TXN-2025-001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/updates/billings/{{billing_id}}/mark-paid",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "billings",
+                "{{billing_id}}",
+                "mark-paid"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. View Billings",
+      "item": [
+        {
+          "name": "Get All Billings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/updates/projects/{{project_id}}/billings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "updates",
+                "projects",
+                "{{project_id}}",
+                "billings"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
