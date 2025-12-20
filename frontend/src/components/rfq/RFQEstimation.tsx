@@ -22,7 +22,7 @@ export default function RFQEstimationTable() {
 
       const resp = await makeApiCall(
         "get",
-        API_ENDPOINT.UPDATES_GET_ESTIMATION_TABLE(project_id), // ✅ project_id
+        API_ENDPOINT.UPDATES_GET_ESTIMATION_TABLE(project_id),
         {},
         "application/json",
         authToken,

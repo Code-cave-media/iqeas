@@ -92,7 +92,7 @@ export const addHoursToDeliverablesHandler = async (req, res) => {
   try {
     await client.query("BEGIN");
     const { project_id } = req.params;
-    const { deliverables } = req.body;
+    const { deliverables, total_time } = req.body;
     if (!Array.isArray(deliverables) || deliverables.length === 0) {
       return res.status(400).json(
         formatResponse({
@@ -114,6 +114,7 @@ export const addHoursToDeliverablesHandler = async (req, res) => {
       await RFQDeliverablesService.addHoursToDeliverablesByProject(
         project_id,
         deliverables,
+        total_time,
         client
       );
     await client.query("COMMIT");

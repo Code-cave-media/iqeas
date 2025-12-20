@@ -154,8 +154,8 @@ export const addHoursToDeliverablesByProjectHandler = async (req, res) => {
     await client.query("BEGIN");
 
     const { project_id } = req.params;
-    const { deliverables } = req.body;
-
+    const { deliverables, total_time } = req.body;
+    console.log(`Hi ==> ${total_time}`)
     if (!Array.isArray(deliverables) || deliverables.length === 0) {
       return res.status(400).json({
         status_code: 400,
@@ -167,6 +167,7 @@ export const addHoursToDeliverablesByProjectHandler = async (req, res) => {
       await EstimationDeliverablesService.addHoursToDeliverablesByProject(
         project_id,
         deliverables,
+        total_time,
         client
       );
 
@@ -188,6 +189,7 @@ export const addHoursToDeliverablesByProjectHandler = async (req, res) => {
     client.release();
   }
 };
+
 export const sendDeliverablesToAdmin = async (req, res) => {
   const client = await pool.connect();
 
@@ -195,12 +197,12 @@ export const sendDeliverablesToAdmin = async (req, res) => {
     await client.query("BEGIN");
 
     const { project_id } = req.params;
-    const { deliverables } = req.body;
+    const { status } = req.body;
+
+    console.log(`djsn ==> ${project_id}-${status}`)
 
     if (
-      !project_id ||
-      !Array.isArray(deliverables) ||
-      deliverables.length === 0
+      !project_id || !status
     ) {
       return res.status(400).json(
         formatResponse({
@@ -213,7 +215,7 @@ export const sendDeliverablesToAdmin = async (req, res) => {
     const updated =
       await EstimationDeliverablesService.markDeliverablesSentToAdmin(
         project_id,
-        deliverables,
+        status,
         client
       );
 
@@ -223,7 +225,7 @@ export const sendDeliverablesToAdmin = async (req, res) => {
       formatResponse({
         statusCode: 200,
         detail: "Deliverables sent to admin successfully",
-        data: updated, // ✅ now defined
+        data: updated,
       })
     );
   } catch (err) {

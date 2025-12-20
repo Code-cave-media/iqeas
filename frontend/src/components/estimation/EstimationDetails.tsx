@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAPICall } from "@/hooks/useApiCall";
@@ -56,6 +57,13 @@ export default function EstimationDetails() {
     );
   };
 
+  const calculateTotalTime = () => {
+    return deliverables.reduce((sum, d) => {
+      const h = Number(d.hours);
+      return !isNaN(h) ? sum + h : sum;
+    }, 0);
+  };
+
   const saveHours = async () => {
     if (!project_id) return;
 
@@ -76,7 +84,10 @@ export default function EstimationDetails() {
     const response = await makeApiCall(
       "patch",
       API_ENDPOINT.UPDATES_ADD_HOURS_BY_PROJECT(project_id),
-      { deliverables: payload },
+      {
+        deliverables: payload,
+        total_time: calculateTotalTime(),
+      },
       "application/json",
       authToken,
       "addHours"
@@ -111,13 +122,13 @@ export default function EstimationDetails() {
     const response = await makeApiCall(
       "patch",
       API_ENDPOINT.SEND_DELIVERABLES_TO_ADMIN(project_id),
-      { deliverables: payload },
+      { status: "sent_to_admin" },
       "application/json",
       authToken,
       "sendToAdmin"
     );
 
-    if (response.status === 200) {
+    if (response?.status === 200) {
       toast.success("Deliverables sent to admin successfully");
     } else {
       toast.error("Failed to send deliverables to admin");
@@ -128,12 +139,18 @@ export default function EstimationDetails() {
 
   return (
     <section className="min-h-screen bg-gray-50 p-6">
-      <div className="mb-6 flex justify-between items-center gap-2">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">
             Estimation Details
           </h1>
           <p className="text-sm text-gray-500">Project ID: {project_id}</p>
+          <p className="mt-1 text-sm text-gray-600">
+            Total Estimated Time:{" "}
+            <span className="font-semibold text-gray-900">
+              {calculateTotalTime()} hrs
+            </span>
+          </p>
         </div>
 
         <div className="flex gap-2">
@@ -155,6 +172,7 @@ export default function EstimationDetails() {
         </div>
       </div>
 
+      {/* Table */}
       <div className="rounded-xl bg-white shadow-sm overflow-x-auto">
         {loading ? (
           <p className="p-6 text-sm text-gray-500">Loading deliverables...</p>
@@ -186,7 +204,7 @@ export default function EstimationDetails() {
                   </td>
                   <td className="px-4 py-3">{item.deliverables}</td>
                   <td className="px-4 py-3">{item.discipline}</td>
-                  <td className="px-4 py-3 flex items-center gap-2">
+                  <td className="px-4 py-3">
                     {editingId === item.id ? (
                       <input
                         type="number"
@@ -195,18 +213,19 @@ export default function EstimationDetails() {
                         onChange={(e) =>
                           handleHourChange(item.id, e.target.value)
                         }
+                        onBlur={() => setEditingId(null)}
                         className="w-20 rounded-md border px-2 py-1 text-sm focus:border-black focus:outline-none"
                       />
                     ) : (
-                      <>
-                        <span>{item.hours}</span>
+                      <div className="flex items-center gap-2">
+                        <span>{item.hours || "-"}</span>
                         <button
                           onClick={() => setEditingId(item.id)}
-                          className="ml-2 p-1 text-gray-500 hover:text-black"
+                          className="p-1 text-gray-500 hover:text-black"
                         >
                           <Pencil size={16} />
                         </button>
-                      </>
+                      </div>
                     )}
                   </td>
                 </tr>
