@@ -299,7 +299,7 @@ export default function AdminMembers() {
     // if(response.status==200)
     // TODO: API call for editing user
   };
-  // Add/Edit user
+ 
   const openUserModal = (user = null) => {
     setUserModal({ open: true, edit: !!user, user });
     setEditUserId(user ? user.id : null);

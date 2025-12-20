@@ -9,6 +9,7 @@ import {
   createInvoice,
 } from "../services/estimation.service.js";
 import { updateProjectPartial } from "../services/projects.service.js";
+import * as RFQDeliverablesService from "../updates/services/rfqDeliverables.service.js";
 import { formatResponse } from "../utils/response.js";
 import pool from "../config/db.js";
 
@@ -33,6 +34,15 @@ export const createEstimationHandler = async (req, res) => {
       { ...estimationData, user_id },
       client
     );
+
+    // Link RFQ deliverables to this estimation
+    if (estimationData.project_id) {
+      await RFQDeliverablesService.linkRFQDeliverablesToEstimation(
+        estimationData.project_id,
+        newEstimation.id,
+        client
+      );
+    }
 
     const projectUpdateData = await updateProjectPartial(
       estimationData.project_id,

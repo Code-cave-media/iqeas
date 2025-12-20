@@ -60,6 +60,17 @@ export async function createEstimation(data) {
     await Promise.all(promises);
   }
 
+  // Link RFQ deliverables to this estimation if project_id exists
+  if (project_id) {
+    try {
+      const { linkRFQDeliverablesToEstimation } = await import("../updates/services/rfqDeliverables.service.js");
+      await linkRFQDeliverablesToEstimation(project_id, estimation.id);
+    } catch (error) {
+      // If RFQ deliverables don't exist, that's fine - estimation can be created without them
+      console.log("No RFQ deliverables found to link:", error.message);
+    }
+  }
+
   return estimation;
 }
 

@@ -33,11 +33,6 @@ CREATE TABLE teams_users (
     PRIMARY KEY (team_id, user_id)
 );
 
-
-
-
-
-
 CREATE TABLE uploaded_files (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -224,6 +219,8 @@ CREATE TABLE attendance (
     note TEXT,
     UNIQUE (user_id, date) 
 );
+
+
 CREATE TABLE leaves (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

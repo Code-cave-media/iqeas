@@ -2,6 +2,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 
+import { useNavigate } from "react-router-dom";
+
 import Login from "./pages/Login";
 import DashboardLayout from "./components/atomic/dashboardLayout/DashboardLayout";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -11,7 +13,7 @@ import { RFCDashboard } from "./components/RFCDashboard";
 import { DocumentCenter } from "./components/DocumentCenter";
 import { ProjectsDashboard } from "./components/ProjectsDashboard";
 import { DocumentationDashboard } from "./components/DocumentationTasks";
-import { EstimationDashboard } from "./components/EstimationDashboard";
+import  {EstimationDashboard}  from "./components/EstimationDashboard";
 import Home from "./components/Home";
 
 import AdminMembers from "./components/AdminMembers";
@@ -31,7 +33,13 @@ import SalaryManagement from "./components/SalaryManagement";
 import AttendanceManagement from "./components/AttendanceManagement";
 import LeaveManagement from "./components/LeaveManagement";
 import DetailedRFQ from "./components/ui/detailed_rfq_project_page";
-import RFQLayout from "./components/RFQLayout";
+import RFQLayout from "./components/rfq/RFQLayout";
+import RFQEnquiry from "./components/rfq/RFQEnquiry";
+import RFQEstimation from "./components/rfq/RFQEstimation";
+import RFQPO from "./components/rfq/RFQPO";
+import RFQInvoice from "./components/rfq/RFQInvoice";
+import RFQPayment from "./components/rfq/RFQPayment";
+import EstimationDetails from "./components/estimation/EstimationDetails";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -116,10 +124,42 @@ const App = () => (
                   }
                 />
                 <Route
-                  path=":project_id"
+                  path=":project_id/enquiry"
                   element={
                     <RFQLayout>
-                      <DetailedRFQ />
+                      <RFQEnquiry />
+                    </RFQLayout>
+                  }
+                />
+                <Route
+                  path=":project_id/estimation"
+                  element={
+                    <RFQLayout>
+                      <RFQEstimation />
+                    </RFQLayout>
+                  }
+                />
+                <Route
+                  path=":project_id/po"
+                  element={
+                    <RFQLayout>
+                      <RFQPO />
+                    </RFQLayout>
+                  }
+                />
+                <Route
+                  path=":project_id/invoice"
+                  element={
+                    <RFQLayout>
+                      <RFQInvoice />
+                    </RFQLayout>
+                  }
+                />
+                <Route
+                  path=":project_id/payment"
+                  element={
+                    <RFQLayout>
+                      <RFQPayment />
                     </RFQLayout>
                   }
                 />
@@ -173,6 +213,14 @@ const App = () => (
                   element={
                     <DashboardLayout>
                       <DocumentCenter />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path=":project_id/details"
+                  element={
+                    <DashboardLayout>
+                      <EstimationDetails />
                     </DashboardLayout>
                   }
                 />
