@@ -1,12 +1,9 @@
 import pool from "../../config/db.js";
 
-/* -------------------------------------------------------------------------- */
-/*                              ADD HOURS (RFQ)                               */
-/* -------------------------------------------------------------------------- */
-
 export async function addHoursToDeliverables(
   projectId,
   deliverablesWithHours,
+  totalTime,
   client = pool
 ) {
   const promises = deliverablesWithHours.map(({ sno, hours }) => {
@@ -16,10 +13,12 @@ export async function addHoursToDeliverables(
 
     return client.query(
       `UPDATE estimation_deliverables
-       SET hours = $1, updated_at = NOW()
+       SET hours = $1,
+       SET total_time = $4
+       updated_at = NOW()
        WHERE project_id = $2 AND sno = $3
        RETURNING *`,
-      [hours, projectId, sno]
+      [hours, projectId, sno, totalTime]
     );
   });
 
@@ -31,10 +30,6 @@ export async function addHoursToDeliverables(
 
   return results.map((r) => r.rows[0]);
 }
-
-/* -------------------------------------------------------------------------- */
-/*                             ADD AMOUNTS (ADMIN)                             */
-/* -------------------------------------------------------------------------- */
 
 export async function addAmountsToDeliverables(
   projectId,
@@ -63,10 +58,6 @@ export async function addAmountsToDeliverables(
 
   return results.map((r) => r.rows[0]);
 }
-
-/* -------------------------------------------------------------------------- */
-/*                          CREATE / UPSERT DELIVERABLES                       */
-/* -------------------------------------------------------------------------- */
 
 export async function createEstimationDeliverables(
   projectId,
@@ -121,13 +112,9 @@ export async function createEstimationDeliverables(
   return results.map((r) => r.rows[0]);
 }
 
-/* -------------------------------------------------------------------------- */
-/*                            GET DELIVERABLES (TABLE)                         */
-/* -------------------------------------------------------------------------- */
-
 export async function getDeliverablesByProject(projectId, client = pool) {
   const pid = String(projectId).trim();
-  console.log(pid)
+  console.log(pid);
 
   const result = await client.query(
     `SELECT *
@@ -139,11 +126,6 @@ export async function getDeliverablesByProject(projectId, client = pool) {
   console.log("ROWS FOUND ===>", result.rows.length);
   return result.rows;
 }
-
-
-/* -------------------------------------------------------------------------- */
-/*                         GET DELIVERABLES + TOTALS                           */
-/* -------------------------------------------------------------------------- */
 
 export async function getDeliverablesWithTotals(projectId, client = pool) {
   const deliverables = await getDeliverablesByProject(projectId, client);
@@ -174,10 +156,6 @@ export async function getDeliverablesWithTotals(projectId, client = pool) {
     totals,
   };
 }
-
-/* -------------------------------------------------------------------------- */
-/*                          GENERIC UPDATE (BY ID)                             */
-/* -------------------------------------------------------------------------- */
 
 export async function updateDeliverable(deliverableId, updates, client = pool) {
   const fields = [];
@@ -210,10 +188,6 @@ export async function updateDeliverable(deliverableId, updates, client = pool) {
   return result.rows[0];
 }
 
-/* -------------------------------------------------------------------------- */
-/*                               DELETE DELIVERABLE                            */
-/* -------------------------------------------------------------------------- */
-
 export async function deleteDeliverable(deliverableId, client = pool) {
   const result = await client.query(
     `DELETE FROM estimation_deliverables
@@ -225,23 +199,22 @@ export async function deleteDeliverable(deliverableId, client = pool) {
   return result.rows[0];
 }
 
-/* -------------------------------------------------------------------------- */
-/*                       MARK DELIVERABLES SENT TO ADMIN                       */
-/* -------------------------------------------------------------------------- */
-
-export async function markDeliverablesSentToAdmin(projectId, deliverables) {
-  if (!projectId || !deliverables?.length) {
-    throw new Error("Project ID and deliverables required");
+export async function markDeliverablesSentToAdmin(projectId, status, client) {
+  if (!projectId || !status) {
+    throw new Error("Project ID and status required");
   }
 
-  const promises = deliverables.map(({ sno }) =>
-    pool.query(
-      `UPDATE estimation_deliverables
-       SET send_to_admin = true
-       WHERE project_id = $1 AND sno = $2`,
-      [projectId, sno]
-    )
+  const result = await client.query(
+    `UPDATE projects
+     SET estimation_status = $2
+     WHERE id = $1
+     RETURNING *`,
+    [projectId, status]
   );
 
-  await Promise.all(promises);
+  if (result.rowCount === 0) {
+    throw new Error("No project found with given project_id");
+  }
+
+  return result.rows[0];
 }

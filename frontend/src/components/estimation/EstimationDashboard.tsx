@@ -13,6 +13,8 @@ import {
   BadgeCheck,
   AlertCircle,
   Gauge,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 
 export default function EstimationDashboard() {
@@ -166,14 +168,12 @@ export default function EstimationDashboard() {
               return (
                 <li key={project.id} className="py-4 flex justify-between">
                   <div>
-                    <a
-                      href={`/estimation/${
-                        projectIdMap[project.project_id]
-                      }/details`}
+                    <div
+                     
                       className="font-medium text-gray-900 hover:underline"
                     >
                       {project.name}
-                    </a>
+                    </div>
                     <p className="text-sm text-gray-500 flex items-center gap-2">
                       <User size={14} /> {project.client_name}
                       <MapPin size={14} /> {project.location}
@@ -199,7 +199,6 @@ export default function EstimationDashboard() {
             })}
           </ul>
         ) : (
-          /* ================= CARD VIEW ================= */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {projects.map((project) => {
               const canSendToAdmin = ["created", "edited"].includes(
@@ -207,11 +206,8 @@ export default function EstimationDashboard() {
               );
 
               return (
-                <a
+                <div
                   key={project.id}
-                  href={`/estimation/${
-                    projectIdMap[project.project_id]
-                  }/details`}
                   className="group rounded-xl border bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                 >
                   <div className="flex items-start justify-between mb-3">
@@ -259,14 +255,16 @@ export default function EstimationDashboard() {
                       style={{ width: `${project.progress}%` }}
                     />
                   </div>
-
-                    <button
-                      onClick={(e) => handleSendToAdmin(e, project)}
-                      className="mt-4 w-full rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-                    >
-                      Send to Admin
+                  <a
+                    href={`/estimation/${
+                      projectIdMap[project.project_id]
+                    }/details`}
+                  >
+                    <button className="mt-4 w-full flex items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700">
+                      View Deliverables <ArrowRight className="w-4 h-4" />
                     </button>
-                </a>
+                  </a>
+                </div>
               );
             })}
           </div>

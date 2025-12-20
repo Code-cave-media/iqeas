@@ -75,6 +75,7 @@ export async function linkRFQDeliverablesToEstimation(projectId, estimationId, c
 export async function addHoursToDeliverablesByProject(
   projectId,
   deliverablesWithHours,
+  totalTime,
   client = pool
 ) {
   const results = [];
@@ -88,12 +89,12 @@ export async function addHoursToDeliverablesByProject(
 
     const result = await client.query(
       `UPDATE estimation_deliverables
-       SET hours = $1, updated_at = NOW()
-       WHERE project_id = $2
-         AND estimation_id IS NULL
-         AND sno = $3
+       SET hours = $1,
+           total_time = $2,
+           updated_at = NOW()
+       WHERE project_id = $3 AND sno = $4
        RETURNING *`,
-      [hours, projectId, sno]
+      [hours, totalTime, projectId, sno]
     );
 
     if (result.rowCount === 0) {

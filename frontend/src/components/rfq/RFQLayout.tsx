@@ -30,10 +30,15 @@ const RFQLayout = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   const rfqLinks = [
-    { label: "Enquiry", to: "", icon: FileSearch },
+    { label: "Enquiry", to: `/rfq/${project_id}/enquiry`, icon: FileSearch },
     {
       label: "Estimation",
       to: `/rfq/${project_id}/estimation`,
+      icon: Calculator,
+    },
+    {
+      label: "Deliverables",
+      to: `/rfq/${project_id}/deliverables`,
       icon: Calculator,
     },
     { label: "PO", to: `/rfq/${project_id}/po`, icon: FileCheck2 },

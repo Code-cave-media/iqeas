@@ -11,9 +11,9 @@ import { AuthProvider } from "./contexts/AuthContext";
 import RoleProtectedRoute from "./components/atomic/protectedRoute/RoleProtectedRoute";
 import { RFCDashboard } from "./components/RFCDashboard";
 import { DocumentCenter } from "./components/DocumentCenter";
-import { ProjectsDashboard } from "./components/ProjectsDashboard";
+import  {ProjectsDashboard}  from "./components/ProjectsDashboard";
 import { DocumentationDashboard } from "./components/DocumentationTasks";
-import  {EstimationDashboard}  from "./components/EstimationDashboard";
+import EstimationDashboard from "./components/estimation/EstimationDashboard";
 import Home from "./components/Home";
 
 import AdminMembers from "./components/AdminMembers";
@@ -40,6 +40,7 @@ import RFQPO from "./components/rfq/RFQPO";
 import RFQInvoice from "./components/rfq/RFQInvoice";
 import RFQPayment from "./components/rfq/RFQPayment";
 import EstimationDetails from "./components/estimation/EstimationDetails";
+import RFQDeliverable from "./components/rfq/RFQDeliverables";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -136,6 +137,14 @@ const App = () => (
                   element={
                     <RFQLayout>
                       <RFQEstimation />
+                    </RFQLayout>
+                  }
+                />
+                <Route
+                  path=":project_id/deliverables"
+                  element={
+                    <RFQLayout>
+                      <RFQDeliverable />
                     </RFQLayout>
                   }
                 />

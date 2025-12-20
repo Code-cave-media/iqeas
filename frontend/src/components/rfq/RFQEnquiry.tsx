@@ -1,325 +1,194 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
-import { useAPICall } from "@/hooks/useApiCall";
-import { API_ENDPOINT } from "@/config/backend";
-import { useAuth } from "@/contexts/AuthContext";
+
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-function RFQDeliverablesManager({ projectId }: { projectId: any }) {
-  const { authToken } = useAuth();
-  const { makeApiCall } = useAPICall();
-  const [rows, setRows] = useState([
-    {
-      sno: "1",
-      drawing_no: "",
-      title: "",
-      deliverables: "",
-      discipline: "Arch",
-    },
-  ]);
-  const [loading, setLoading] = useState(false);
+import { useAuth } from "@/contexts/AuthContext";
+import { useAPICall } from "@/hooks/useApiCall";
+import { API_ENDPOINT } from "@/config/backend";
 
-  const fetchDeliverables = async () => {
-    const resp = await makeApiCall(
-      "get",
-      API_ENDPOINT.UPDATES_GET_RFQ_DELIVERABLES(projectId),
-      {},
-      "application/json",
-      authToken,
-      "getRFQDeliverables"
-    );
-    if (resp.status === 200) {
-      const data = resp.data || [];
-      if (Array.isArray(data))
-        setRows(
-          data.map((d) => ({
-            sno: d.sno,
-            drawing_no: d.drawing_no,
-            title: d.title,
-            deliverables: d.deliverables,
-            discipline: d.discipline,
-          }))
-        );
-    }
-  };
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
-  const addRow = () =>
-    setRows((r) => [
-      ...r,
-      {
-        sno: (r.length + 1).toString(),
-        drawing_no: "",
-        title: "",
-        deliverables: "",
-        discipline: "Arch",
-      },
-    ]);
-
-  const updateRow = (idx, key, value) =>
-    setRows((r) =>
-      r.map((row, i) => (i === idx ? { ...row, [key]: value } : row))
-    );
-
-  const submit = async () => {
-    // Validate
-    if (!projectId) return toast.error("Missing project id");
-    const deliverables = rows.map((r) => ({
-      sno: r.sno,
-      drawing_no: r.drawing_no,
-      title: r.title,
-      deliverables: r.deliverables,
-      discipline: r.discipline,
-    }));
-    setLoading(true);
-    const resp = await makeApiCall(
-      "post",
-      API_ENDPOINT.UPDATES_CREATE_RFQ_DELIVERABLES(projectId),
-      { deliverables },
-      "application/json",
-      authToken,
-      "createRFQDeliverables"
-    );
-    setLoading(false);
-    if (resp.status === 201) {
-      toast.success(resp.detail || "Deliverables saved");
-      fetchDeliverables();
-    } else {
-      toast.error(resp.detail || "Failed to save deliverables");
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        {rows.map((r, idx) => (
-          <div key={idx} className="grid grid-cols-6 gap-2 items-start">
-            <input
-              className="col-span-1 border rounded px-2 py-1"
-              value={r.sno}
-              onChange={(e) => updateRow(idx, "sno", e.target.value)}
-            />
-            <input
-              className="col-span-1 border rounded px-2 py-1"
-              placeholder="Drawing No"
-              value={r.drawing_no}
-              onChange={(e) => updateRow(idx, "drawing_no", e.target.value)}
-            />
-            <input
-              className="col-span-1 border rounded px-2 py-1"
-              placeholder="Title"
-              value={r.title}
-              onChange={(e) => updateRow(idx, "title", e.target.value)}
-            />
-            <input
-              className="col-span-2 border rounded px-2 py-1"
-              placeholder="Deliverables"
-              value={r.deliverables}
-              onChange={(e) => updateRow(idx, "deliverables", e.target.value)}
-            />
-            <select
-              className="col-span-1 border rounded px-2 py-1"
-              value={r.discipline}
-              onChange={(e) => updateRow(idx, "discipline", e.target.value)}
-            >
-              <option>Arch</option>
-              <option>Struct</option>
-              <option>MEP</option>
-            </select>
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <button className="px-3 py-2 bg-gray-100 rounded" onClick={addRow}>
-          Add Row
-        </button>
-        <button
-          className="px-3 py-2 bg-blue-600 text-white rounded"
-          onClick={submit}
-          disabled={loading}
-        >
-          {loading ? "Saving..." : "Save Deliverables"}
-        </button>
-        <button
-          className="px-3 py-2 bg-gray-200 rounded"
-          onClick={fetchDeliverables}
-        >
-          Refresh
-        </button>
-      </div>
-    </div>
-  );
-}
+import SendToEstimationModal from "./SendToEstimationModal";
 
 export default function RFQEnquiry() {
+  const { project_id } = useParams();
   const { authToken } = useAuth();
   const { makeApiCall } = useAPICall();
-  const { project_id } = useParams();
 
-  const [project, setProjects] = useState(null);
+  const [project, setProject] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [hasDeliverables, setHasDeliverables] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
 
   useEffect(() => {
     if (!project_id) return;
 
-    const fetchProjects = async () => {
-      const response = await makeApiCall(
+    const fetchProject = async () => {
+      setLoading(true);
+
+      const res = await makeApiCall(
         "get",
         API_ENDPOINT.GET_PROJECT_BY_ID(project_id),
         {},
         "application/json",
         authToken,
-        "getProjects"
+        "getProjectById"
       );
 
-      if (response.status === 200) {
-        setProjects(response.data);
+      if (res.status === 200) {
+        setProject(res.data);
+
+        const delRes = await makeApiCall(
+          "get",
+          API_ENDPOINT.UPDATES_GET_RFQ_DELIVERABLES(project_id),
+          {},
+          "application/json",
+          authToken,
+          "getRFQDeliverables"
+        );
+
+        const rows =
+          delRes?.data?.deliverables ||
+          delRes?.data?.data ||
+          delRes?.data ||
+          [];
+
+        setHasDeliverables(Array.isArray(rows) && rows.length > 0);
       } else {
-        toast.error("Failed to fetch project");
+        toast.error("Failed to fetch project details");
       }
+
+      setLoading(false);
     };
 
-    fetchProjects();
+    fetchProject();
   }, [project_id]);
 
-  const Info = ({ label, value }) => (
-    <div className="flex flex-col gap-1">
-      <p className="text-sm font-medium text-gray-500">{label}</p>
-      <p className="text-[15px] font-semibold text-gray-800 break-words">
-        {value || "-"}
-      </p>
+  const InfoItem = ({ label, value }: { label: string; value: any }) => (
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium break-words">{value || "-"}</p>
     </div>
   );
 
-  const Card = ({ title, children }) => (
-    <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-      <h2 className="text-xl font-bold mb-5">{title}</h2>
-      {children}
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="p-10 text-center text-muted-foreground">
+        Loading project details...
+      </div>
+    );
+  }
 
   if (!project) return null;
 
   return (
-    <section className="p-6 space-y-10  mx-auto">
-      <Card title="Project Details">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Info label="Name" value={project.name} />
-          <Info label="Project ID" value={project.project_id} />
-          <Info label="Client Name" value={project.client_name} />
-          <Info label="Client Company" value={project.client_company} />
-          <Info label="Location" value={project.location} />
-          <Info label="Project Type" value={project.project_type} />
-          <Info label="Priority" value={project.priority} />
-          <Info label="Status" value={project.status} />
-          <Info label="Progress" value={project.progress + "%"} />
-          <Info label="Received Date" value={project.received_date} />
-          <Info label="Contact Person" value={project.contact_person} />
-          <Info label="Phone" value={project.contact_person_phone} />
-          <Info label="Email" value={project.contact_person_email} />
-          <Info label="Notes" value={project.notes} />
-        </div>
-      </Card>
-
-      <Card title="RFQ Deliverables">
-        <RFQDeliverablesManager projectId={project.id} />
-      </Card>
-
-      <Card title="Created By">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Info label="User ID" value={project.user?.id} />
-          <Info label="Name" value={project.user?.name} />
-          <Info label="Email" value={project.user?.email} />
-        </div>
-      </Card>
-
-      <Card title="Uploaded Files">
-        <div className="space-y-4">
-          {project.uploaded_files?.map((file) => (
-            <div
-              key={file.id}
-              className="border border-gray-200 p-4 rounded-lg bg-gray-50"
-            >
-              <Info label="Label" value={file.label} />
-              <Info label="File" value={file.file} />
+    <section className="max-w-6xl mx-auto p-6 space-y-6">
+      {hasDeliverables && !project.send_to_estimation && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <AlertTitle className="flex items-center gap-2">
+                Deliverables Completed
+                <Badge className="bg-green-400 hover:bg-green-400">Ready</Badge>
+              </AlertTitle>
+              <AlertDescription>
+                RFQ deliverables are completed. Send the project to estimation.
+              </AlertDescription>
             </div>
-          ))}
-        </div>
-      </Card>
 
-      <Card title="Delivery Files">
-        <div className="space-y-4">
-          {project.delivery_files?.map((file) => (
-            <div
-              key={file.id}
-              className="border border-gray-200 p-4 rounded-lg bg-gray-50"
-            >
-              <Info label="Label" value={file.label} />
-              <Info label="File" value={file.file} />
-            </div>
-          ))}
-        </div>
-      </Card>
+            <Button onClick={() => setOpenModal(true)}>
+              Send to Estimation
+            </Button>
+          </div>
+        </Alert>
+      )}
 
-      {project.estimation && (
-        <Card title="Estimation Details">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Info label="Status" value={project.estimation.status} />
-            <Info label="Cost" value={project.estimation.cost} />
-            <Info label="Deadline" value={project.estimation.deadline} />
-            <Info
-              label="Approval Date"
-              value={project.estimation.approval_date}
+      {project.send_to_estimation && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertTitle className="flex items-center gap-2">
+            Sent to Estimation
+            <Badge className="bg-green-600 text-white">Completed</Badge>
+          </AlertTitle>
+          <AlertDescription>
+            This project is already sent for estimation.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Project Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <InfoItem label="Project Name" value={project.name} />
+            <InfoItem label="Project ID" value={project.project_id} />
+            <InfoItem label="Client Name" value={project.client_name} />
+            <InfoItem label="Client Company" value={project.client_company} />
+            <InfoItem label="Location" value={project.location} />
+            <InfoItem label="Project Type" value={project.project_type} />
+            <InfoItem label="Priority" value={project.priority} />
+            <InfoItem label="Status" value={project.status} />
+            <InfoItem label="Progress" value={`${project.progress}%`} />
+            <InfoItem
+              label="Received Date"
+              value={
+                project.received_date
+                  ? new Date(project.received_date).toLocaleDateString()
+                  : "-"
+              }
             />
-            <Info label="Notes" value={project.estimation.notes} />
+            <InfoItem label="Contact Person" value={project.contact_person} />
+            <InfoItem label="Phone" value={project.contact_person_phone} />
+            <InfoItem label="Email" value={project.contact_person_email} />
+            <InfoItem label="Notes" value={project.notes} />
           </div>
+        </CardContent>
+      </Card>
 
-          <h3 className="font-semibold mt-6 mb-3">Uploaded Files</h3>
-          <div className="space-y-4">
-            {project.estimation.uploaded_files?.map((file) => (
-              <div key={file.id} className="border p-4 rounded-lg bg-gray-50">
-                <Info label="Label" value={file.label} />
-                <Info label="File" value={file.file} />
+      {/* Created By */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Created By</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <InfoItem label="Name" value={project.user?.name} />
+          <InfoItem label="Email" value={project.user?.email} />
+        </CardContent>
+      </Card>
+
+      {project.uploaded_files?.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Uploaded Files</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {project.uploaded_files.map((file: any) => (
+              <div key={file.id} className="space-y-2">
+                <InfoItem label="Label" value={file.label} />
+                <InfoItem label="File" value={file.file} />
+                <Separator />
               </div>
             ))}
-          </div>
-
-          <h3 className="font-semibold mt-6 mb-3">Corrections</h3>
-          <div className="space-y-4">
-            {project.estimation.corrections?.map((correction) => (
-              <div
-                key={correction.id}
-                className="border p-4 rounded-lg bg-gray-50"
-              >
-                <Info label="Correction" value={correction.correction} />
-                <Info label="Created At" value={correction.created_at} />
-              </div>
-            ))}
-          </div>
+          </CardContent>
         </Card>
       )}
 
-      <Card title="More Info">
-        <div className="space-y-6">
-          {project.more_info?.map((info) => (
-            <div
-              key={info.id}
-              className="border p-4 rounded-lg bg-gray-50 space-y-3"
-            >
-              <Info label="Notes" value={info.notes} />
-              <Info label="Enquiry" value={info.enquiry} />
-              <Info label="Created At" value={info.created_at} />
-
-              <h4 className="font-semibold mt-2">Files</h4>
-              <div className="space-y-2">
-                {info.uploaded_files?.map((uf) => (
-                  <Info key={uf.id} label={uf.label} value={uf.file} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <SendToEstimationModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        projectId={Number(project_id)}
+        onSuccess={() => {
+          setProject((p: any) => ({ ...p, send_to_estimation: true }));
+        }}
+      />
     </section>
   );
 }

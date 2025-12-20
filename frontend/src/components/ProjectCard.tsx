@@ -20,7 +20,7 @@ interface ProjectCardProps {
 }
 
 const getPriorityColor = (priority: string) => {
-  switch (priority) {
+  switch (priority?.toLowerCase()) {
     case "high":
       return "text-red-600 capitalize";
     case "medium":
@@ -32,6 +32,23 @@ const getPriorityColor = (priority: string) => {
   }
 };
 
+const getStatusColor = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case "draft":
+      return "bg-gray-200 text-gray-800 border-gray-300 hover:bg-gray-300 capitalize";
+    case "estimating":
+      return "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 capitalize";
+    case "working":
+      return "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 capitalize";
+    case "completed":
+      return "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 capitalize";
+    case "delivered":
+      return "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 capitalize";
+    default:
+      return "bg-slate-200 text-slate-700 border-slate-300 hover:bg-slate-300 capitalize";
+  }
+};
+
 export const ProjectCard = ({
   project,
   onSelect,
@@ -40,224 +57,163 @@ export const ProjectCard = ({
   const isOverdue =
     project.estimation &&
     new Date(project.estimation.deadline) < new Date() &&
-    project.status !== "Completed";
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "draft":
-        return "bg-gray-200 text-gray-800 border-gray-300 hover:bg-gray-300 capitalize";
-      case "estimating":
-        return "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 capitalize";
-      case "working":
-        return "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 capitalize";
-      case "completed":
-        return "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 capitalize";
-      case "delivered":
-        return "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 capitalize";
-      default:
-        return "bg-slate-200 text-slate-700 border-slate-300 hover:bg-slate-300 capitalize";
-    }
-  };
+    project.status.toLowerCase() !== "completed";
 
   const isCompleted = ["delivered"].includes(project.status.toLowerCase());
+
+  const createdDate = project.created_at
+    ? new Date(project.created_at).toLocaleDateString()
+    : "N/A";
+
+  const deadlineDate = project.estimation?.deadline
+    ? new Date(project.estimation.deadline).toLocaleDateString()
+    : "N/A";
+
+  // LIST VIEW
   if (viewMode === "list") {
     return (
       <Card
         className={`hover:shadow-md transition-shadow ${
-          isCompleted ? " bg-green-50" : "bg-gray-100"
+          isCompleted ? "bg-green-50" : "bg-gray-50"
         }`}
       >
-        <CardContent className="p-4 sm:p-4 px-2 py-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 flex-1">
-              <div className="flex-1">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 mb-2">
-                  <h3 className="font-semibold text-slate-800 text-base sm:text-lg">
-                    {project.project_id}
-                  </h3>
-                  <Badge
-                    className={`${getStatusColor(
-                      project.status
-                    )} hover:bg-transparent mt-1 sm:mt-0 w-fit`}
-                  >
-                    {project.status}
-                  </Badge>
-                  {isOverdue && (
-                    <AlertCircle
-                      size={16}
-                      className="text-red-500 mt-1 sm:mt-0"
-                    />
-                  )}
-                </div>
-                <p className="text-base sm:text-lg font-medium text-slate-700">
-                  {project.name}
-                </p>
-                <p className="text-sm text-slate-600">
-                  {project.client_name} - {project.client_company}
-                </p>
-                <div className="hidden sm:flex items-center text-sm text-slate-500 space-x-4 mt-1">
-                  <span className="flex items-center">
-                    <MapPin size={14} className="mr-1" />
-                    {project.location}
-                  </span>
-                  <span className="flex items-center">
-                    <Calendar size={14} className="mr-1" />
-                    {new Date(project.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex sm:hidden items-center text-xs text-slate-500 mt-1">
-                  <Calendar size={12} className="mr-1" />
-                  {new Date(project.created_at).toLocaleDateString()}
-                </div>
-              </div>
+        <CardContent className="p-4 flex flex-col sm:flex-row justify-between gap-4">
+          <div className="flex flex-col flex-1 gap-1">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-slate-800">
+                {project.project_id}
+              </h3>
+              <Badge className={`${getStatusColor(project.status)} w-fit`}>
+                {project.status || "N/A"}
+              </Badge>
+              {isOverdue && <AlertCircle size={16} className="text-red-500" />}
             </div>
-            <div className="hidden sm:flex items-center space-x-6">
-              {project.estimation && (
-                <div className="text-center">
-                  <p className="text-sm text-slate-500 mb-1">Cost</p>
-                  <div className="flex items-center">
-                    <DollarSign size={14} className="mr-1" />
-                    <span className="text-sm font-medium">
-                      {project.estimation.cost.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              )}
-              <div className="text-center">
-                <p className="text-sm text-slate-500 mb-1">Priority</p>
-                <span
-                  className={`text-sm font-medium ${getPriorityColor(
-                    project.priority
-                  )}`}
-                >
-                  {project.priority}
+            <h2 className="text-lg font-semibold text-slate-800">
+              {project.name}
+            </h2>
+            <p className="text-sm text-slate-600">
+              {project.client_name || "N/A"} - {project.client_company || "N/A"}
+            </p>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-2">
+              {project.location && (
+                <span className="flex items-center gap-1">
+                  <MapPin size={12} /> {project.location}
                 </span>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-slate-500 mb-1">Type</p>
-                <Badge variant="outline" className="text-xs">
-                  {project.project_type}
-                </Badge>
-              </div>
-            </div>
-          </div>
-          {/* Project Progress Bar */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-blue-900">
-                Progress
-              </span>
-              <span className="text-xs text-slate-600">
-                {project.progress}%
+              )}
+              <span className="flex items-center gap-1">
+                <Calendar size={12} /> {createdDate}
               </span>
             </div>
-            <Progress value={project.progress} className="h-2 bg-slate-100" />
           </div>
-          <div className="mt-4 sm:mt-6 flex justify-end">
-            <Button
-              className="bg-black text-white w-full sm:w-auto"
-              onClick={onSelect}
+
+          <div className="flex flex-col sm:items-end gap-2 sm:gap-4">
+            {project.estimation && (
+              <div className="flex items-center gap-1 text-sm">
+                <DollarSign size={14} /> {project.estimation.cost || "N/A"}
+              </div>
+            )}
+            <span
+              className={`text-sm font-medium ${getPriorityColor(
+                project.priority
+              )}`}
             >
-              Manage Project
-            </Button>
+              {project.priority || "N/A"}
+            </span>
+            <Badge variant="outline" className="text-xs">
+              {project.project_type || "N/A"}
+            </Badge>
           </div>
         </CardContent>
+
+        <div className="px-4 pb-4">
+          <div className="flex justify-between items-center mb-1 text-sm text-slate-600">
+            <span>Progress</span>
+            <span className="text-xs">{project.progress ?? 0}%</span>
+          </div>
+          <Progress
+            value={project.progress ?? 0}
+            className="h-2 bg-slate-100"
+          />
+        </div>
+
+        <div className="px-4 pb-4">
+          <Button className="w-full bg-black text-white" onClick={onSelect}>
+            Manage Project
+          </Button>
+        </div>
       </Card>
     );
   }
 
+  // GRID VIEW
   return (
     <Card
-      className={`hover:shadow-lg transition-shadow group  h-full flex flex-col  ${
-        isCompleted ? " bg-green-50" : " bg-gray-100"
+      className={`hover:shadow-lg transition-shadow group h-full flex flex-col ${
+        isCompleted ? "bg-green-50" : "bg-gray-50"
       }`}
     >
-      <CardHeader className="pb-3 flex-1 flex flex-col">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-2">
-              <h3 className="font-semibold text-slate-800">
-                {project.project_id}
-              </h3>
-              {isOverdue && <AlertCircle size={16} className="text-red-500" />}
-            </div>
-            <h2 className="text-lg font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
-              {project.name}
-            </h2>
-            <p className="text-sm text-slate-600">
-              {project.client_name} - {project.client_company}
-            </p>
-          </div>
+      <CardHeader className="flex flex-col pb-2 gap-2">
+        <div className="flex justify-between items-start">
+          <h3 className="font-semibold text-slate-800">{project.project_id}</h3>
           <Badge className={getStatusColor(project.status)}>
-            {project.status}
+            {project.status || "N/A"}
           </Badge>
         </div>
+        <h2 className="text-lg font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+          {project.name}
+        </h2>
+        <p className="text-sm text-slate-600">
+          {project.client_name || "N/A"} - {project.client_company || "N/A"}
+        </p>
       </CardHeader>
-      <CardContent className="pt-0  ">
-        <div className="space-y-4 ">
-          <div className="flex items-center text-sm text-slate-600">
-            <MapPin size={14} className="mr-2" />
-            {project.location}
+
+      <CardContent className="flex flex-col gap-2">
+        <div className="flex justify-between items-center text-sm text-slate-600">
+          <div className="flex items-center gap-1">
+            <MapPin size={14} /> {project.location || "N/A"}
           </div>
-          <div className="flex items-center justify-between text-sm text-slate-600">
-            <div className="flex items-center">
-              <Calendar size={14} className="mr-2" />
-              {new Date(project.created_at).toLocaleDateString()}
-            </div>
-            <span
-              className={`font-medium ${getPriorityColor(project.priority)}`}
-            >
-              {project.priority} Priority
-            </span>
-          </div>
-          {project.estimation && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-slate-600">Estimation</span>
-                <div className="flex items-center">
-                  <DollarSign size={14} className="mr-1" />
-                  <span className="text-sm font-medium text-slate-800">
-                    {project.estimation.cost.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center text-sm text-slate-600">
-                <Clock size={14} className="mr-2" />
-                <span>
-                  Deadline:{" "}
-                  {new Date(project.estimation.deadline).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
-          )}
-          <div>
-            <div className="flex items-center text-sm text-slate-600 mb-2">
-              <Users size={14} className="mr-2" />
-              Project Type
-            </div>
-            <Badge variant="outline" className="text-xs">
-              {project.project_type}
-            </Badge>
-          </div>
-          <div className="flex items-center text-sm text-slate-600 pt-2 border-t">
-            <span className="text-xs text-slate-500">
-              Created by: {project.user.name}
-            </span>
-          </div>
-          {/* Project Progress Bar */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-blue-900">
-                Progress
-              </span>
-              <span className="text-xs text-slate-600">
-                {project.progress}%
-              </span>
-            </div>
-            <Progress value={project.progress} className="h-2 bg-slate-100" />
+          <div className="flex items-center gap-1">
+            <Calendar size={14} /> {createdDate}
           </div>
         </div>
+
+        {project.estimation && (
+          <div className="flex justify-between items-center text-sm text-slate-600 mt-1">
+            <div className="flex items-center gap-1">
+              <DollarSign size={14} /> {project.estimation.cost || "N/A"}
+            </div>
+            <div className="flex items-center gap-1">
+              <Clock size={14} /> {deadlineDate}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-between items-center mt-2">
+          <span
+            className={`text-sm font-medium ${getPriorityColor(
+              project.priority
+            )}`}
+          >
+            {project.priority || "N/A"} Priority
+          </span>
+          <Badge variant="outline" className="text-xs">
+            {project.project_type || "N/A"}
+          </Badge>
+        </div>
+
+        <div className="mt-2">
+          <div className="flex justify-between items-center mb-1 text-sm text-slate-600">
+            <span>Progress</span>
+            <span className="text-xs">{project.progress ?? 0}%</span>
+          </div>
+          <Progress
+            value={project.progress ?? 0}
+            className="h-2 bg-slate-100"
+          />
+        </div>
+
         <div className="mt-4">
-          <Button className="bg-black text-white w-full" onClick={onSelect}>
+          <Button className="w-full bg-black text-white" onClick={onSelect}>
             Manage Project
           </Button>
         </div>
