@@ -4,6 +4,7 @@ import {
   getRFQDeliverablesHandler,
   addHoursToDeliverablesHandler,
   addAmountsToDeliverablesHandler,
+  addWorkPersonToDeliverablesHandler,
 } from "../controllers/rfqDeliverables.controller.js";
 import { authenticateToken } from "../../middleware/authMiddleware.js";
 
@@ -22,6 +23,13 @@ router.patch(
   "/projects/:project_id/rfq-deliverables/add-hours",
   addHoursToDeliverablesHandler
 );
+
+
+router.patch(
+  "/projects/:project_id/rfq-deliverables/add-work-person",
+  addWorkPersonToDeliverablesHandler
+);
+
 
 router.patch(
   "/estimation/:estimation_id/add-hours",

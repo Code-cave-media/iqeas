@@ -92,7 +92,7 @@ export default function RFQEstimationTable() {
           </table>
         </div>
         <div className="flex items-end justify-end pt-4">
-          <Button className="">Send to Client</Button>
+          <Button>Send to Client</Button>
         </div>
       </div>
     </section>

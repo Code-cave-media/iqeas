@@ -10,8 +10,9 @@ import { Pencil } from "lucide-react";
 
 export default function EstimationDetails() {
   const { project_id } = useParams();
-  const { authToken } = useAuth();
+  const { authToken, user } = useAuth();
   const { makeApiCall } = useAPICall();
+
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -103,22 +104,23 @@ export default function EstimationDetails() {
     setSaving(false);
   };
 
-  const sendToAdmin = async () => {
-    if (!project_id) return;
+const sendToAdmin = async () => {
+  if (!project_id) return;
 
-    const payload = deliverables
-      .filter((d) => d.hours !== "" && d.hours !== null)
-      .map((d) => ({
-        sno: d.sno,
-      }));
+  const payload = deliverables
+    .filter((d) => d.hours !== "" && d.hours !== null)
+    .map((d) => ({
+      sno: d.sno,
+    }));
 
-    if (payload.length === 0) {
-      toast.error("Save hours before sending to admin");
-      return;
-    }
+  if (payload.length === 0) {
+    toast.error("Save hours before sending to admin");
+    return;
+  }
 
-    setSending(true);
+  setSending(true);
 
+  try {
     const response = await makeApiCall(
       "patch",
       API_ENDPOINT.SEND_DELIVERABLES_TO_ADMIN(project_id),
@@ -130,12 +132,46 @@ export default function EstimationDetails() {
 
     if (response?.status === 200) {
       toast.success("Deliverables sent to admin successfully");
+
+      const data = {
+        project_id: Number(project_id),
+        status: "created",
+        log: null,
+        cost: null,
+        deadline: null,
+        approval_date: null,
+        approved: false,
+        sent_to_pm: false,
+        forwarded_user_id: 12,
+        notes: null,
+        uploaded_file_ids: [],
+      };
+
+      const createResponse = await makeApiCall(
+        "post",
+        API_ENDPOINT.CREATE_ESTIMATION,
+        data,
+        "application/json",
+        authToken,
+        "createEstimation"
+      );
+
+      if (createResponse?.status === 200) {
+        toast.success("Estimation record created successfully");
+      } else {
+        toast.error("Failed to create estimation record");
+      }
     } else {
       toast.error("Failed to send deliverables to admin");
     }
+  } catch (error) {
+    toast.error("An error occurred while sending to admin");
+    console.error(error);
+  }
 
-    setSending(false);
-  };
+  setSending(false);
+};
+
 
   return (
     <section className="min-h-screen bg-gray-50 p-6">
