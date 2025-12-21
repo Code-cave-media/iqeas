@@ -32,11 +32,12 @@ import { useConfirmDialog } from "./ui/alert-dialog";
 const ProjectTrack: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const [project, setProject] = useState<any>(null);
+  const [estimation, setEstimation] = useState<any>(null);
+
   const { makeApiCall, fetching, fetchType } = useAPICall();
   const { authToken, user } = useAuth();
   const isAdmin = user.role === "admin";
   const confirmDialog = useConfirmDialog();
-
   const [selectedStepIdx, setSelectedStepIdx] = useState<number | null>(null);
 
   type DeliveryFile = { id: number; label: string; url: string };
@@ -56,17 +57,16 @@ const ProjectTrack: React.FC = () => {
     title?: string;
     discipline?: string;
     deliverables?: string;
-    hours?: number;
-    amount?: number | string | null; // Consistent field name
+    amount?: number | string | null;
   };
 
   const [rfqDeliverables, setRfqDeliverables] = useState<RFQDeliverable[]>([]);
   const [loadingRFQ, setLoadingRFQ] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [savingAmounts, setSavingAmounts] = useState(false);
+  const [editingAmountId, setEditingAmountId] = useState<number | null>(null);
 
-  // Handle amount change locally - FIXED
-  const handleCostChange = (id: number, value: string) => {
+  // Handle local amount change
+  const handleAmountChange = (id: number, value: string) => {
     setRfqDeliverables((prev) =>
       prev.map((item) =>
         item.id === id
@@ -76,8 +76,8 @@ const ProjectTrack: React.FC = () => {
     );
   };
 
-  // Save amounts to backend - FIXED
-  const saveCost = async () => {
+  // Save amounts to backend
+  const saveAmounts = async () => {
     if (!projectId) return;
 
     const payload = rfqDeliverables
@@ -90,35 +90,32 @@ const ProjectTrack: React.FC = () => {
       }));
 
     if (payload.length === 0) {
-      toast.error("Please enter at least one valid amount before saving");
+      toast.error("Please enter at least one valid amount");
       return;
     }
 
-    setSaving(true);
-
+    setSavingAmounts(true);
     const response = await makeApiCall(
       "patch",
       API_ENDPOINT.UPDATES_ADD_AMOUNTS(projectId),
       { deliverables: payload },
       "application/json",
       authToken,
-      "addCost"
+      "saveAmounts"
     );
 
     if (response?.status === 200) {
       toast.success("Amounts saved successfully");
-      setEditingId(null);
+      setEditingAmountId(null);
     } else {
       toast.error(response?.data?.detail || "Failed to save amounts");
     }
-
-    setSaving(false);
+    setSavingAmounts(false);
   };
 
   // Fetch RFQ Deliverables
   useEffect(() => {
     if (!project?.id) return;
-
     const fetchRFQDeliverables = async () => {
       setLoadingRFQ(true);
       const response = await makeApiCall(
@@ -129,7 +126,6 @@ const ProjectTrack: React.FC = () => {
         authToken,
         "getRFQDeliverables"
       );
-
       if (response?.status === 200 && Array.isArray(response.data)) {
         setRfqDeliverables(response.data);
       } else {
@@ -137,11 +133,9 @@ const ProjectTrack: React.FC = () => {
       }
       setLoadingRFQ(false);
     };
-
     fetchRFQDeliverables();
   }, [project?.id, makeApiCall, authToken]);
 
-  // Fetch Project
   useEffect(() => {
     const fetchProject = async () => {
       if (!projectId) return;
@@ -160,7 +154,25 @@ const ProjectTrack: React.FC = () => {
     fetchProject();
   }, [projectId, makeApiCall, authToken]);
 
-  // Enable delivery button
+  // estimation made by me
+  useEffect(() => {
+    const fetchEstimation = async () => {
+      if (!projectId) return;
+      const response = await makeApiCall(
+        "get",
+        API_ENDPOINT.GET_ESTIMATION_PROJECTS_BY_PROJECT_ID(projectId),
+        {},
+        "application/json",
+        authToken,
+        "getProject"
+      );
+      if (response.status === 200) {
+        setEstimation(response.data[0]);
+      }
+    };
+    fetchEstimation();
+  }, [projectId, makeApiCall, authToken]);
+
   useEffect(() => {
     if (project) {
       setEnableDelivery(project.status.toLowerCase() === "completed");
@@ -170,6 +182,122 @@ const ProjectTrack: React.FC = () => {
   if ((fetching && fetchType === "getProject") || !project) {
     return <Loading />;
   }
+
+  // ==================== SHARED DELIVERABLES TABLE ====================
+  const DeliverablesTable = ({
+    currentStepIdx,
+  }: {
+    currentStepIdx: number;
+  }) => (
+    <div className="px-6 py-6">
+      <div className="flex items-center gap-2 mb-6">
+        <ClipboardList className="text-indigo-600" size={20} />
+        <span className="text-lg font-semibold text-slate-800">
+          RFQ Deliverables
+        </span>
+      </div>
+
+      {loadingRFQ ? (
+        <div className="text-center py-8 text-slate-500">
+          Loading deliverables...
+        </div>
+      ) : rfqDeliverables.length > 0 ? (
+        <div className="overflow-x-auto">
+          {/* Save button only in Estimation step */}
+          {currentStepIdx === 1 && (
+            <div className="mb-6">
+              <Button
+                onClick={saveAmounts}
+                disabled={savingAmounts}
+                className="bg-black hover:bg-gray-800 text-white"
+              >
+                {savingAmounts ? "Saving..." : "Save Amounts"}
+              </Button>
+            </div>
+          )}
+
+          <table className="w-full text-sm border rounded-lg overflow-hidden">
+            <thead className="bg-slate-100 text-slate-700">
+              <tr>
+                <th className="px-4 py-3 text-left">#</th>
+                <th className="px-4 py-3 text-left">Drawing No</th>
+                <th className="px-4 py-3 text-left">Title</th>
+                <th className="px-4 py-3 text-left">Discipline</th>
+                <th className="px-4 py-3 text-left">Deliverables</th>
+                <th className="px-4 py-3 text-left font-semibold text-green-700">
+                  Amount (₹)
+                </th>
+                {/* Action column only in Estimation step */}
+                {currentStepIdx === 1 && (
+                  <th className="px-4 py-3 text-left">Action</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {rfqDeliverables.map((item, index) => (
+                <tr key={item.id} className="border-t hover:bg-slate-50">
+                  <td className="px-4 py-3">{item.sno ?? index + 1}</td>
+                  <td className="px-4 py-3">{item.drawing_no || "—"}</td>
+                  <td className="px-4 py-3">{item.title || "—"}</td>
+                  <td className="px-4 py-3">{item.discipline || "—"}</td>
+                  <td className="px-4 py-3">{item.deliverables || "—"}</td>
+
+                  <td className="px-4 py-3">
+                    {editingAmountId === item.id && currentStepIdx === 1 ? (
+                      <input
+                        type="number"
+                        min="0"
+                        value={item.amount ?? ""}
+                        onChange={(e) =>
+                          handleAmountChange(item.id, e.target.value)
+                        }
+                        className="w-40 rounded-md border px-3 py-1.5 text-sm focus:border-green-500 focus:outline-none"
+                        placeholder="Enter amount"
+                        autoFocus
+                      />
+                    ) : (
+                      <span className="font-semibold text-green-700">
+                        {item.amount != null
+                          ? `₹${Number(item.amount).toLocaleString()}`
+                          : "—"}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Edit action only in Estimation step */}
+                  {currentStepIdx === 1 && (
+                    <td className="px-4 py-3">
+                      {editingAmountId === item.id ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingAmountId(null)}
+                        >
+                          Cancel
+                        </Button>
+                      ) : (
+                        <button
+                          onClick={() => setEditingAmountId(item.id)}
+                          className="p-1.5 text-green-600 hover:text-green-800 transition"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="text-center py-8 text-slate-500">
+          No RFQ deliverables found for this project.
+        </div>
+      )}
+    </div>
+  );
+  // ======================================================================
 
   const STEP_CONFIG = [
     {
@@ -249,7 +377,7 @@ const ProjectTrack: React.FC = () => {
             <div className="flex items-center gap-2">
               <Mail className="text-blue-700" size={18} />
               <span className="font-medium text-slate-700">Email:</span>{" "}
-              <span className="text-blue-700 lowercase">
+              <span className="text-slate-700 lowercase">
                 {project.contact_person_email}
               </span>
             </div>
@@ -379,355 +507,74 @@ const ProjectTrack: React.FC = () => {
             </span>
           </div>
 
-          {!project.estimation ? (
-            <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-              <FileText size={40} className="mb-2" />
-              <div className="text-lg font-semibold">
-                Estimation not yet added
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 border-b">
-                <div>
-                  <span className="font-medium text-slate-700">Status:</span>{" "}
-                  <span className="text-slate-900 capitalize">
-                    {project.estimation_status}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-slate-700">Cost:</span>{" "}
-                  <span className="text-slate-900">
-                    ₹{project.estimation.cost.toLocaleString()}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-slate-700">Deadline:</span>{" "}
-                  <span className="text-slate-900 capitalize">
-                    {project.estimation.deadline}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-slate-700">
-                    Approval Date:
-                  </span>{" "}
-                  <span className="text-slate-900 capitalize">
-                    {project.estimation.approval_date}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-slate-700">Approved:</span>{" "}
-                  <span className="text-slate-900 capitalize">
-                    {project.estimation.approved ? "Yes" : "No"}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-slate-700">
-                    Sent to PM:
-                  </span>{" "}
-                  <span className="text-slate-900 capitalize">
-                    {project.estimation.sent_to_pm ? "Yes" : "No"}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-slate-700">
-                    Reviewed By:
-                  </span>{" "}
-                  <span className="text-slate-900 capitalize">
-                    {project.estimation.user?.name}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-slate-700">
-                    Forwarded To:
-                  </span>{" "}
-                  <span className="text-slate-900 capitalize">
-                    {project.estimation.forwarded_to?.name}
-                  </span>
-                </div>
-              </div>
+          <DeliverablesTable currentStepIdx={1} />
 
-              <div className="px-6 py-4 border-b grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-xs text-slate-500 mb-1">Log</div>
-                  <div className="bg-slate-50 rounded p-3 text-slate-800 capitalize">
-                    {project.estimation.log || (
-                      <span className="text-slate-400">No log provided.</span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-500 mb-1">Notes</div>
-                  <div className="bg-slate-50 rounded p-3 text-slate-800 capitalize">
-                    {project.estimation.notes || (
-                      <span className="text-slate-400">No notes provided.</span>
-                    )}
-                  </div>
-                </div>
-                <div className="md:col-span-2">
-                  <div className="text-xs text-slate-500 mb-1">Updates</div>
-                  <div className="bg-slate-50 rounded p-3 text-slate-800 capitalize">
-                    {project.estimation.updates || (
-                      <span className="text-slate-400">
-                        No updates provided.
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-6 py-4 border-b">
-                <div className="flex items-center gap-2 mb-1">
-                  <FileText className="text-green-700" size={18} />
-                  <span className="text-xs font-semibold text-slate-700">
-                    Estimation Files:
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2 ml-1">
-                  {project.estimation.uploaded_files?.length > 0 ? (
-                    project.estimation.uploaded_files.map(
-                      (file: any, i: number) => (
-                        <ShowFile
-                          key={file.id || i}
-                          label={file.label}
-                          url={file.file}
-                        />
-                      )
-                    )
-                  ) : (
-                    <span className="text-slate-400 text-xs">
-                      No files uploaded.
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* RFQ Deliverables Table */}
-              <div className="px-6 py-4 border-b">
-                <div className="flex items-center gap-2 mb-4">
-                  <ClipboardList className="text-indigo-600" size={18} />
-                  <span className="text-sm font-semibold text-slate-700">
-                    RFQ Deliverables
-                  </span>
-                </div>
-
-                {loadingRFQ ? (
-                  <div className="text-slate-400 text-sm">
-                    Loading deliverables...
-                  </div>
-                ) : rfqDeliverables.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <div className="mb-4">
-                      <Button
-                        onClick={saveCost}
-                        disabled={saving}
-                        className="rounded-lg bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
-                      >
-                        {saving ? "Saving..." : "Save Amounts"}
-                      </Button>
-                    </div>
-
-                    <table className="w-full text-sm border rounded-lg overflow-hidden">
-                      <thead className="bg-slate-100 text-slate-700">
-                        <tr>
-                          <th className="px-3 py-2 text-left">#</th>
-                          <th className="px-3 py-2 text-left">Drawing No</th>
-                          <th className="px-3 py-2 text-left">Title</th>
-                          <th className="px-3 py-2 text-left">Discipline</th>
-                          <th className="px-3 py-2 text-left">Deliverables</th>
-                          <th className="px-3 py-2 text-left">Hours</th>
-                          <th className="px-3 py-2 text-left">Amount (₹)</th>
-                          <th className="px-3 py-2 text-left">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rfqDeliverables.map((item, index) => (
-                          <tr
-                            key={item.id}
-                            className="border-t hover:bg-slate-50"
-                          >
-                            <td className="px-3 py-2">
-                              {item.sno ?? index + 1}
-                            </td>
-                            <td className="px-3 py-2">
-                              {item.drawing_no || "—"}
-                            </td>
-                            <td className="px-3 py-2">{item.title || "—"}</td>
-                            <td className="px-3 py-2">
-                              {item.discipline || "—"}
-                            </td>
-                            <td className="px-3 py-2">
-                              {item.deliverables || "—"}
-                            </td>
-                            <td className="px-3 py-2">{item.hours || "—"}</td>
-                            <td className="px-3 py-2">
-                              {editingId === item.id ? (
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={item.amount ?? ""}
-                                  onChange={(e) =>
-                                    handleCostChange(item.id, e.target.value)
-                                  }
-                                  className="w-32 rounded-md border px-2 py-1 text-sm focus:border-black focus:outline-none"
-                                  placeholder="Enter amount"
-                                  autoFocus
-                                />
-                              ) : (
-                                <span className="font-medium">
-                                  {item.amount != null
-                                    ? `₹${Number(item.amount).toLocaleString()}`
-                                    : "—"}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2">
-                              {editingId === item.id ? (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setEditingId(null)}
-                                >
-                                  Cancel
-                                </Button>
-                              ) : (
-                                <button
-                                  onClick={() => setEditingId(item.id)}
-                                  className="p-1 text-gray-500 hover:text-black transition"
-                                >
-                                  <Pencil size={16} />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-slate-400 text-sm">
-                    No RFQ deliverables found for this project.
-                  </div>
-                )}
-              </div>
-
-              {/* Corrections */}
-              <div className="px-6 py-4 border-b">
-                <div className="font-semibold text-blue-700 mb-1 flex items-center gap-2">
-                  <AlertCircle size={18} className="text-blue-500" />
-                  Corrections:
-                </div>
-                <div className="space-y-3">
-                  {project.estimation.corrections &&
-                  project.estimation.corrections.length > 0 ? (
-                    project.estimation.corrections.map(
-                      (corr: any, i: number) => (
-                        <div
-                          key={corr.id}
-                          className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col md:flex-row md:items-start gap-2 shadow-sm"
-                        >
-                          <div className="flex items-center gap-2 mb-1 md:mb-0">
-                            <AlertCircle
-                              size={18}
-                              className="text-blue-400 shrink-0"
-                            />
-                            <span className="font-semibold text-blue-800 text-xs md:text-sm">
-                              Correction #
-                              {project.estimation.corrections.length - i}
-                            </span>
-                          </div>
-                          <div className="flex-1 text-slate-800 text-sm md:text-base break-words">
-                            {corr.correction}
-                          </div>
-                          <div className="text-xs text-gray-500 ml-auto whitespace-nowrap">
-                            {new Date(corr.created_at).toLocaleString()}
-                          </div>
-                        </div>
-                      )
-                    )
-                  ) : (
-                    <div className="text-gray-400 ml-2 text-xs">
-                      No corrections made.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="px-6 py-4 pt-4 flex items-center gap-3">
-                <Progress
-                  value={
-                    project.status === "estimating" ? project.progress : 100
-                  }
-                  className="h-2 bg-gray-200 flex-1"
-                />
-                <span className="text-xs font-mono text-slate-600">
-                  {project.status === "estimating" ? project.progress : 100}%
-                </span>
-              </div>
-
-              {project.estimation_status === "sent_to_admin" && isAdmin && (
-                <div className="w-full flex flex-col sm:flex-row gap-2 mt-6 px-6 pb-4">
-                  <Button
-                    className="bg-red-600 hover:bg-red-700 text-white flex-1"
-                    onClick={handleCloseProject}
-                  >
-                    Close this project
-                  </Button>
-                  <Button
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white flex-1"
-                    onClick={() => setShowCorrectionDialog(true)}
-                  >
-                    Correction request
-                  </Button>
-                  <Button
-                    className="bg-green-600 hover:bg-green-700 text-white flex-1"
-                    onClick={handleApproveProject}
-                  >
-                    Approve
-                  </Button>
-                </div>
-              )}
-
-              <Dialog
-                open={showCorrectionDialog}
-                onOpenChange={setShowCorrectionDialog}
+          {/* Admin Action Buttons */}
+          {project.estimation_status === "sent_to_admin" && isAdmin && (
+            <div className="w-full flex flex-col sm:flex-row gap-3 mt-8 px-6 pb-8">
+              <Button
+                className="bg-red-600 hover:bg-red-700 text-white flex-1"
+                onClick={handleCloseProject}
               >
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Correction Request</DialogTitle>
-                  </DialogHeader>
-                  <div className="p-6">
-                    <div className="mb-4">
-                      <label className="block font-medium mb-1">
-                        Correction Details
-                      </label>
-                      <textarea
-                        className="border rounded w-full p-2 text-sm"
-                        rows={3}
-                        value={correctionText}
-                        onChange={(e) => setCorrectionText(e.target.value)}
-                        placeholder="Enter correction details..."
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowCorrectionDialog(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                        onClick={handleCorrectionRequest}
-                      >
-                        Send Correction
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </>
+                Close this project
+              </Button>
+              <Button
+                className="bg-yellow-500 hover:bg-yellow-600 text-white flex-1"
+                onClick={() => setShowCorrectionDialog(true)}
+              >
+                Correction request
+              </Button>
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                onClick={handleApproveProject}
+                disabled={!project.estimation}
+              >
+                {project.estimation
+                  ? "Approve"
+                  : "Approve (waiting for estimation)"}
+              </Button>
+            </div>
           )}
+
+          {/* Correction Dialog */}
+          <Dialog
+            open={showCorrectionDialog}
+            onOpenChange={setShowCorrectionDialog}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Correction Request</DialogTitle>
+              </DialogHeader>
+              <div className="p-6">
+                <div className="mb-4">
+                  <label className="block font-medium mb-1">
+                    Correction Details
+                  </label>
+                  <textarea
+                    className="border rounded w-full p-2 text-sm"
+                    rows={3}
+                    value={correctionText}
+                    onChange={(e) => setCorrectionText(e.target.value)}
+                    placeholder="Enter correction details..."
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCorrectionDialog(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                    onClick={handleCorrectionRequest}
+                  >
+                    Send Correction
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       ),
     },
@@ -737,13 +584,22 @@ const ProjectTrack: React.FC = () => {
       getCompleted: (project: any) =>
         project.status.toLowerCase() !== "working",
       renderContent: (project: any) => (
-        <div className="space-y-2">
-          <div className="flex flex-row justify-between items-center">
-            <h2 className="text-xl font-bold text-blue-800 mb-2">
-              Project Working
-            </h2>
+        <div className="space-y-8">
+          <div className="rounded-2xl shadow-lg border bg-white">
+            <div className="flex items-center justify-between px-6 py-4 rounded-t-2xl bg-gradient-to-r from-blue-600 to-blue-400">
+              <div className="flex items-center gap-3">
+                <Clock className="text-white" size={28} />
+                <span className="text-lg font-bold text-white">
+                  Project Working
+                </span>
+              </div>
+            </div>
+
+            {/* RFQ Deliverables Table shown here (read-only) */}
+            <DeliverablesTable currentStepIdx={2} />
+
+          
           </div>
-          <Submission projectId={project.id} />
         </div>
       ),
     },
@@ -798,13 +654,19 @@ const ProjectTrack: React.FC = () => {
 
   const STEP_ICONS = [FileText, ClipboardList, Clock, CheckCircle2];
   const steps = getStepStatus(project);
+
+  const forcedStepIdx =
+    project?.estimation_status === "sent_to_admin" ? 0 : null;
   const defaultStepIdx = steps.findIndex((step) => step.current);
   const currentStepIdx =
     selectedStepIdx !== null
       ? selectedStepIdx
+      : forcedStepIdx !== null
+      ? forcedStepIdx
       : defaultStepIdx !== -1
       ? defaultStepIdx
       : 0;
+
   const currentStep = steps[currentStepIdx];
 
   const handleFileToggle = (fileId: number) => {
@@ -884,13 +746,19 @@ const ProjectTrack: React.FC = () => {
   };
 
   const handleApproveProject = async () => {
+    if (!estimation) {
+      toast.error("Estimation not yet created. Cannot approve.");
+      return;
+    }
+
     const response = await makeApiCall(
       "patch",
-      API_ENDPOINT.EDIT_ESTIMATION(project.estimation.id),
+      API_ENDPOINT.EDIT_ESTIMATION(estimation.id),
       { project_id: project.id, approved: true, sent_to_pm: true },
       "application/json",
       authToken
     );
+
     if (response.status === 200) {
       setProject({
         ...project,
@@ -899,6 +767,8 @@ const ProjectTrack: React.FC = () => {
         estimation: { ...project.estimation, approved: true, sent_to_pm: true },
       });
       toast.success("Project approved");
+    } else {
+      toast.error("Failed to approve project");
     }
   };
 
@@ -962,7 +832,6 @@ const ProjectTrack: React.FC = () => {
               labelColor = "text-red-700 font-semibold";
               shadow = "shadow-lg";
             }
-
             return (
               <button
                 key={step.key}

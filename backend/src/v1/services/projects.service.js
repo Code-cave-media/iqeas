@@ -1391,62 +1391,80 @@ export async function getProjectDetailsById(projectId) {
         WHERE pdf.project_id = p.id
       ), '[]'::json) AS delivery_files,
 
-      -- Estimation
-      (
-        SELECT json_build_object(
-          'id', e.id,
-          'status', e.status,
-          'log', e.log,
-          'cost', e.cost,
-          'deadline', e.deadline,
-          'approval_date', e.approval_date,
-          'approved', e.approved,
-          'sent_to_pm', e.sent_to_pm,
-          'notes', e.notes,
-          'updates', e.updates,
+      -- Estimation with proper fallback
+      COALESCE(
+        (
+          SELECT json_build_object(
+            'id', e.id,
+            'status', e.status,
+            'log', e.log,
+            'cost', e.cost,
+            'deadline', e.deadline,
+            'approval_date', e.approval_date,
+            'approved', COALESCE(e.approved, false),
+            'sent_to_pm', COALESCE(e.sent_to_pm, false),
+            'notes', e.notes,
+            'updates', e.updates,
 
-          'user', json_build_object(
-            'id', eu.id,
-            'name', eu.name,
-            'email', eu.email
-          ),
+            'user', json_build_object(
+              'id', eu.id,
+              'name', eu.name,
+              'email', eu.email
+            ),
 
-          'forwarded_to', (
-            SELECT json_build_object(
-              'id', fuser.id,
-              'name', fuser.name,
-              'email', fuser.email
-            )
-            FROM users fuser
-            WHERE fuser.id = e.forwarded_user_id
-          ),
+            'forwarded_to', CASE 
+              WHEN e.forwarded_user_id IS NOT NULL THEN
+                (SELECT json_build_object(
+                  'id', fuser.id,
+                  'name', fuser.name,
+                  'email', fuser.email
+                ) FROM users fuser WHERE fuser.id = e.forwarded_user_id)
+              ELSE NULL
+            END,
 
-          'uploaded_files', COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', uf.id,
-              'label', uf.label,
-              'file', uf.file
-            ))
-            FROM estimation_uploaded_files euf
-            JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
-            WHERE euf.estimation_id = e.id
-          ), '[]'::json),
+            'uploaded_files', COALESCE((
+              SELECT json_agg(json_build_object(
+                'id', uf.id,
+                'label', uf.label,
+                'file', uf.file
+              ))
+              FROM estimation_uploaded_files euf
+              JOIN uploaded_files uf ON euf.uploaded_file_id = uf.id
+              WHERE euf.estimation_id = e.id
+            ), '[]'::json),
 
-          'corrections', COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', c.id,
-              'correction', c.correction,
-              'created_at', c.created_at
-            ) ORDER BY c.created_at DESC)
-            FROM estimation_corrections c
-            WHERE c.estimation_id = e.id
-          ), '[]'::json)
-
+            'corrections', COALESCE((
+              SELECT json_agg(json_build_object(
+                'id', c.id,
+                'correction', c.correction,
+                'created_at', c.created_at
+              ) ORDER BY c.created_at DESC)
+              FROM estimation_corrections c
+              WHERE c.estimation_id = e.id
+            ), '[]'::json)
+          )
+          FROM estimations e
+          JOIN users eu ON eu.id = e.user_id
+          WHERE e.project_id = p.id
+          LIMIT 1
+        ),
+        -- This is the fallback when no estimation exists
+        json_build_object(
+          'id', NULL,
+          'status', NULL,
+          'log', NULL,
+          'cost', NULL,
+          'deadline', NULL,
+          'approval_date', NULL,
+          'approved', false,
+          'sent_to_pm', false,
+          'notes', NULL,
+          'updates', NULL,
+          'user', NULL,
+          'forwarded_to', NULL,
+          'uploaded_files', '[]'::json,
+          'corrections', '[]'::json
         )
-        FROM estimations e
-        JOIN users eu ON eu.id = e.user_id
-        WHERE e.project_id = p.id
-        LIMIT 1
       ) AS estimation,
 
       -- More Infos
@@ -1481,6 +1499,7 @@ export async function getProjectDetailsById(projectId) {
   const result = await pool.query(query, [projectId]);
   return result.rows[0] || null;
 }
+
 export async function getPublicProjectDetails(token) {
   const query = `
     SELECT 

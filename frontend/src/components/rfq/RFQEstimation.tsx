@@ -5,6 +5,7 @@ import { useAPICall } from "@/hooks/useApiCall";
 import { API_ENDPOINT } from "@/config/backend";
 import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
+import { Button } from "../ui/button";
 
 export default function RFQEstimationTable() {
   const { project_id } = useParams();
@@ -84,11 +85,14 @@ export default function RFQEstimationTable() {
                   <td className="p-2">{row.deliverables}</td>
                   <td className="p-2">{row.discipline}</td>
                   <td className="p-2">{row.hours}</td>
-                  <td className="p-2">{row.amount}</td>
+                  <td className="p-2">₹ {row.amount}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="flex items-end justify-end pt-4">
+          <Button className="">Send to Client</Button>
         </div>
       </div>
     </section>
