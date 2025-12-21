@@ -158,7 +158,6 @@ const Submission = ({ projectId }) => {
     }
   }, [stageData, userSelectedStage]);
 
-  // Helper to get status and color for a stage
   const getStageStatus = (stage: any) => {
     if (!stage)
       return {

@@ -61,6 +61,8 @@ export const API_ENDPOINT = {
     `${API_URL}/stages/drawings/${projectId}/${stageId}`,
   GET_ALL_PM_PROJECTS: (query, page, size) =>
     `${API_URL}/projects/pm?page=${page}&query=${query}&size=${size}`,
+  GET_ESTIMATION_PROJECTS_BY_PROJECT_ID: (project_id) =>
+    `${API_URL}/get/estimations/${project_id}`,
   GET_ALL_ADMIN_PROJECTS: (query, page, size) =>
     `${API_URL}/projects/admin?page=${page}&query=${query}&size=${size}`,
   GET_STAGE_DRAWINGS: (project_id: any, stage_id: any) =>

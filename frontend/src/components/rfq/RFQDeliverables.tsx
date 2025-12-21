@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -29,7 +28,6 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
-/* ---------- helpers ---------- */
 const makeDrawingNo = (index: number) =>
   `DRG-${String(index + 1).padStart(3, "0")}`;
 
@@ -42,7 +40,6 @@ export default function RFQDeliverables() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
-  /* ---------- FETCH EXISTING DELIVERABLES ---------- */
   useEffect(() => {
     if (!project_id) return;
 
@@ -72,7 +69,6 @@ export default function RFQDeliverables() {
           }))
         );
       } else {
-        // fallback → empty first row
         setRows([
           {
             sno: "1",
@@ -90,7 +86,6 @@ export default function RFQDeliverables() {
     fetchDeliverables();
   }, [project_id]);
 
-  /* ---------- actions ---------- */
   const addRow = () => {
     setRows((prev) => [
       ...prev,

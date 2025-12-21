@@ -8,6 +8,7 @@ import {
   getDraft,
   createEstimationCorrectionHandler,
   createInvoiceController,
+  getEstimationProjectHandler,
 } from "../controllers/estimation.controller.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 const router = express.Router();
@@ -19,6 +20,8 @@ router.post(
   createEstimationCorrectionHandler
 );
 router.get("/get/estimation/:id", getEstimationHandler);
+router.get("/get/estimations/:project_id", getEstimationProjectHandler);
+
 router.patch("/patch/estimation/:id", updateEstimationHandler);
 
 router.get("/estimation/pm",authenticateToken, getPMProjects);
