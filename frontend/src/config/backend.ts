@@ -32,6 +32,8 @@ export const API_ENDPOINT = {
     `${API_URL}/updates/projects/${project_id}/rfq-deliverables`,
   UPDATES_ADD_HOURS: (project_id: any) =>
     `${API_URL}/updates/estimation/${project_id}/add-hours`,
+  SAVE_WORK_PERSON_ASSIGNMENTS: (project_id: any) =>
+    `${API_URL}/updates/projects/${project_id}/rfq-deliverables/add-work-person`,
   UPDATES_ADD_HOURS_BY_PROJECT: (project_id: any) =>
     `${API_URL}/updates/projects/${project_id}/rfq-deliverables/add-hours`,
   UPDATES_ADD_AMOUNTS: (project_id: any) =>

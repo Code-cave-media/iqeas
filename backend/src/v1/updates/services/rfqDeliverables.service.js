@@ -146,3 +146,42 @@ export async function addAmountsToDeliverables(
 
   return results;
 }
+
+export async function addWorkPersonToDeliverables(
+  projectId,
+  assignments,
+  client = pool
+) {
+  const results = [];
+
+  for (const assignment of assignments) {
+    const { sno, work_person } = assignment;
+
+    if (!work_person || work_person.trim() === "") {
+      throw new Error(
+        `Work person name is required for deliverable with sno ${sno}`
+      );
+    }
+
+    const result = await client.query(
+      `UPDATE estimation_deliverables
+       SET work_person = $1,
+           updated_at = NOW()
+       WHERE project_id = $2 AND sno = $3
+       RETURNING 
+         id, sno, drawing_no, title, discipline, deliverables, 
+         amount, hours, work_person, total_time`,
+      [work_person.trim(), projectId, sno]
+    );
+
+    if (result.rowCount === 0) {
+      throw new Error(
+        `Deliverable with sno ${sno} not found for project ${projectId}`
+      );
+    }
+
+    results.push(result.rows[0]);
+  }
+
+  return results;
+}

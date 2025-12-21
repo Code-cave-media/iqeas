@@ -146,7 +146,7 @@ export const addAmountsToDeliverablesHandler = async (req, res) => {
     const { project_id } = req.params;
     const { deliverables } = req.body;
 
-    console.log(project_id)
+    console.log(project_id);
 
     if (!Array.isArray(deliverables) || deliverables.length === 0) {
       return res.status(400).json(
@@ -188,6 +188,72 @@ export const addAmountsToDeliverablesHandler = async (req, res) => {
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Error adding amounts to deliverables:", error);
+    return res.status(500).json(
+      formatResponse({
+        statusCode: 500,
+        detail: error.message || "Internal Server Error",
+      })
+    );
+  } finally {
+    client.release();
+  }
+};
+export const addWorkPersonToDeliverablesHandler = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { project_id } = req.params;
+    const { assignments } = req.body;
+
+    if (!Array.isArray(assignments) || assignments.length === 0) {
+      return res.status(400).json(
+        formatResponse({
+          statusCode: 400,
+          detail: "Assignments array is required and cannot be empty",
+        })
+      );
+    }
+
+    // NEW VALIDATION: Only require sno and work_person
+    const invalid = assignments.find(
+      (a) =>
+        typeof a.sno !== "number" ||
+        !a.work_person ||
+        typeof a.work_person !== "string" ||
+        a.work_person.trim() === ""
+    );
+
+    if (invalid) {
+      return res.status(400).json(
+        formatResponse({
+          statusCode: 400,
+          detail:
+            "Each assignment must have valid sno (number) and non-empty work_person (string)",
+        })
+      );
+    }
+
+    // REMOVED: project_id checks in body — we trust the URL param
+
+    const updated = await RFQDeliverablesService.addWorkPersonToDeliverables(
+      project_id,
+      assignments,
+      client
+    );
+
+    await client.query("COMMIT");
+
+    return res.status(200).json(
+      formatResponse({
+        statusCode: 200,
+        detail: "Work persons assigned successfully",
+        data: updated,
+      })
+    );
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error assigning work persons:", error);
     return res.status(500).json(
       formatResponse({
         statusCode: 500,
