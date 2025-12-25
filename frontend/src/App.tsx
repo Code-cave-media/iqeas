@@ -43,6 +43,8 @@ import EstimationDetails from "./components/estimation/EstimationDetails";
 import RFQDeliverable from "./components/rfq/RFQDeliverables";
 import ProjectControlAdmin from "./components/admin/ProjectControllAdmin";
 import ProjectControlPm from "./components/pm/ProjectControllPm";
+import WorkersDashboard from "./components/workers/WorkersDashboard";
+import WorkDetails from "./components/workers/WorkDetails";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -321,15 +323,16 @@ const App = () => (
                   path=""
                   element={
                     <DashboardLayout>
-                      <WorkerProjectList />
+                      {/* <WorkerProjectList /> */}
+                      <WorkersDashboard />
                     </DashboardLayout>
                   }
                 />
                 <Route
-                  path="project/:projectId"
+                  path=":project_id/work-details"
                   element={
                     <DashboardLayout>
-                      <WorkerTasks />
+                      <WorkDetails />
                     </DashboardLayout>
                   }
                 />

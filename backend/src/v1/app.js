@@ -1,4 +1,8 @@
 import express from "express";
+import { initWebSocketServer } from "./updates/websocket/wsServer.js";
+import http from "http";
+
+
 import authRoute from "./routes/auth.routes.js";
 import userRoute from "./routes/user.route.js";
 import projectRoute from "./routes/projects.route.js";
@@ -77,7 +81,12 @@ const PORT = process.env.PORT || 8080;
 //   await createInitialAdmin();
 // })();
 
-app.listen(PORT, async () => {
+const server = http.createServer(app);
+
+// 🔥 ATTACH WEBSOCKET
+initWebSocketServer(server);
+
+server.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
 export default app;

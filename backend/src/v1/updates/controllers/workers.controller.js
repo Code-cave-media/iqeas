@@ -1,6 +1,8 @@
 import {
   getWorkersData,
-  getWorkersWorkById,
+  getWorkersWorkByProjectIdWorkId,
+  getWorkerProjectIds,
+  getProjectDetails,
 } from "../services/workers.service.js";
 
 export async function getWorkersController(req, res) {
@@ -24,9 +26,13 @@ export async function getWorkersController(req, res) {
   }
 }
 
-export async function getWorkerWorkByIdController(req, res) {
+export async function getWorkerWorkByIdAndProjectIdController(req, res) {
   try {
-    const { worker_id } = req.params;
+    const { worker_id, project_id } = req.params;
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
 
     if (!worker_id) {
       return res.status(400).json({
@@ -35,13 +41,25 @@ export async function getWorkerWorkByIdController(req, res) {
       });
     }
 
-    console.debug("[WORKERS][WORK] Fetching work for worker_id:", worker_id);
+    console.debug(
+      "[WORKERS][WORK] Fetching work for worker_id:",
+      worker_id,
+      "page:",
+      page
+    );
 
-    const work = await getWorkersWorkById(worker_id);
+    const { data, total } = await getWorkersWorkByProjectIdWorkId(worker_id, project_id, limit, offset);
 
     return res.status(200).json({
+      status: 200,
       success: true,
-      data: work,
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     console.error("[WORKERS][WORK] Error:", error);
@@ -50,5 +68,61 @@ export async function getWorkerWorkByIdController(req, res) {
       success: false,
       message: "Failed to fetch worker work",
     });
+  }
+}
+
+
+
+// Controller to handle request and response with pagination
+export async function getWorkersProjectWorkByIdController(req, res) {
+  try {
+    const { worker_id } = req.params;
+    let { page = 1, limit = 10 } = req.query;
+
+    page = parseInt(page);
+    limit = parseInt(limit);
+    const offset = (page - 1) * limit;
+
+    if (!worker_id) {
+      console.debug("[CONTROLLER][WORKERS][PROJECT] worker_id is missing");
+      return res
+        .status(400)
+        .json({ success: false, message: "worker_id is required" });
+    }
+
+    const projectIds = await getWorkerProjectIds(worker_id, limit, offset);
+
+    if (projectIds.length === 0) {
+      console.debug("[CONTROLLER][WORKERS][PROJECT] No projects found");
+      return res
+        .status(404)
+        .json({ success: false, message: "No projects found for this worker" });
+    }
+
+    // Fetch project details for each project_id
+    const projects = [];
+    for (const row of projectIds) {
+      const project = await getProjectDetails(row.project_id);
+      if (project) projects.push(project);
+    }
+
+    console.debug(
+      "[CONTROLLER][WORKERS][PROJECT] Returning projects:",
+      projects
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: projects,
+      pagination: { page, limit, total: projects.length },
+    });
+  } catch (error) {
+    console.error("[CONTROLLER][WORKERS][PROJECT][ERROR]", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Server error while fetching projects",
+      });
   }
 }
