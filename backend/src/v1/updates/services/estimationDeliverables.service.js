@@ -128,11 +128,28 @@ export async function getDeliverablesByProject(projectId, client = pool) {
 }
 
 export async function getDeliverablesWithTotals(projectId, client = pool) {
-  const deliverables = await getDeliverablesByProject(projectId, client);
-
-  console.log(
-    `Hi this is the data from the deliverables ===>> ${deliverables}`
+  const estimationResult = await client.query(
+    `SELECT * FROM estimations WHERE project_id = $1 ORDER BY created_at DESC`,
+    [Number(projectId)]
   );
+  if (estimationResult.rows.length === 0) {
+    throw new Error("Estimation not found for this project");
+  }
+
+  const estimation = estimationResult.rows[0];
+console.log("its working", JSON.stringify(estimation, null, 2));
+
+  const deliverablesResult = await client.query(
+    `
+    SELECT *
+    FROM estimation_deliverables
+    WHERE project_id = $1::text
+    `,
+    [projectId]
+  );
+
+  const deliverables = deliverablesResult.rows;
+
   const totals = deliverables.reduce(
     (acc, d) => ({
       total_hours: acc.total_hours + Number(d.hours || 0),
@@ -154,10 +171,12 @@ export async function getDeliverablesWithTotals(projectId, client = pool) {
   return {
     table_data,
     totals,
+    estimation,
   };
 }
 
 export async function updateDeliverable(deliverableId, updates, client = pool) {
+  console.log("this is the update: ", updates)
   const fields = [];
   const values = [];
   let index = 1;

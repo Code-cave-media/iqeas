@@ -13,6 +13,7 @@ export default function RFQEstimationTable() {
   const { authToken } = useAuth();
 
   const [table, setTable] = useState<any[]>([]);
+  const [estimation, setEstimation] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -36,9 +37,10 @@ export default function RFQEstimationTable() {
         return;
       }
 
-      const rows = resp.data?.table || resp.data?.data || resp.data || [];
+      const payload = resp.data?.data ?? resp.data;
 
-      setTable(Array.isArray(rows) ? rows : []);
+      setTable(Array.isArray(payload?.table) ? payload.table : []);
+      setEstimation(payload?.estimation ?? null);
       setLoading(false);
     };
 
@@ -91,8 +93,11 @@ export default function RFQEstimationTable() {
             </tbody>
           </table>
         </div>
+
         <div className="flex items-end justify-end pt-4">
-          <Button>Send to Client</Button>
+          <Button disabled={!estimation || estimation.approved !== true}>
+            Send to Client
+          </Button>
         </div>
       </div>
     </section>

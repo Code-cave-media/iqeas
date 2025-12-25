@@ -32,15 +32,16 @@ const RFQLayout = ({ children }: { children: React.ReactNode }) => {
   const rfqLinks = [
     { label: "Enquiry", to: `/rfq/${project_id}/enquiry`, icon: FileSearch },
     {
+      label: "Create Deliverables",
+      to: `/rfq/${project_id}/deliverables`,
+      icon: Calculator,
+    },
+    {
       label: "Estimation",
       to: `/rfq/${project_id}/estimation`,
       icon: Calculator,
     },
-    {
-      label: "Deliverables",
-      to: `/rfq/${project_id}/deliverables`,
-      icon: Calculator,
-    },
+
     { label: "PO", to: `/rfq/${project_id}/po`, icon: FileCheck2 },
     { label: "Invoice", to: `/rfq/${project_id}/invoice`, icon: Receipt },
     { label: "Payment", to: `/rfq/${project_id}/payment`, icon: IndianRupee },

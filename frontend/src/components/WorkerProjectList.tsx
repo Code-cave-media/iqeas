@@ -67,7 +67,6 @@ const WorkerProjectList = () => {
     }
   };
 
-  // Responsive grid classes
   const cardGrid =
     "grid gap-6 w-full grid-cols-[repeat(auto-fill,minmax(300px,1fr))]";
   if (!isFetched) {
