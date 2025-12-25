@@ -7,31 +7,35 @@ import { formatResponse } from "../../utils/response.js";
  * GET /api/v1/updates/estimation/:project_id/table
  */
 export const getEstimationTableHandler = async (req, res) => {
-  try {
-    const { project_id } = req.params;
-    const result =
-      await EstimationDeliverablesService.getDeliverablesWithTotals(project_id);
+   try {
+     const { project_id } = req.params;
 
-    return res.status(200).json(
-      formatResponse({
-        statusCode: 200,
-        detail: "Estimation table data retrieved successfully",
-        data: {
-          table: result.table_data, // Formatted for Table 0.0
-          totals: result.totals,
-        },
-      })
-    );
-  } catch (error) {
-    console.error("Error fetching estimation table:", error);
-    return res.status(500).json(
-      formatResponse({
-        statusCode: 500,
-        detail: "Internal Server Error",
-      })
-    );
-  }
-};
+     const result =
+       await EstimationDeliverablesService.getDeliverablesWithTotals(
+         project_id
+       );
+
+     return res.status(200).json(
+       formatResponse({
+         statusCode: 200,
+         detail: "Estimation table data retrieved successfully",
+         data: {
+           estimation: result.estimation, // ✅ ADD THIS
+           table: result.table_data,
+           totals: result.totals,
+         },
+       })
+     );
+   } catch (error) {
+     console.error("Error fetching estimation table:", error);
+     return res.status(500).json(
+       formatResponse({
+         statusCode: 500,
+         detail: "Internal Server Error",
+       })
+     );
+   }
+ };
 
 /**
  * Get work allocation formatted for Table 1.0 (PM/Project Leader Dashboard)

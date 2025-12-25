@@ -730,7 +730,7 @@ const ProjectTrack: React.FC = () => {
     const response = await makeApiCall(
       "patch",
       API_ENDPOINT.EDIT_ESTIMATION(estimation.id),
-      { project_id: project.id, approved: true, sent_to_pm: true },
+      { project_id: project.id, approved: true, sent_to_pm: false },
       "application/json",
       authToken
     );

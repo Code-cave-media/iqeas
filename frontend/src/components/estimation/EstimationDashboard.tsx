@@ -56,7 +56,10 @@ export default function EstimationDashboard() {
 
   /* ================= MAP INTERNAL IDS ================= */
   useEffect(() => {
-    if (!projects.length) return;
+    if (!projects.length) {
+      setProjectIdMap({});
+      return;
+    }
 
     const fetchIds = async () => {
       const map: Record<string, string> = {};
@@ -69,12 +72,13 @@ export default function EstimationDashboard() {
             {},
             "application/json",
             authToken,
-            "getInternalId"
+            `getInternalId-${project.project_id}`
           );
 
-          if (response?.status === 200 && response.data?.[0]) {
+          if (response?.status === 200 && response.data?.[0]?.id) {
             map[project.project_id] = response.data[0].id;
           }
+          // If no ID found, map entry remains undefined — handled in UI
         })
       );
 
@@ -158,7 +162,6 @@ export default function EstimationDashboard() {
         {loading ? (
           <p className="text-sm text-gray-500">Fetching projects...</p>
         ) : listView ? (
-          /* ================= LIST VIEW ================= */
           <ul className="divide-y">
             {projects.map((project) => {
               const canSendToAdmin = ["created", "edited"].includes(
@@ -168,10 +171,7 @@ export default function EstimationDashboard() {
               return (
                 <li key={project.id} className="py-4 flex justify-between">
                   <div>
-                    <div
-                     
-                      className="font-medium text-gray-900 hover:underline"
-                    >
+                    <div className="font-medium text-gray-900 hover:underline">
                       {project.name}
                     </div>
                     <p className="text-sm text-gray-500 flex items-center gap-2">
@@ -199,11 +199,13 @@ export default function EstimationDashboard() {
             })}
           </ul>
         ) : (
+          /* ================= GRID VIEW ================= */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {projects.map((project) => {
               const canSendToAdmin = ["created", "edited"].includes(
                 project.estimation_status
               );
+              const internalId = projectIdMap[project.project_id];
 
               return (
                 <div
@@ -255,15 +257,37 @@ export default function EstimationDashboard() {
                       style={{ width: `${project.progress}%` }}
                     />
                   </div>
-                  <a
-                    href={`/estimation/${
-                      projectIdMap[project.project_id]
-                    }/details`}
-                  >
-                    <button className="mt-4 w-full flex items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700">
-                      View Deliverables <ArrowRight className="w-4 h-4" />
+
+                  {/* Consistent Button — Active only when ID is loaded */}
+                  <div className="mt-4">
+                    {internalId ? (
+                      <a
+                        href={`/estimation/${internalId}/details`}
+                        className="block"
+                      >
+                        <button className="w-full flex items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700 transition">
+                          View Deliverables <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </a>
+                    ) : (
+                      <button
+                        disabled
+                        className="w-full flex items-center justify-center gap-2 rounded-lg bg-gray-300 px-3 py-2 text-xs font-semibold text-gray-600 cursor-not-allowed"
+                      >
+                        Loading link...
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Optional: Send to Admin button (only in certain statuses) */}
+                  {canSendToAdmin && (
+                    <button
+                      onClick={(e) => handleSendToAdmin(e, project)}
+                      className="mt-3 w-full rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                    >
+                      Send to Admin
                     </button>
-                  </a>
+                  )}
                 </div>
               );
             })}

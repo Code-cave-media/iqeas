@@ -29,6 +29,7 @@ import updatesTimeTrackingRoute from "./updates/routes/updates_timeTracking.rout
 import updatesWeeklyTimesheetRoute from "./updates/routes/updates_weeklyTimesheet.routes.js";
 import updatesStageBillingRoute from "./updates/routes/updates_stageBilling.routes.js";
 import UpdatesGetId from "./updates/routes/includes.route.js";
+import workersRoute from "./updates/routes/workers.route.js"
 
 import cors from "cors";
 import createInitialAdmin from "./utils/seed.js";
@@ -67,6 +68,8 @@ app.use("/api/v1/updates", updatesTimeTrackingRoute);
 app.use("/api/v1/updates", updatesWeeklyTimesheetRoute);
 app.use("/api/v1/updates", updatesStageBillingRoute);
 app.use("/api/v1/updates", UpdatesGetId);
+app.use("/api/v1/updates", workersRoute);
+
 
 const PORT = process.env.PORT || 8080;
 

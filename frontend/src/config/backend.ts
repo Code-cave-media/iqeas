@@ -46,6 +46,7 @@ export const API_ENDPOINT = {
     `${API_URL}/updates/estimation/${id}/admin-verify`,
   UPDATES_SEND_TO_PROPOSALS: (id: any) =>
     `${API_URL}/updates/estimation/${id}/send-to-proposals`,
+  UPDATE_UPLOAD_PO: `${API_URL}/updates/create-po`,
   UPDATES_SEND_TO_CLIENT: (id: any) =>
     `${API_URL}/updates/estimation/${id}/send-to-client`,
   CREATE_ESTIMATION: `${API_URL}/estimation`,
@@ -107,4 +108,10 @@ export const API_ENDPOINT = {
 
   SEND_DELIVERABLES_TO_ADMIN: (project_id: string) =>
     `${API_URL}/updates/estimation/deliverables/send-to-admin/${project_id}`,
+
+  DELIVERABLES_PATCH_REQUEST: (deliverable_id: string) =>
+    `${API_URL}/updates/estimation/deliverables/${deliverable_id}`,
+  GET_WORKERS_LIST: `${API_URL}/updates/get-workers-data`,
+  GET_WORKERS__WORK_DATA: (worker_id: string) =>
+    `${API_URL}/updates/workers/${worker_id}/work`,
 };

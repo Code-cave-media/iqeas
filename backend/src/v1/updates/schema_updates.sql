@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
     po_number VARCHAR(100) UNIQUE NOT NULL,
     received_date DATE NOT NULL,
     received_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL DEFAULT 'received' CHECK (status IN ('received', 'forwarded_to_admin', 'forwarded_to_pm', 'accepted', 'rejected')),
     forwarded_to_admin_at TIMESTAMPTZ,
     forwarded_to_pm_at TIMESTAMPTZ,
     accepted_at TIMESTAMPTZ,

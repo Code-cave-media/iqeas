@@ -83,12 +83,11 @@ export const updateEstimationDeliverableHandler = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    const updated =
-      await EstimationDeliverablesService.updateEstimationDeliverable(
-        id,
-        updates,
-        client
-      );
+    const updated = await EstimationDeliverablesService.updateDeliverable(
+      id,
+      updates,
+      client
+    );
 
     await client.query("COMMIT");
 

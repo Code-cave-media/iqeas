@@ -16,10 +16,10 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // Create PO
-router.post("/", createPOHandler);
+router.post("/create-po", createPOHandler);
 
 // Get PO by ID
-router.get("/:id", getPOByIdHandler);
+// router.get("/:id", getPOByIdHandler);
 
 // Get POs by Project
 router.get("/project/:project_id", getPOsByProjectHandler);

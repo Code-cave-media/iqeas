@@ -24,20 +24,20 @@ export async function createPurchaseOrder(data, client = pool) {
     po_number,
     received_date,
     received_by_user_id,
-    notes,
-    terms_and_conditions,
+    notes || null, // Handle undefined/null
+    terms_and_conditions || null,
   ];
 
   const result = await client.query(query, values);
   const po = result.rows[0];
 
-  // Link PO to project
-  await client.query(
-    `UPDATE projects SET po_id = $1 WHERE id = $2`,
-    [po.id, project_id]
-  );
+  // NO NEED TO UPDATE projects table — remove this completely
+  // await client.query(
+  //   `UPDATE projects SET po_id = $1 WHERE id = $2`,
+  //   [po.id, project_id]
+  // );
 
-  // Add uploaded files
+  // Link uploaded files (this is correct)
   if (uploaded_file_ids.length > 0) {
     const filePromises = uploaded_file_ids.map((fileId) =>
       client.query(
