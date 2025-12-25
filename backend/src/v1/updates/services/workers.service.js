@@ -75,7 +75,7 @@ export async function getProjectDetails(project_id) {
   const query = `
     SELECT id, name, project_id
     FROM projects
-    WHERE id = $1
+    WHERE id = $1 AND send_to_workers = TRUE
   `;
 
   const result = await pool.query(query, [String(project_id)]);
@@ -85,6 +85,7 @@ export async function getProjectDetails(project_id) {
   );
   return result.rows[0];
 }
+
 
 export async function updateConsumedTime(worker_id, t1, t2) {
   const timeInitial = new Date(t1);

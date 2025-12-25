@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { API_ENDPOINT } from "@/config/backend";
 import { useAPICall } from "@/hooks/useApiCall";
@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   Plus,
   Settings2,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +27,7 @@ import {
 import toast from "react-hot-toast";
 
 type RFQDeliverable = {
-  id: number; // DB id if >0, temp id if isNew
+  id: number;
   sno?: number | string;
   drawing_no?: string;
   title?: string;
@@ -34,17 +36,26 @@ type RFQDeliverable = {
   stage?: string;
   revision?: string | number;
   hours?: number | string | null;
-  consumed_time?: number | string | null; // readonly for PM
+  consumed_time?: any;
   work_person?: string | null;
   worker_id?: number | null;
   isNew?: boolean;
 };
 
 type DeliveryFile = { id: number; label: string; url: string };
+type Worker = { id: number; name: string };
 
-type Worker = {
-  id: number;
-  name: string;
+// helper: format duration object safely
+const formatDuration = (t: any) => {
+  if (!t) return "—";
+  if (typeof t === "string" || typeof t === "number") return String(t);
+
+  const hours = Number(t.hours ?? 0);
+  const minutes = Number(t.minutes ?? 0);
+  const seconds = Number(t.seconds ?? 0);
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 };
 
 const ProjectControlPm: React.FC = () => {
@@ -55,7 +66,6 @@ const ProjectControlPm: React.FC = () => {
   const [project, setProject] = useState<any>(null);
   const [rfqDeliverables, setRfqDeliverables] = useState<RFQDeliverable[]>([]);
   const [loadingRFQ, setLoadingRFQ] = useState(false);
-
   const [savingUpdate, setSavingUpdate] = useState(false);
 
   const [files, setFiles] = useState<DeliveryFile[]>([]);
@@ -80,29 +90,70 @@ const ProjectControlPm: React.FC = () => {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loadingWorkers, setLoadingWorkers] = useState(false);
 
-  const openStageModal = () => {
-    setStageInput("");
-    setStageInputList(stageOptions);
-    setShowStageModal(true);
+  // approve project
+  const [approving, setApproving] = useState(false);
+
+  // collapsible parents (use base sno string, e.g. "1", "2")
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(
+    () => new Set()
+  );
+
+  // revision filter
+  const [revisionFilter, setRevisionFilter] = useState<string>("ALL");
+
+  // ---------- helpers for sno / hierarchy ----------
+  const getBaseSno = (sno?: number | string) => {
+    if (sno === undefined || sno === null) return "";
+    const str = String(sno);
+    return str.split(".")[0];
   };
 
-  const handleAddStageToList = () => {
-    const v = stageInput.trim();
-    if (!v) return;
-    if (stageInputList.includes(v)) {
-      toast.error("Stage already added");
-      return;
-    }
-    setStageInputList((prev) => [...prev, v]);
-    setStageInput("");
+  const isChildOf = (child: RFQDeliverable, parent: RFQDeliverable) => {
+    if (child.sno == null || parent.sno == null) return false;
+    const childStr = String(child.sno);
+    const parentBase = getBaseSno(parent.sno);
+    return childStr.includes(".") && childStr.startsWith(`${parentBase}.`);
   };
 
-  const handleSaveStages = () => {
-    setStageOptions(stageInputList);
-    setShowStageModal(false);
+  const hasChildren = (row: RFQDeliverable) =>
+    rfqDeliverables.some((d) => isChildOf(d, row));
+
+  const toggleParentExpanded = (parent: RFQDeliverable) => {
+    const base = getBaseSno(parent.sno);
+    if (!base) return;
+    setExpandedParents((prev) => {
+      const next = new Set(prev);
+      if (next.has(base)) next.delete(base);
+      else next.add(base);
+      return next;
+    });
   };
 
-  // ---------- fetch project ----------
+  const getLastChildStage = (parent: RFQDeliverable): string | undefined => {
+    const parentBase = getBaseSno(parent.sno);
+    if (!parentBase) return undefined;
+    const children = rfqDeliverables.filter((d) => isChildOf(d, parent));
+    if (children.length === 0) return undefined;
+
+    const sortedChildren = [...children].sort((a, b) => {
+      const aStr = String(a.sno ?? "");
+      const bStr = String(b.sno ?? "");
+      const aParts = aStr.split(".").map(Number);
+      const bParts = bStr.split(".").map(Number);
+      for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+        const av = aParts[i] ?? 0;
+        const bv = bParts[i] ?? 0;
+        if (av !== bv) return av - bv;
+      }
+      return 0;
+    });
+
+    const lastChild = sortedChildren[sortedChildren.length - 1];
+    return lastChild.stage;
+  };
+
+  // ---------- effects ----------
+  // fetch project
   useEffect(() => {
     const fetchProject = async () => {
       if (!projectId) return;
@@ -121,7 +172,7 @@ const ProjectControlPm: React.FC = () => {
     fetchProject();
   }, [projectId, makeApiCall, authToken]);
 
-  // ---------- fetch deliverables ----------
+  // fetch deliverables
   useEffect(() => {
     if (!project?.id) return;
     const fetchRFQDeliverables = async () => {
@@ -137,6 +188,14 @@ const ProjectControlPm: React.FC = () => {
       if (response?.status === 200 && Array.isArray(response.data)) {
         const normalized = response.data.map((item: any) => ({
           ...item,
+          consumed_time:
+            item.consumed_time && typeof item.consumed_time === "object"
+              ? {
+                  hours: item.consumed_time.hours ?? 0,
+                  minutes: item.consumed_time.minutes ?? 0,
+                  seconds: item.consumed_time.seconds ?? 0,
+                }
+              : item.consumed_time ?? null,
           work_person: item.work_person || item.assigned_user?.name || null,
           worker_id: item.worker_id ?? null,
           isNew: false,
@@ -150,6 +209,7 @@ const ProjectControlPm: React.FC = () => {
     fetchRFQDeliverables();
   }, [project?.id, makeApiCall, authToken]);
 
+  // fetch workers
   useEffect(() => {
     const fetchWorkers = async () => {
       setLoadingWorkers(true);
@@ -161,33 +221,80 @@ const ProjectControlPm: React.FC = () => {
         authToken,
         "getWorkers"
       );
-
-      console.log("workers API raw response", response);
-
       const list = Array.isArray(response?.data) ? response.data : [];
-      setWorkers(
-        list.map((w: any) => ({
-          id: w.id,
-          name: w.name,
-        }))
-      );
-
+      setWorkers(list.map((w: any) => ({ id: w.id, name: w.name })));
       setLoadingWorkers(false);
     };
     fetchWorkers();
   }, [makeApiCall, authToken]);
 
-  useEffect(() => {
-    console.log("workers state", workers);
-  }, [workers]);
-
-  // ---------- enable delivery ----------
+  // enable delivery
   useEffect(() => {
     if (project) {
       setEnableDelivery(project.status.toLowerCase() === "completed");
     }
   }, [project]);
 
+  // ---------- revision filter data ----------
+  const revisionOptions = useMemo(() => {
+    const set = new Set<string>();
+    rfqDeliverables.forEach((d) => {
+      if (
+        d.revision !== undefined &&
+        d.revision !== null &&
+        d.revision !== ""
+      ) {
+        set.add(String(d.revision));
+      }
+    });
+    return Array.from(set).sort();
+  }, [rfqDeliverables]);
+
+  const filteredDeliverables = useMemo(() => {
+    if (revisionFilter === "ALL") return rfqDeliverables;
+    return rfqDeliverables.filter(
+      (d) => String(d.revision ?? "") === revisionFilter
+    );
+  }, [rfqDeliverables, revisionFilter]);
+
+  // only show children when parent expanded (no orphan fallback)
+  const visibleRows = useMemo(() => {
+    const rows: RFQDeliverable[] = [];
+
+    const parents = filteredDeliverables.filter((d) => {
+      if (d.sno == null) return true;
+      return !String(d.sno).includes(".");
+    });
+
+    parents.forEach((parent) => {
+      rows.push(parent);
+      const base = getBaseSno(parent.sno);
+      const isExpanded = base && expandedParents.has(base);
+
+      if (isExpanded) {
+        const children = filteredDeliverables.filter((d) =>
+          isChildOf(d, parent)
+        );
+        const sortedChildren = [...children].sort((a, b) => {
+          const aStr = String(a.sno ?? "");
+          const bStr = String(b.sno ?? "");
+          const aParts = aStr.split(".").map(Number);
+          const bParts = bStr.split(".").map(Number);
+          for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+            const av = aParts[i] ?? 0;
+            const bv = bParts[i] ?? 0;
+            if (av !== bv) return av - bv;
+          }
+          return 0;
+        });
+        rows.push(...sortedChildren);
+      }
+    });
+
+    return rows;
+  }, [filteredDeliverables, expandedParents]);
+
+  // ---------- early return AFTER all hooks ----------
   if ((fetching && fetchType === "getProject") || !project) {
     return <Loading />;
   }
@@ -213,7 +320,12 @@ const ProjectControlPm: React.FC = () => {
     );
   };
 
-  // ---------- add sub‑rows (1.1, 1.2 …) ----------
+  // delete only local/new rows
+  const handleDeleteRow = (id: number) => {
+    setRfqDeliverables((prev) => prev.filter((row) => row.id !== id));
+  };
+
+  // ---------- add sub‑rows ----------
   const getNextSubSno = (parentSno: number | string | undefined) => {
     if (parentSno === undefined || parentSno === null) return "";
     const base = Number(String(parentSno).split(".")[0]);
@@ -224,17 +336,14 @@ const ProjectControlPm: React.FC = () => {
         return Number(p) === base && String(d.sno).includes(".");
       })
       .map((d) => Number(String(d.sno).split(".")[1] || "0"));
-
-    const nextChild = (childs.length ? Math.max(...childs) : 0) + 1;
-    return `${base}.${nextChild}`;
+    return `${base}.${(childs.length ? Math.max(...childs) : 0) + 1}`;
   };
 
   const handleAddSubRow = (parent: RFQDeliverable) => {
     const newSno = getNextSubSno(parent.sno);
     if (!newSno) return;
-
     const newRow: RFQDeliverable = {
-      id: Date.now(), // temp id
+      id: Date.now(),
       sno: newSno,
       drawing_no: parent.drawing_no,
       title: parent.title,
@@ -253,30 +362,31 @@ const ProjectControlPm: React.FC = () => {
       const list = [...prev];
       const parentIndex = list.findIndex((d) => d.id === parent.id);
       let insertIndex = parentIndex + 1;
-
       for (let i = parentIndex + 1; i < list.length; i++) {
         const s = list[i].sno;
         if (s && String(s).startsWith(String(parent.sno).split(".")[0] + ".")) {
           insertIndex = i + 1;
-        } else {
-          break;
-        }
+        } else break;
       }
-
       list.splice(insertIndex, 0, newRow);
       return list;
     });
+
+    const base = getBaseSno(parent.sno);
+    if (base) {
+      setExpandedParents((prev) => {
+        const next = new Set(prev);
+        next.add(base);
+        return next;
+      });
+    }
   };
 
-  // ---------- single Update button ----------
-  // ---------- single Update button ----------
+  // ---------- Update Deliverables ----------
   const handleUpdateAll = async () => {
     if (!project || !project.id) return;
-
     setSavingUpdate(true);
-
     try {
-      // 1) create NEW rows via POST (only allowed RFQ fields)
       const newRows = rfqDeliverables.filter((d) => d.isNew);
       if (newRows.length > 0) {
         const deliverablesPayload = newRows.map((d) => ({
@@ -285,7 +395,6 @@ const ProjectControlPm: React.FC = () => {
           title: d.title,
           deliverables: d.deliverables,
           discipline: d.discipline,
-          // NO stage, revision, hours, worker_id, work_person here
         }));
         const respNew = await makeApiCall(
           "post",
@@ -302,7 +411,6 @@ const ProjectControlPm: React.FC = () => {
         }
       }
 
-      // 2) patch EXISTING rows via deliverable_id
       const existingRows = rfqDeliverables.filter((d) => !d.isNew && d.id > 0);
       for (const row of existingRows) {
         const updates: any = {
@@ -315,7 +423,7 @@ const ProjectControlPm: React.FC = () => {
           revision: row.revision,
           hours: row.hours,
           worker_id: row.worker_id,
-          work_person: row.work_person, // worker name
+          work_person: row.work_person,
         };
 
         const respPatch = await makeApiCall(
@@ -334,7 +442,6 @@ const ProjectControlPm: React.FC = () => {
         }
       }
 
-      // 3) refetch final list
       const refetch = await makeApiCall(
         "get",
         API_ENDPOINT.UPDATES_CREATE_RFQ_DELIVERABLES(project.id),
@@ -346,13 +453,20 @@ const ProjectControlPm: React.FC = () => {
       if (refetch?.status === 200 && Array.isArray(refetch.data)) {
         const normalized = refetch.data.map((item: any) => ({
           ...item,
+          consumed_time:
+            item.consumed_time && typeof item.consumed_time === "object"
+              ? {
+                  hours: item.consumed_time.hours ?? 0,
+                  minutes: item.consumed_time.minutes ?? 0,
+                  seconds: item.consumed_time.seconds ?? 0,
+                }
+              : item.consumed_time ?? null,
           work_person: item.work_person || item.assigned_user?.name || null,
           worker_id: item.worker_id ?? null,
           isNew: false,
         }));
         setRfqDeliverables(normalized);
       }
-
       toast.success("Deliverables updated");
     } catch (e: any) {
       toast.error(e.message || "Failed to update");
@@ -361,6 +475,35 @@ const ProjectControlPm: React.FC = () => {
     }
   };
 
+  // ---------- Approve Project ----------
+  const handleApproveProject = async () => {
+    if (!project?.id) return;
+
+    setApproving(true);
+    try {
+      const response = await makeApiCall(
+        "patch",
+        API_ENDPOINT.EDIT_PROJECT(project.id),
+        { send_to_workers: true },
+        "application/json",
+        authToken,
+        "approveProject"
+      );
+
+      if (response?.status === 200) {
+        setProject((prev: any) => ({ ...prev, send_to_workers: true }));
+        toast.success("Project approved and sent to workers");
+      } else {
+        throw new Error(response?.data?.detail || "Approval failed");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Approval failed");
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  // ---------- Delivery ----------
   const handleDeliverySubmit = async () => {
     if (!project) return;
     const response = await makeApiCall(
@@ -406,17 +549,41 @@ const ProjectControlPm: React.FC = () => {
     setShowDeliveryDialog(true);
   };
 
+  const openStageModal = () => {
+    setStageInput("");
+    setStageInputList(stageOptions);
+    setShowStageModal(true);
+  };
+
+  const handleAddStageToList = () => {
+    const v = stageInput.trim();
+    if (!v) return;
+    if (stageInputList.includes(v)) {
+      toast.error("Stage already added");
+      return;
+    }
+    setStageInputList((prev) => [...prev, v]);
+    setStageInput("");
+  };
+
+  const handleSaveStages = () => {
+    setStageOptions(stageInputList);
+    setShowStageModal(false);
+  };
+
   return (
     <div className="w-full h-full flex flex-col bg-slate-50">
+      {/* Header */}
       <div className="w-full flex flex-col items-center pt-8 pb-4 px-2 md:px-8">
         <h1 className="text-xl font-bold text-slate-800">
           Project Control (PM)
         </h1>
       </div>
 
+      {/* Main Content */}
       <div className="flex-1 bg-white flex justify-center items-start px-0 md:px-8 overflow-y-auto">
         <div className="w-full bg-white rounded-2xl p-2 md:p-8 border mt-2 space-y-8">
-          {/* Project overview */}
+          {/* Project Overview */}
           <div className="rounded-2xl shadow-lg border bg-white">
             <div className="flex items-center justify-between px-6 py-4 rounded-t-2xl bg-gradient-to-r from-blue-600 to-blue-400">
               <div className="flex items-center gap-3">
@@ -429,9 +596,6 @@ const ProjectControlPm: React.FC = () => {
                 {project.project_id}
               </span>
             </div>
-
-            {/* add your project detail fields here */}
-
             <div className="px-6 py-4 flex items-center gap-3">
               <Progress
                 value={project.status === "draft" ? 50 : 100}
@@ -443,7 +607,7 @@ const ProjectControlPm: React.FC = () => {
             </div>
           </div>
 
-          {/* Working + RFQ assign section */}
+          {/* Working + RFQ Assign Section */}
           <div className="rounded-2xl shadow-lg border bg-white">
             <div className="flex items-center justify-between px-6 py-4 rounded-t-2xl bg-gradient-to-r from-indigo-600 to-indigo-400">
               <div className="flex items-center gap-3">
@@ -462,6 +626,8 @@ const ProjectControlPm: React.FC = () => {
                   <Settings2 size={18} />
                   <span className="hidden sm:inline">Stages</span>
                 </button>
+
+                {/* Update button */}
                 <Button
                   onClick={handleUpdateAll}
                   disabled={savingUpdate}
@@ -469,22 +635,53 @@ const ProjectControlPm: React.FC = () => {
                 >
                   {savingUpdate ? "Updating..." : "Update"}
                 </Button>
+
+                {/* Approve button */}
+                {!project.send_to_workers && (
+                  <Button
+                    onClick={handleApproveProject}
+                    disabled={approving}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {approving ? "Approving..." : "Approve"}
+                  </Button>
+                )}
               </div>
             </div>
 
+            {/* RFQ Deliverables Table */}
             <div className="px-6 py-6">
-              <div className="flex items-center gap-2 mb-4">
-                <ClipboardList className="text-indigo-600" size={20} />
-                <span className="text-lg font-semibold text-slate-800">
-                  RFQ Deliverables
-                </span>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="text-indigo-600" size={20} />
+                  <span className="text-lg font-semibold text-slate-800">
+                    RFQ Deliverables
+                  </span>
+                </div>
+
+                {/* Revision filter */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-600">Revision:</span>
+                  <select
+                    value={revisionFilter}
+                    onChange={(e) => setRevisionFilter(e.target.value)}
+                    className="border rounded px-2 py-1 text-xs bg-white focus:border-indigo-500 focus:outline-none"
+                  >
+                    <option value="ALL">All</option>
+                    {revisionOptions.map((rev) => (
+                      <option key={rev} value={rev}>
+                        {rev}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {loadingRFQ ? (
                 <div className="text-center py-8 text-slate-500">
                   Loading deliverables...
                 </div>
-              ) : rfqDeliverables.length > 0 ? (
+              ) : visibleRows.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border rounded-lg overflow-hidden">
                     <thead className="bg-slate-100 text-slate-700">
@@ -499,135 +696,185 @@ const ProjectControlPm: React.FC = () => {
                         <th className="px-4 py-3 text-left">Hours</th>
                         <th className="px-4 py-3 text-left">Work Person</th>
                         <th className="px-4 py-3 text-left">Consumed Time</th>
+                        <th className="px-4 py-3 text-left">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {rfqDeliverables.map((item, index) => (
-                        <tr
-                          key={item.id}
-                          className={`border-t ${
-                            item.isNew ? "bg-amber-50" : "bg-white"
-                          } hover:bg-slate-50`}
-                        >
-                          <td className="px-4 py-3">{item.sno ?? index + 1}</td>
+                      {visibleRows.map((item, index) => {
+                        const isParent =
+                          item.sno == null || !String(item.sno).includes(".");
+                        const base = getBaseSno(item.sno);
+                        const parentHasChild = isParent && hasChildren(item);
+                        const isExpanded =
+                          isParent && base ? expandedParents.has(base) : false;
+                        const isChildRow =
+                          item.sno != null && String(item.sno).includes(".");
 
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2 group">
-                              <button
-                                type="button"
-                                className="opacity-0 group-hover:opacity-100 transition text-emerald-600 hover:text-emerald-800"
-                                onClick={() => handleAddSubRow(item)}
-                              >
-                                <Plus size={16} />
-                              </button>
-                              <span>{item.drawing_no || "—"}</span>
-                            </div>
-                          </td>
+                        const displayStage =
+                          isParent && parentHasChild
+                            ? getLastChildStage(item) ?? item.stage
+                            : item.stage;
 
-                          <td className="px-4 py-3">{item.title || "—"}</td>
-                          <td className="px-4 py-3">
-                            {item.deliverables || "—"}
-                          </td>
-                          <td className="px-4 py-3">
-                            {item.discipline || "—"}
-                          </td>
+                        return (
+                          <tr
+                            key={item.id}
+                            className={`border-t ${
+                              item.isNew ? "bg-amber-50" : "bg-white"
+                            } hover:bg-slate-50`}
+                          >
+                            {/* Sno + expand/collapse for parents */}
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1">
+                                {isParent && parentHasChild && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleParentExpanded(item)}
+                                    className="text-slate-600 hover:text-slate-900 mr-1"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown size={14} />
+                                    ) : (
+                                      <ChevronRight size={14} />
+                                    )}
+                                  </button>
+                                )}
+                                <span>{item.sno ?? index + 1}</span>
+                              </div>
+                            </td>
 
-                          <td className="px-4 py-3">
-                            <select
-                              value={item.stage ?? ""}
-                              onChange={(e) =>
-                                handleFieldChange(
-                                  item.id,
-                                  "stage",
-                                  e.target.value
-                                )
-                              }
-                              className="w-28 border rounded px-2 py-1 text-xs bg-white focus:border-indigo-500 focus:outline-none"
-                            >
-                              <option value="">Select</option>
-                              {stageOptions.map((st) => (
-                                <option key={st} value={st}>
-                                  {st}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
+                            {/* Drawing No + add sub row */}
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2 group">
+                                {isParent && (
+                                  <button
+                                    type="button"
+                                    className="opacity-0 group-hover:opacity-100 transition text-emerald-600 hover:text-emerald-800"
+                                    onClick={() => handleAddSubRow(item)}
+                                  >
+                                    <Plus size={16} />
+                                  </button>
+                                )}
+                                <span className={isChildRow ? "pl-4" : ""}>
+                                  {item.drawing_no || "—"}
+                                </span>
+                              </div>
+                            </td>
 
-                          <td className="px-4 py-3">
-                            <input
-                              type="text"
-                              value={item.revision ?? ""}
-                              onChange={(e) =>
-                                handleFieldChange(
-                                  item.id,
-                                  "revision",
-                                  e.target.value
-                                )
-                              }
-                              className="w-20 border rounded px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-                              placeholder="Rev"
-                            />
-                          </td>
+                            <td className="px-4 py-3">{item.title || "—"}</td>
+                            <td className="px-4 py-3">
+                              {item.deliverables || "—"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {item.discipline || "—"}
+                            </td>
 
-                          <td className="px-4 py-3">
-                            <input
-                              type="tel"
-                              value={item.hours ?? ""}
-                              onChange={(e) =>
-                                handleHoursChange(item.id, e.target.value)
-                              }
-                              className="w-20 border rounded px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-                              placeholder="Hours"
-                            />
-                          </td>
-
-                          {/* Worker select */}
-                          <td className="px-4 py-3">
-                            <select
-                              value={item.worker_id ?? ""}
-                              onChange={(e) => {
-                                const workerId = e.target.value
-                                  ? Number(e.target.value)
-                                  : null;
-                                const worker =
-                                  workers.find((w) => w.id === workerId) ||
-                                  null;
-
-                                setRfqDeliverables((prev) =>
-                                  prev.map((row) =>
-                                    row.id === item.id
-                                      ? {
-                                          ...row,
-                                          worker_id: workerId,
-                                          work_person: worker
-                                            ? worker.name
-                                            : null,
-                                        }
-                                      : row
+                            {/* Stage (parent displays last child stage) */}
+                            <td className="px-4 py-3">
+                              <select
+                                value={displayStage ?? ""}
+                                onChange={(e) =>
+                                  handleFieldChange(
+                                    item.id,
+                                    "stage",
+                                    e.target.value
                                   )
-                                );
-                              }}
-                              className="w-40 border rounded px-2 py-1 text-xs bg-white focus:border-indigo-500 focus:outline-none"
-                              disabled={loadingWorkers}
-                            >
-                              <option value="">
-                                {loadingWorkers
-                                  ? "Loading..."
-                                  : "Select worker"}
-                              </option>
-                              {workers.map((w) => (
-                                <option key={w.id} value={w.id}>
-                                  {w.name}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
+                                }
+                                className="w-28 border rounded px-2 py-1 text-xs bg-white focus:border-indigo-500 focus:outline-none"
+                              >
+                                <option value="">Select</option>
+                                {stageOptions.map((st) => (
+                                  <option key={st} value={st}>
+                                    {st}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
 
-                          <td className="px-4 py-3">
-                            <span>{item.consumed_time ?? "—"}</span>
-                          </td>
-                        </tr>
-                      ))}
+                            <td className="px-4 py-3">
+                              <input
+                                type="text"
+                                value={item.revision ?? ""}
+                                onChange={(e) =>
+                                  handleFieldChange(
+                                    item.id,
+                                    "revision",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-20 border rounded px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                                placeholder="Rev"
+                              />
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <input
+                                type="tel"
+                                value={item.hours ?? ""}
+                                onChange={(e) =>
+                                  handleHoursChange(item.id, e.target.value)
+                                }
+                                className="w-20 border rounded px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                                placeholder="Hours"
+                              />
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <select
+                                value={item.worker_id ?? ""}
+                                onChange={(e) => {
+                                  const workerId = e.target.value
+                                    ? Number(e.target.value)
+                                    : null;
+                                  const worker =
+                                    workers.find((w) => w.id === workerId) ||
+                                    null;
+                                  setRfqDeliverables((prev) =>
+                                    prev.map((row) =>
+                                      row.id === item.id
+                                        ? {
+                                            ...row,
+                                            worker_id: workerId,
+                                            work_person: worker?.name ?? null,
+                                          }
+                                        : row
+                                    )
+                                  );
+                                }}
+                                className="w-40 border rounded px-2 py-1 text-xs bg-white focus:border-indigo-500 focus:outline-none"
+                                disabled={loadingWorkers}
+                              >
+                                <option value="">
+                                  {loadingWorkers
+                                    ? "Loading..."
+                                    : "Select worker"}
+                                </option>
+                                {workers.map((w) => (
+                                  <option key={w.id} value={w.id}>
+                                    {w.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+
+                            <td className="px-4 py-3">
+                              {formatDuration(item.consumed_time)}
+                            </td>
+
+                            {/* Actions: delete only for newly created rows */}
+                            <td className="px-4 py-3">
+                              {item.isNew && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteRow(item.id)}
+                                  className="text-red-500 hover:text-red-700 text-xs px-2 py-1 border border-red-200 rounded"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -639,7 +886,7 @@ const ProjectControlPm: React.FC = () => {
             </div>
           </div>
 
-          {/* Delivery control for PM */}
+          {/* Delivery control */}
           <div className="rounded-2xl shadow-lg border bg-white">
             <div className="flex items-center justify-between px-6 py-4 rounded-t-2xl bg-gradient-to-r from-green-600 to-green-400">
               <div className="flex items-center gap-3">
@@ -671,14 +918,13 @@ const ProjectControlPm: React.FC = () => {
         </div>
       </div>
 
-      {/* Delivery selection dialog */}
-      
-
       {/* Stage manager dialog */}
       <Dialog open={showStageModal} onOpenChange={setShowStageModal}>
         <DialogContent className="p-6">
           <DialogHeader>
-            <DialogTitle className="text-center pb-4">Manage Stages</DialogTitle>
+            <DialogTitle className="text-center pb-4">
+              Manage Stages
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex gap-2">
