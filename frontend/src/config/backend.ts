@@ -112,6 +112,9 @@ export const API_ENDPOINT = {
   DELIVERABLES_PATCH_REQUEST: (deliverable_id: string) =>
     `${API_URL}/updates/estimation/deliverables/${deliverable_id}`,
   GET_WORKERS_LIST: `${API_URL}/updates/get-workers-data`,
-  GET_WORKERS__WORK_DATA: (worker_id: string) =>
-    `${API_URL}/updates/workers/${worker_id}/work`,
+  GET_WORKERS_WORK_DATA: (worker_id: string, project_id: string) =>
+    `${API_URL}/updates/workers/${worker_id}/work/${project_id}`,
+
+  GET_WORKERS_WORK_PROJECT_DATA: (worker_id: string) =>
+    `${API_URL}/updates/workers/${worker_id}/projects`,
 };

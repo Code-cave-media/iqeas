@@ -19,7 +19,6 @@ export async function createWorkAllocationFromEstimation(
     throw new Error("No estimation deliverables found");
   }
 
-  // Get project stages
   const projectStages = await client.query(
     `SELECT * FROM stages WHERE project_id = $1 ORDER BY created_at ASC`,
     [projectId]
