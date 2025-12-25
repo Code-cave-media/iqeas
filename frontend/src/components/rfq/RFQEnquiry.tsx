@@ -14,8 +14,75 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Pencil, Check, X } from "lucide-react";
 
 import SendToEstimationModal from "./SendToEstimationModal";
+
+const InfoItem = ({ label, value }: { label: string; value: any }) => (
+  <div className="space-y-1">
+    <p className="text-xs text-muted-foreground">{label}</p>
+    <p className="text-sm font-medium break-words">{value || "-"}</p>
+  </div>
+);
+
+const EditableInfoItem = ({
+  label,
+  value,
+  onSave,
+}: {
+  label: string;
+  value: any;
+  onSave: (newValue: any) => void;
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value);
+
+  const handleSave = () => {
+    onSave(editValue);
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditValue(value);
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        {!isEditing ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsEditing(true)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        ) : (
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" onClick={handleSave}>
+              <Check className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleCancel}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+      {isEditing ? (
+        <Input
+          value={editValue || ""}
+          onChange={(e) => setEditValue(e.target.value)}
+          className="text-sm"
+        />
+      ) : (
+        <p className="text-sm font-medium break-words">{value || "-"}</p>
+      )}
+    </div>
+  );
+};
 
 export default function RFQEnquiry() {
   const { project_id } = useParams();
@@ -71,12 +138,25 @@ export default function RFQEnquiry() {
     fetchProject();
   }, [project_id]);
 
-  const InfoItem = ({ label, value }: { label: string; value: any }) => (
-    <div className="space-y-1">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium break-words">{value || "-"}</p>
-    </div>
-  );
+  const handleSaveField = async (field: string, newValue: any) => {
+    if (!project_id || !authToken) return;
+
+    const res = await makeApiCall(
+      "patch",
+      API_ENDPOINT.EDIT_PROJECT(project_id),
+      { [field]: newValue },
+      "application/json",
+      authToken,
+      "editProject"
+    );
+
+    if (res.status === 200) {
+      setProject((prev: any) => ({ ...prev, [field]: newValue }));
+      toast.success(`${field} updated successfully`);
+    } else {
+      toast.error("Failed to update field");
+    }
+  };
 
   if (loading) {
     return (
@@ -128,39 +208,91 @@ export default function RFQEnquiry() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <InfoItem label="Project Name" value={project.name} />
+            <EditableInfoItem
+              label="Project Name"
+              value={project.name}
+              onSave={(newValue) => handleSaveField("name", newValue)}
+            />
             <InfoItem label="Project ID" value={project.project_id} />
-            <InfoItem label="Client Name" value={project.client_name} />
-            <InfoItem label="Client Company" value={project.client_company} />
-            <InfoItem label="Location" value={project.location} />
-            <InfoItem label="Project Type" value={project.project_type} />
-            <InfoItem label="Priority" value={project.priority} />
+            <EditableInfoItem
+              label="Client Name"
+              value={project.client_name}
+              onSave={(newValue) => handleSaveField("client_name", newValue)}
+            />
+            <EditableInfoItem
+              label="Client Company"
+              value={project.client_company}
+              onSave={(newValue) => handleSaveField("client_company", newValue)}
+            />
+            <EditableInfoItem
+              label="Location"
+              value={project.location}
+              onSave={(newValue) => handleSaveField("location", newValue)}
+            />
+            <EditableInfoItem
+              label="Project Type"
+              value={project.project_type}
+              onSave={(newValue) => handleSaveField("project_type", newValue)}
+            />
+            <EditableInfoItem
+              label="Priority"
+              value={project.priority}
+              onSave={(newValue) => handleSaveField("priority", newValue)}
+            />
             <InfoItem label="Status" value={project.status} />
             <InfoItem label="Progress" value={`${project.progress}%`} />
-            <InfoItem
+            <EditableInfoItem
               label="Received Date"
               value={
                 project.received_date
                   ? new Date(project.received_date).toLocaleDateString()
                   : "-"
               }
+              onSave={(newValue) => handleSaveField("received_date", newValue)}
             />
-            <InfoItem label="Contact Person" value={project.contact_person} />
-            <InfoItem label="Phone" value={project.contact_person_phone} />
-            <InfoItem label="Email" value={project.contact_person_email} />
-            <InfoItem label="Notes" value={project.notes} />
+            <EditableInfoItem
+              label="Contact Person"
+              value={project.contact_person}
+              onSave={(newValue) => handleSaveField("contact_person", newValue)}
+            />
+            <EditableInfoItem
+              label="Phone"
+              value={project.contact_person_phone}
+              onSave={(newValue) =>
+                handleSaveField("contact_person_phone", newValue)
+              }
+            />
+            <EditableInfoItem
+              label="Email"
+              value={project.contact_person_email}
+              onSave={(newValue) =>
+                handleSaveField("contact_person_email", newValue)
+              }
+            />
+            <EditableInfoItem
+              label="Notes"
+              value={project.notes}
+              onSave={(newValue) => handleSaveField("notes", newValue)}
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Created By */}
       <Card>
         <CardHeader>
           <CardTitle>Created By</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <InfoItem label="Name" value={project.user?.name} />
-          <InfoItem label="Email" value={project.user?.email} />
+          <EditableInfoItem
+            label="Name"
+            value={project.user?.name}
+            onSave={(newValue) => handleSaveField("user.name", newValue)}
+          />
+          <EditableInfoItem
+            label="Email"
+            value={project.user?.email}
+            onSave={(newValue) => handleSaveField("user.email", newValue)}
+          />
         </CardContent>
       </Card>
 
@@ -172,8 +304,23 @@ export default function RFQEnquiry() {
           <CardContent className="space-y-4">
             {project.uploaded_files.map((file: any) => (
               <div key={file.id} className="space-y-2">
-                <InfoItem label="Label" value={file.label} />
-                <InfoItem label="File" value={file.file} />
+                <EditableInfoItem
+                  label="Label"
+                  value={file.label}
+                  onSave={(newValue) =>
+                    handleSaveField(
+                      `uploaded_files[${file.id}].label`,
+                      newValue
+                    )
+                  }
+                />
+                <EditableInfoItem
+                  label="File"
+                  value={file.file}
+                  onSave={(newValue) =>
+                    handleSaveField(`uploaded_files[${file.id}].file`, newValue)
+                  }
+                />
                 <Separator />
               </div>
             ))}
