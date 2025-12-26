@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { get } from "http";
 
-export const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1`;
+// export const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1`;
+export const API_URL = `https://43246a342bab.ngrok-free.app/api/v1`;
+
 export const API_ENDPOINT = {
   VERIFY_USER: `${API_URL}/auth/me `,
   LOGIN: `${API_URL}/auth/login`,
@@ -117,4 +119,9 @@ export const API_ENDPOINT = {
 
   GET_WORKERS_WORK_PROJECT_DATA: (worker_id: string) =>
     `${API_URL}/updates/workers/${worker_id}/projects`,
+
+  SENT_QUOTAION_TO_CLIENT: `${API_URL}/updates/client/send-quotation`,
+
+  GET_PURCHASE_ORDER: (project_id: string) =>
+    `${API_URL}/updates/getPo/${project_id}`,
 };

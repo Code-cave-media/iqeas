@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UploadCloud, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,17 +23,57 @@ export default function RFQPO() {
   const [dragActive, setDragActive] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [poData, setPoData] = useState<any | null>(null);
+  const [loadingPo, setLoadingPo] = useState(false);
+
   const { makeApiCall } = useAPICall();
   const { authToken } = useAuth();
 
-  // Handle file selection / drop
+  /* ---------------- FETCH EXISTING PO ---------------- */
+  const fetchPurchaseOrder = async () => {
+    if (!project_id) return;
+
+    try {
+      setLoadingPo(true);
+
+      const res = await makeApiCall(
+        "get",
+        API_ENDPOINT.GET_PURCHASE_ORDER(project_id),
+        {},
+        "application/json",
+        authToken,
+        "getPurchaseOrder"
+      );
+
+      if (res.status === 200) {
+        const list = res.data?.data ?? res.data ?? [];
+        const first = Array.isArray(list) && list.length > 0 ? list[0] : null;
+        setPoData(first);
+      } else {
+        setPoData(null);
+      }
+    } catch {
+      setPoData(null);
+    } finally {
+      setLoadingPo(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPurchaseOrder();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project_id]);
+
+  /* ---------------- FILE HANDLERS ---------------- */
   const handleFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
-    const newFileList = Array.from(newFiles).map((file) => ({
+
+    const mapped = Array.from(newFiles).map((file) => ({
       file,
       label: file.name,
     }));
-    setFilesWithLabel((prev) => [...prev, ...newFileList]);
+
+    setFilesWithLabel((prev) => [...prev, ...mapped]);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -42,25 +82,23 @@ export default function RFQPO() {
     handleFiles(e.dataTransfer.files);
   };
 
-  // Remove a file
   const removeFile = (index: number) => {
     setFilesWithLabel((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Update label
-  const updateLabel = (index: number, newLabel: string) => {
+  const updateLabel = (index: number, value: string) => {
     setFilesWithLabel((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, label: newLabel } : item))
+      prev.map((item, i) => (i === index ? { ...item, label: value } : item))
     );
   };
 
-  // Upload files — matches RFCDashboard.tsx exactly
+  /* ---------------- UPLOAD FILES ---------------- */
   const uploadFiles = async (): Promise<number[] | null> => {
     const uploadedIds: number[] = [];
 
     for (const { file, label } of filesWithLabel) {
       if (!label.trim()) {
-        toast.error(`Please provide a label for ${file.name}`);
+        toast.error(`Label required for ${file.name}`);
         return null;
       }
 
@@ -68,15 +106,8 @@ export default function RFQPO() {
       formData.append("label", label);
       formData.append("file", file);
 
-      console.log("Preparing upload:", {
-        label,
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-      });
-
       try {
-        const response = await makeApiCall(
+        const res = await makeApiCall(
           "post",
           API_ENDPOINT.UPLOAD_FILE,
           formData,
@@ -85,28 +116,15 @@ export default function RFQPO() {
           "uploadFile"
         );
 
-        console.log("Upload response:", response);
-
-        if (response?.status === 201 || response?.status === 200) {
-          const fileId = response.data?.id;
-          if (fileId) {
-            uploadedIds.push(fileId);
-            toast.success(`Uploaded: ${file.name}`);
-          } else {
-            toast.error(`No ID returned for ${file.name}`);
-            return null;
-          }
+        if (res?.status === 200 || res?.status === 201) {
+          uploadedIds.push(res.data.id);
+          toast.success(`Uploaded ${file.name}`);
         } else {
-          toast.error(
-            `Upload failed: ${file.name} - ${
-              response?.detail || "Unknown error"
-            }`
-          );
+          toast.error(`Failed to upload ${file.name}`);
           return null;
         }
-      } catch (err: any) {
-        console.error("Upload error:", err);
-        toast.error(`Failed to upload ${file.name}`);
+      } catch {
+        toast.error(`Upload error: ${file.name}`);
         return null;
       }
     }
@@ -114,21 +132,15 @@ export default function RFQPO() {
     return uploadedIds;
   };
 
-  // Submit PO — now includes required received_date
+  /* ---------------- SUBMIT PO ---------------- */
   const submitPO = async () => {
     if (!project_id) {
-      toast.error("Project ID is missing");
+      toast.error("Project ID missing");
       return;
     }
 
     if (filesWithLabel.length === 0) {
-      toast.error("Please upload at least one file");
-      return;
-    }
-
-    const missingLabel = filesWithLabel.find((f) => !f.label.trim());
-    if (missingLabel) {
-      toast.error(`Please provide a label for ${missingLabel.file.name}`);
+      toast.error("Upload at least one file");
       return;
     }
 
@@ -140,21 +152,17 @@ export default function RFQPO() {
       return;
     }
 
-    const today = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
+    const today = new Date().toISOString().split("T")[0];
 
     const payload = {
       project_id: Number(project_id),
-      po_number: `PO-${project_id}-${today.replace(/-/g, "")}`, // e.g., PO-123-20251222
-      received_date: today, // ← Required field to fix 500 error
+      po_number: `PO-${project_id}-${today.replace(/-/g, "")}`,
+      received_date: today,
       uploaded_file_ids: uploadedIds,
-      // Optional fields (add if your backend requires them)
-      // notes: "",
-      // terms_and_conditions: "",
-      // received_by_user_id: currentUserId, // if you have it
     };
 
     try {
-      const response = await makeApiCall(
+      const res = await makeApiCall(
         "post",
         API_ENDPOINT.UPDATE_UPLOAD_PO,
         payload,
@@ -163,26 +171,25 @@ export default function RFQPO() {
         "createPO"
       );
 
-      if (response?.status === 201 || response?.status === 200) {
-        toast.success("Purchase Order uploaded successfully");
-        setFilesWithLabel([]); // Clear files on success
+      if (res?.status === 200 || res?.status === 201) {
+        toast.success("Purchase Order uploaded");
+        setFilesWithLabel([]);
+        await fetchPurchaseOrder();
       } else {
-        toast.error(
-          `Failed to create PO: ${response?.detail || "Unknown error"}`
-        );
+        toast.error("Failed to submit PO");
       }
-    } catch (err) {
-      toast.error("Failed to submit PO");
-      console.error(err);
+    } catch {
+      toast.error("Submission failed");
     } finally {
       setSubmitting(false);
     }
   };
 
+  /* ---------------- UI ---------------- */
   return (
     <section className="w-full">
-      <div className="p-6">
-        {/* Drag & Drop Area */}
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-10">
+        {/* Upload Card */}
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -191,20 +198,32 @@ export default function RFQPO() {
           onDragLeave={() => setDragActive(false)}
           onDrop={handleDrop}
           onClick={() => inputRef.current?.click()}
-          className={`w-full h-[60vh] cursor-pointer border-2 border-dashed rounded-xl p-12 transition flex flex-col items-center justify-center ${
-            dragActive
-              ? "border-blue-500 bg-blue-50"
-              : "border-gray-300 hover:border-gray-400"
-          }`}
+          className={`cursor-pointer rounded-2xl border-2 border-dashed transition
+            ${
+              dragActive
+                ? "border-blue-500 bg-blue-50"
+                : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
+            }
+          `}
         >
-          <UploadCloud className="mx-auto h-20 w-20 text-gray-400 mb-6" />
-          <p className="text-lg font-medium text-gray-700 mb-2">
-            Drag & drop files here or{" "}
-            <span className="text-blue-600 font-semibold">click to upload</span>
-          </p>
-          <p className="text-sm text-gray-500 mb-4">
-            Supported: PDF, DOC, DOCX, XLS, PNG, JPG
-          </p>
+          <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+            <div className="mb-6 rounded-full bg-blue-100 p-6">
+              <UploadCloud className="h-12 w-12 text-blue-600" />
+            </div>
+
+            <h2 className="text-xl font-semibold text-gray-800">
+              Upload Purchase Order
+            </h2>
+
+            <p className="mt-2 text-sm text-gray-600">
+              Drag & drop files or{" "}
+              <span className="font-medium text-blue-600">browse</span>
+            </p>
+
+            <p className="mt-1 text-xs text-gray-500">
+              PDF, DOC, XLS, PNG, JPG
+            </p>
+          </div>
 
           <input
             ref={inputRef}
@@ -215,35 +234,37 @@ export default function RFQPO() {
           />
         </div>
 
-        {/* Uploaded Files List */}
+        {/* Files List */}
         {filesWithLabel.length > 0 && (
-          <div className="mt-8 space-y-4">
+          <div className="space-y-4">
             <h3 className="text-lg font-semibold">Files to Upload</h3>
+
             {filesWithLabel.map(({ file, label }, index) => (
               <div
                 key={index}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-gray-50 gap-4"
+                className="flex flex-col sm:flex-row items-center gap-4 rounded-xl border bg-white p-4 shadow-sm hover:shadow-md transition"
               >
-                <div className="flex items-center gap-3 flex-1">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50">
                   <FileText className="h-6 w-6 text-blue-600" />
-                  <div className="flex-1 min-w-0">
-                    <Input
-                      value={label}
-                      onChange={(e) => updateLabel(index, e.target.value)}
-                      placeholder="Enter file label (required)"
-                      className="text-sm"
-                    />
-                    <p className="text-xs text-gray-500 mt-1 truncate">
-                      {file.name} • {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
+                </div>
+
+                <div className="flex-1 w-full space-y-1">
+                  <Input
+                    value={label}
+                    onChange={(e) => updateLabel(index, e.target.value)}
+                    placeholder="File label"
+                    className="h-9"
+                  />
+                  <p className="text-xs text-gray-500 truncate">
+                    {file.name} • {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
                 </div>
 
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => removeFile(index)}
-                  className="text-red-500 hover:text-red-700"
+                  className="text-gray-400 hover:text-red-600"
                 >
                   <X className="h-5 w-5" />
                 </Button>
@@ -252,15 +273,72 @@ export default function RFQPO() {
           </div>
         )}
 
-        {/* Submit Button */}
-        <div className="flex justify-end mt-8">
+        {/* Submit */}
+        <div className="flex justify-end">
           <Button
             onClick={submitPO}
             disabled={filesWithLabel.length === 0 || submitting}
-            className="bg-blue-600 hover:bg-blue-700 px-8"
+            className="h-11 px-10 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-md"
           >
             {submitting ? "Uploading..." : "Upload Purchase Order"}
           </Button>
+        </div>
+
+        {/* Current PO */}
+        <div>
+          <h3 className="mb-4 text-lg font-semibold">Current Purchase Order</h3>
+
+          {loadingPo ? (
+            <p className="text-sm text-gray-500">Loading...</p>
+          ) : !poData ? (
+            <p className="text-sm text-gray-500">No PO found.</p>
+          ) : (
+            <div className="rounded-xl border bg-white p-6 shadow-sm space-y-4 text-sm">
+              <p>
+                <span className="text-gray-500">PO Number</span>
+                <br />
+                <span className="font-medium">{poData.po_number}</span>
+              </p>
+
+              <p>
+                <span className="text-gray-500">Status</span>
+                <br />
+                <span className="font-medium capitalize">{poData.status}</span>
+              </p>
+
+              <p>
+                <span className="text-gray-500">Received Date</span>
+                <br />
+                {poData.received_date
+                  ? new Date(poData.received_date).toLocaleString()
+                  : "-"}
+              </p>
+
+              {Array.isArray(poData.uploaded_files) &&
+                poData.uploaded_files.length > 0 && (
+                  <div>
+                    <p className="text-gray-500 mb-2">Files</p>
+                    <ul className="space-y-2">
+                      {poData.uploaded_files.map((f: any) => (
+                        <li
+                          key={f.id}
+                          className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2"
+                        >
+                          <span className="truncate">{f.label}</span>
+                          <a
+                            className="text-blue-600 text-sm font-medium"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            View
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+            </div>
+          )}
         </div>
       </div>
     </section>

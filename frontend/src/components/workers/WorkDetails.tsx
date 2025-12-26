@@ -182,7 +182,7 @@ export default function WorkDetails() {
 
               <ActionBtn
                 icon={Square}
-                text="Stop"
+                text="Checking"
                 color="red"
                 onClick={() => {
                   setStatus((s) => ({ ...s, [w.id]: "STOPPED" }));

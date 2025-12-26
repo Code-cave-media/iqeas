@@ -196,13 +196,11 @@ export const sendDeliverablesToAdmin = async (req, res) => {
     await client.query("BEGIN");
 
     const { project_id } = req.params;
-    const { status } = req.body;
+    const { estimation_status } = req.body;
 
-    console.log(`djsn ==> ${project_id}-${status}`)
+    console.log(`djsn ==> ${project_id}-${estimation_status}`);
 
-    if (
-      !project_id || !status
-    ) {
+    if (!project_id || !estimation_status) {
       return res.status(400).json(
         formatResponse({
           statusCode: 400,
@@ -214,7 +212,7 @@ export const sendDeliverablesToAdmin = async (req, res) => {
     const updated =
       await EstimationDeliverablesService.markDeliverablesSentToAdmin(
         project_id,
-        status,
+        estimation_status,
         client
       );
 
