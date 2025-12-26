@@ -168,6 +168,29 @@ export default function RFQEnquiry() {
 
   if (!project) return null;
 
+  const handleSendToEstimation = async () => {
+    if (!project_id || !authToken) return;
+
+    const res = await makeApiCall(
+      "patch",
+      API_ENDPOINT.EDIT_PROJECT(project_id),
+      { send_to_estimation: true },
+      "application/json",
+      authToken,
+      "sendToEstimation"
+    );
+
+    if (res.status === 200) {
+      setProject((prev: any) => ({
+        ...prev,
+        send_to_estimation: true,
+      }));
+      toast.success("Project sent to estimation");
+    } else {
+      toast.error("Failed to send project to estimation");
+    }
+  };
+
   return (
     <section className="max-w-6xl mx-auto p-6 space-y-6">
       {hasDeliverables && !project.send_to_estimation && (
@@ -283,16 +306,9 @@ export default function RFQEnquiry() {
           <CardTitle>Created By</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <EditableInfoItem
-            label="Name"
-            value={project.user?.name}
-            onSave={(newValue) => handleSaveField("user.name", newValue)}
-          />
-          <EditableInfoItem
-            label="Email"
-            value={project.user?.email}
-            onSave={(newValue) => handleSaveField("user.email", newValue)}
-          />
+          <InfoItem label="Label" value={project.user?.name} />
+
+          <InfoItem label="Label" value={project.user?.email} />
         </CardContent>
       </Card>
 
@@ -304,23 +320,8 @@ export default function RFQEnquiry() {
           <CardContent className="space-y-4">
             {project.uploaded_files.map((file: any) => (
               <div key={file.id} className="space-y-2">
-                <EditableInfoItem
-                  label="Label"
-                  value={file.label}
-                  onSave={(newValue) =>
-                    handleSaveField(
-                      `uploaded_files[${file.id}].label`,
-                      newValue
-                    )
-                  }
-                />
-                <EditableInfoItem
-                  label="File"
-                  value={file.file}
-                  onSave={(newValue) =>
-                    handleSaveField(`uploaded_files[${file.id}].file`, newValue)
-                  }
-                />
+                <InfoItem label="Label" value={file.label} />
+                <InfoItem label="Label" value={file.file} />
                 <Separator />
               </div>
             ))}

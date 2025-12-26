@@ -129,7 +129,7 @@ export async function getDeliverablesByProject(projectId, client = pool) {
 
 export async function getDeliverablesWithTotals(projectId, client = pool) {
   const estimationResult = await client.query(
-    `SELECT * FROM estimations WHERE project_id = $1 ORDER BY created_at DESC`,
+    `SELECT * FROM estimation_deliverables WHERE project_id = $1 ORDER BY created_at DESC`,
     [Number(projectId)]
   );
   if (estimationResult.rows.length === 0) {
@@ -143,7 +143,7 @@ console.log("its working", JSON.stringify(estimation, null, 2));
     `
     SELECT *
     FROM estimation_deliverables
-    WHERE project_id = $1::text
+    WHERE project_id = $1
     `,
     [projectId]
   );
