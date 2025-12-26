@@ -78,7 +78,6 @@ export default function EstimationDashboard() {
           if (response?.status === 200 && response.data?.[0]?.id) {
             map[project.project_id] = response.data[0].id;
           }
-          // If no ID found, map entry remains undefined — handled in UI
         })
       );
 
