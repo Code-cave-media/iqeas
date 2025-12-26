@@ -60,9 +60,9 @@ export const createEstimationHandler = async (req, res) => {
 
     await client.query("COMMIT");
 
-    return res.status(201).json(
+    return res.status(200).json(
       formatResponse({
-        statusCode: 201,
+        statusCode: 200,
         detail: "Estimation created",
         data: {
           project: projectUpdateData,

@@ -20,17 +20,62 @@ export async function createEstimation(data, client = pool) {
     notes = null,
   } = data;
 
-  const query = `
+  // 1️⃣ Check if estimation exists
+  const existing = await client.query(
+    `SELECT id FROM estimations WHERE project_id = $1`,
+    [project_id]
+  );
+
+  // 2️⃣ Update if exists
+  if (existing.rows.length > 0) {
+    const updateQuery = `
+      UPDATE estimations
+      SET
+        user_id = $2,
+        status = $3,
+        log = $4,
+        cost = $5,
+        deadline = $6,
+        approval_date = $7,
+        approved = $8,
+        sent_to_pm = $9,
+        forwarded_user_id = $10,
+        notes = $11,
+        updated_at = NOW()
+      WHERE project_id = $1
+      RETURNING *;
+    `;
+
+    const result = await client.query(updateQuery, [
+      project_id,
+      user_id,
+      status,
+      log,
+      cost,
+      deadline,
+      approval_date,
+      approved,
+      sent_to_pm,
+      forwarded_user_id,
+      notes,
+    ]);
+
+    return result.rows[0];
+  }
+
+  // 3️⃣ Else create new
+  const insertQuery = `
     INSERT INTO estimations (
       project_id, user_id, status, log, cost,
       deadline, approval_date, approved,
       sent_to_pm, forwarded_user_id, notes
     ) VALUES (
       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
-    ) RETURNING *;
+    )
+    RETURNING *;
   `;
 
-  const result = await client.query(query, [
+  const result = await client.query(insertQuery, [
     project_id,
     user_id,
     status,
@@ -46,6 +91,7 @@ export async function createEstimation(data, client = pool) {
 
   return result.rows[0];
 }
+
 
 /* ========================= GET BY ID ========================= */
 export async function getEstimationById(estimationId, client = pool) {

@@ -10,7 +10,6 @@ import { useAPICall } from "@/hooks/useApiCall";
 import { API_ENDPOINT } from "@/config/backend";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +51,7 @@ const EditableInfoItem = ({
     <div className="space-y-1">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">{label}</p>
+
         {!isEditing ? (
           <Button
             variant="ghost"
@@ -71,6 +71,7 @@ const EditableInfoItem = ({
           </div>
         )}
       </div>
+
       {isEditing ? (
         <Input
           value={editValue || ""}
@@ -93,11 +94,13 @@ export default function RFQEnquiry() {
   const [loading, setLoading] = useState(true);
   const [hasDeliverables, setHasDeliverables] = useState(false);
   const [openModal, setOpenModal] = useState(false);
+  const [sendingToPM, setSendingToPM] = useState(false);
+  const [hasPurchaseOrder, setHasPurchaseOrder] = useState(false);
 
   useEffect(() => {
     if (!project_id) return;
 
-    const fetchProject = async () => {
+    const fetchProjectAndMeta = async () => {
       setLoading(true);
 
       const res = await makeApiCall(
@@ -110,7 +113,8 @@ export default function RFQEnquiry() {
       );
 
       if (res.status === 200) {
-        setProject(res.data);
+        const projectData = res.data;
+        setProject(projectData);
 
         const delRes = await makeApiCall(
           "get",
@@ -120,7 +124,6 @@ export default function RFQEnquiry() {
           authToken,
           "getRFQDeliverables"
         );
-
         const rows =
           delRes?.data?.deliverables ||
           delRes?.data?.data ||
@@ -128,18 +131,32 @@ export default function RFQEnquiry() {
           [];
 
         setHasDeliverables(Array.isArray(rows) && rows.length > 0);
+
+        const poRes = await makeApiCall(
+          "get",
+          API_ENDPOINT.GET_PURCHASE_ORDER(project_id),
+          {},
+          "application/json",
+          authToken,
+          "getPurchaseOrder"
+        );
+
+        const poRows = Array.isArray(poRes?.data) ? poRes.data : [];
+
+        console.log("PO rows:", poRows);
+        setHasPurchaseOrder(poRows.length > 0);
       } else {
-        toast.error("Failed to fetch project details");
+        toast.error("Failed to fetch project");
       }
 
       setLoading(false);
     };
 
-    fetchProject();
+    fetchProjectAndMeta();
   }, [project_id]);
 
   const handleSaveField = async (field: string, newValue: any) => {
-    if (!project_id || !authToken) return;
+    if (!project_id) return;
 
     const res = await makeApiCall(
       "patch",
@@ -152,10 +169,42 @@ export default function RFQEnquiry() {
 
     if (res.status === 200) {
       setProject((prev: any) => ({ ...prev, [field]: newValue }));
-      toast.success(`${field} updated successfully`);
+      toast.success(`${field} updated`);
     } else {
-      toast.error("Failed to update field");
+      toast.error("Update failed");
     }
+  };
+
+  const handleSendToPM = async () => {
+    const estimationId = project?.estimation?.id;
+    if (!estimationId) return;
+
+    setSendingToPM(true);
+
+    const res = await makeApiCall(
+      "patch",
+      API_ENDPOINT.EDIT_ESTIMATION(estimationId),
+      { sent_to_pm: true },
+      "application/json",
+      authToken,
+      "sendToPM"
+    );
+
+    if (res.status === 200) {
+      toast.success("Sent to Project Manager");
+
+      setProject((prev: any) => ({
+        ...prev,
+        estimation: {
+          ...prev.estimation,
+          sent_to_pm: true,
+        },
+      }));
+    } else {
+      toast.error("Failed to send to PM");
+    }
+
+    setSendingToPM(false);
   };
 
   if (loading) {
@@ -168,38 +217,60 @@ export default function RFQEnquiry() {
 
   if (!project) return null;
 
-  const handleSendToEstimation = async () => {
-    if (!project_id || !authToken) return;
+  const hasPO = hasPurchaseOrder;
 
-    const res = await makeApiCall(
-      "patch",
-      API_ENDPOINT.EDIT_PROJECT(project_id),
-      { send_to_estimation: true },
-      "application/json",
-      authToken,
-      "sendToEstimation"
-    );
-
-    if (res.status === 200) {
-      setProject((prev: any) => ({
-        ...prev,
-        send_to_estimation: true,
-      }));
-      toast.success("Project sent to estimation");
-    } else {
-      toast.error("Failed to send project to estimation");
-    }
-  };
+  const showSendToPMBanner =
+    hasPO && project.estimation && project.estimation.sent_to_pm === false;
 
   return (
     <section className="max-w-6xl mx-auto p-6 space-y-6">
+      {showSendToPMBanner && (
+        <Alert className="border-purple-200 bg-purple-50">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <AlertTitle className="flex items-center gap-2">
+                Purchase Order Received
+                <Badge className="bg-purple-600 text-white">
+                  Action Required
+                </Badge>
+              </AlertTitle>
+
+              <AlertDescription>
+                PO is uploaded and estimation is completed. Send this project to
+                Project Manager.
+              </AlertDescription>
+            </div>
+
+            <Button
+              onClick={handleSendToPM}
+              disabled={sendingToPM}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {sendingToPM ? "Sending..." : "Send to PM"}
+            </Button>
+          </div>
+        </Alert>
+      )}
+
+      {project.estimation?.sent_to_pm && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertTitle className="flex items-center gap-2">
+            Sent to Project Manager
+            <Badge className="bg-green-600 text-white">Completed</Badge>
+          </AlertTitle>
+          <AlertDescription>
+            Estimation has been successfully forwarded to PM.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {hasDeliverables && !project.send_to_estimation && (
         <Alert className="border-blue-200 bg-blue-50">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <AlertTitle className="flex items-center gap-2">
                 Deliverables Completed
-                <Badge className="bg-green-400 hover:bg-green-400">Ready</Badge>
+                <Badge className="bg-green-400">Ready</Badge>
               </AlertTitle>
               <AlertDescription>
                 RFQ deliverables are completed. Send the project to estimation.
@@ -213,129 +284,88 @@ export default function RFQEnquiry() {
         </Alert>
       )}
 
-      {project.send_to_estimation && (
-        <Alert className="border-green-200 bg-green-50">
-          <AlertTitle className="flex items-center gap-2">
-            Sent to Estimation
-            <Badge className="bg-green-600 text-white">Completed</Badge>
-          </AlertTitle>
-          <AlertDescription>
-            This project is already sent for estimation.
-          </AlertDescription>
-        </Alert>
-      )}
-
       <Card>
         <CardHeader>
-          <CardTitle>Project Details</CardTitle>
+          <CardTitle className="flex gap-2">
+            Project Details
+            {project.estimation.approved ? (
+              <span className="text-xs text-teal-700 border border-teal-600 px-2 py-1 bg-green-300 rounded-full">
+                Approved
+              </span>
+            ) : (
+              <span className="text-xs text-amber-700 border border-amber-600 px-2 py-1 bg-amber-300 rounded-full">
+                Pending
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <EditableInfoItem
               label="Project Name"
               value={project.name}
-              onSave={(newValue) => handleSaveField("name", newValue)}
+              onSave={(v) => handleSaveField("name", v)}
             />
             <InfoItem label="Project ID" value={project.project_id} />
             <EditableInfoItem
               label="Client Name"
               value={project.client_name}
-              onSave={(newValue) => handleSaveField("client_name", newValue)}
+              onSave={(v) => handleSaveField("client_name", v)}
             />
             <EditableInfoItem
               label="Client Company"
               value={project.client_company}
-              onSave={(newValue) => handleSaveField("client_company", newValue)}
+              onSave={(v) => handleSaveField("client_company", v)}
             />
             <EditableInfoItem
               label="Location"
               value={project.location}
-              onSave={(newValue) => handleSaveField("location", newValue)}
+              onSave={(v) => handleSaveField("location", v)}
             />
             <EditableInfoItem
               label="Project Type"
               value={project.project_type}
-              onSave={(newValue) => handleSaveField("project_type", newValue)}
+              onSave={(v) => handleSaveField("project_type", v)}
             />
             <EditableInfoItem
               label="Priority"
               value={project.priority}
-              onSave={(newValue) => handleSaveField("priority", newValue)}
+              onSave={(v) => handleSaveField("priority", v)}
             />
             <InfoItem label="Status" value={project.status} />
             <InfoItem label="Progress" value={`${project.progress}%`} />
-            <EditableInfoItem
-              label="Received Date"
-              value={
-                project.received_date
-                  ? new Date(project.received_date).toLocaleDateString()
-                  : "-"
-              }
-              onSave={(newValue) => handleSaveField("received_date", newValue)}
-            />
-            <EditableInfoItem
-              label="Contact Person"
-              value={project.contact_person}
-              onSave={(newValue) => handleSaveField("contact_person", newValue)}
-            />
-            <EditableInfoItem
-              label="Phone"
-              value={project.contact_person_phone}
-              onSave={(newValue) =>
-                handleSaveField("contact_person_phone", newValue)
-              }
-            />
-            <EditableInfoItem
-              label="Email"
-              value={project.contact_person_email}
-              onSave={(newValue) =>
-                handleSaveField("contact_person_email", newValue)
-              }
-            />
-            <EditableInfoItem
-              label="Notes"
-              value={project.notes}
-              onSave={(newValue) => handleSaveField("notes", newValue)}
-            />
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Created By</CardTitle>
+          <CardTitle>Contact & Meta Details</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <InfoItem label="Label" value={project.user?.name} />
-
-          <InfoItem label="Label" value={project.user?.email} />
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <InfoItem label="Contact Person" value={project.contact_person} />
+          <InfoItem label="Phone" value={project.contact_person_phone} />
+          <InfoItem label="Email" value={project.contact_person_email} />
+          <InfoItem label="Location" value={project.location} />
+          <InfoItem
+            label="Received Date"
+            value={
+              project.received_date
+                ? new Date(project.received_date).toLocaleDateString()
+                : "-"
+            }
+          />
+          <InfoItem label="Notes" value={project.notes} />
         </CardContent>
       </Card>
-
-      {project.uploaded_files?.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Uploaded Files</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {project.uploaded_files.map((file: any) => (
-              <div key={file.id} className="space-y-2">
-                <InfoItem label="Label" value={file.label} />
-                <InfoItem label="Label" value={file.file} />
-                <Separator />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
 
       <SendToEstimationModal
         open={openModal}
         onClose={() => setOpenModal(false)}
         projectId={Number(project_id)}
-        onSuccess={() => {
-          setProject((p: any) => ({ ...p, send_to_estimation: true }));
-        }}
+        onSuccess={() =>
+          setProject((p: any) => ({ ...p, send_to_estimation: true }))
+        }
       />
     </section>
   );

@@ -22,7 +22,7 @@ router.post("/create-po", createPOHandler);
 // router.get("/:id", getPOByIdHandler);
 
 // Get POs by Project
-router.get("/project/:project_id", getPOsByProjectHandler);
+router.get("/getPo/:project_id", getPOsByProjectHandler);
 
 // Forward PO to Admin (Proposal team)
 router.patch("/:id/forward-to-admin", forwardPOToAdminHandler);

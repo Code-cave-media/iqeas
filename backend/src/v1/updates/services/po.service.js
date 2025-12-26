@@ -51,41 +51,12 @@ export async function createPurchaseOrder(data, client = pool) {
   return po;
 }
 
-export async function getPurchaseOrderById(poId, client = pool) {
+export async function getPurchaseOrderById(project_id, client = pool) {
   const query = `
-    SELECT 
-      po.*,
-      json_build_object(
-        'id', u.id,
-        'name', u.name,
-        'email', u.email
-      ) AS received_by_user,
-      (
-        SELECT json_build_object(
-          'id', p.id,
-          'project_id', p.project_id,
-          'name', p.name,
-          'client_name', p.client_name
-        )
-        FROM projects p
-        WHERE p.id = po.project_id
-      ) AS project,
-      COALESCE((
-        SELECT json_agg(json_build_object(
-          'id', uf.id,
-          'label', uf.label,
-          'file', uf.file
-        ))
-        FROM purchase_order_files pof
-        JOIN uploaded_files uf ON pof.uploaded_file_id = uf.id
-        WHERE pof.po_id = po.id
-      ), '[]'::json) AS uploaded_files
-    FROM purchase_orders po
-    LEFT JOIN users u ON po.received_by_user_id = u.id
-    WHERE po.id = $1
+    SELECT * FROM purchase_orders WHERE project_id = $1
   `;
 
-  const result = await client.query(query, [poId]);
+  const result = await client.query(query, [project_id]);
   return result.rows[0] || null;
 }
 

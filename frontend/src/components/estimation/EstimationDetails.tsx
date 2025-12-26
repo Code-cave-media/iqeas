@@ -124,11 +124,13 @@ const sendToAdmin = async () => {
     const response = await makeApiCall(
       "patch",
       API_ENDPOINT.SEND_DELIVERABLES_TO_ADMIN(project_id),
-      { status: "sent_to_admin" },
+      { estimation_status: "sent_to_admin" },
       "application/json",
       authToken,
       "sendToAdmin"
     );
+
+
 
     if (response?.status === 200) {
       toast.success("Deliverables sent to admin successfully");
