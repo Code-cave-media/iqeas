@@ -105,6 +105,7 @@ const roleLabels: Record<string, string> = {
   documentation: "Documentation Team",
   working: "Working Team",
   admin: "Admin",
+  project_coordinator: "project_coordinator",
 };
 
 type UserType = { id: string; name: string; role: string; email: string };
@@ -192,7 +193,6 @@ const DashboardLayout = ({
     console.log("done");
   };
 
-  // 2) switchUser: called when user selects someone from the dropdown
   const switchUser = async (u: UserType) => {
     const response = await makeApiCall(
       "post",
@@ -215,7 +215,6 @@ const DashboardLayout = ({
     }
   };
 
-  // When opening the user dropdown fetch users if not already fetched
   const toggleUserDropdown = () => {
     const willOpen = !userDropdownOpen;
     setUserDropdownOpen(willOpen);

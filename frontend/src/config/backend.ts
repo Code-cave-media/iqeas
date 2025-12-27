@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { get } from "http";
 
-// export const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1`;
-export const API_URL = `https://iqeas-x6eg.onrender.com/api/v1`;
+export const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1`;
+// export const API_URL = `https://iqeas-x6eg.onrender.com/api/v1`;
 
 export const API_ENDPOINT = {
   VERIFY_USER: `${API_URL}/auth/me `,
@@ -122,6 +122,17 @@ export const API_ENDPOINT = {
 
   SENT_QUOTAION_TO_CLIENT: `${API_URL}/updates/client/send-quotation`,
 
+  GET_COORDINATORS: `${API_URL}/updates/coordinators`,
+  GET_PM: `${API_URL}/updates/pms`,
+  GET_Leaders: `${API_URL}/updates/leaders`,
+
   GET_PURCHASE_ORDER: (project_id: string) =>
     `${API_URL}/updates/getPo/${project_id}`,
+
+  GET_PROJECTS_FOR_COORDINATOR: (
+    project_coordinator_id: string,
+    page: number = 1,
+    limit: number = 20
+  ) =>
+    `${API_URL}/updates/coordinator/${project_coordinator_id}/works?page=${page}&limit=${limit}`,
 };
