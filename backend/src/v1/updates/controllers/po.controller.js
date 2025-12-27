@@ -226,3 +226,100 @@ export const updatePOHandler = async (req, res) => {
   }
 };
 
+
+export async function getCoordinatorWorksController(req, res) {
+  try {
+    const { project_coordinator_id } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    if (!project_coordinator_id) {
+      return res.status(400).json({
+        status_code: 400,
+        detail: "Project coordinator ID is required",
+      });
+    }
+
+    const result = await POService.getProjectCoordinatorWorks(
+      project_coordinator_id,
+      Number(page),
+      Number(limit)
+    );
+
+    return res.status(200).json({
+      status_code: 200,
+      detail: "Coordinator works fetched successfully",
+      data: result.data,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: Math.ceil(result.total / result.limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching coordinator works:", error);
+
+    return res.status(500).json({
+      status_code: 500,
+      detail: "Internal server error",
+    });
+  }
+}
+
+
+export async function getAllCoordinatorsController(req, res) {
+  try {
+    const coordinators = await POService.getAllCoordinators();
+
+    return res.status(200).json({
+      status_code: 200,
+      detail: "Project coordinators fetched successfully",
+      data: coordinators,
+    });
+  } catch (error) {
+    console.error("Error fetching coordinators:", error);
+
+    return res.status(500).json({
+      status_code: 500,
+      detail: "Internal server error",
+    });
+  }
+}
+
+export async function getAllPMsController(req, res) {
+  try {
+    const pms = await POService.getAllPMs();
+
+    return res.status(200).json({
+      status_code: 200,
+      detail: "Project managers fetched successfully",
+      data: pms,
+    });
+  } catch (error) {
+    console.error("Error fetching PMs:", error);
+
+    return res.status(500).json({
+      status_code: 500,
+      detail: "Internal server error",
+    });
+  }
+}
+
+export async function getAllLeadersController(req, res) {
+  try {
+    const leaders = await POService.getAllleaders();
+
+    return res.status(200).json({
+      status_code: 200,
+      detail: "Project managers fetched successfully",
+      data: leaders,
+    });
+  } catch (error) {
+    console.error("Error fetching Leaders:", error);
+
+    return res.status(500).json({
+      status_code: 500,
+      detail: "Internal server error",
+    });
+  }
+}

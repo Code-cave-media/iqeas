@@ -42,6 +42,8 @@ const ROLES = [
   { value: "documentation", label: "Document" },
   { value: "admin", label: "Admin" },
   { value: "pm", label: "PM" },
+  { value: "project_coordinator", label: "Project Coordinator" },
+  { value: "project_leader", label: "Project Leader" },
 ];
 
 export default function AdminMembers() {

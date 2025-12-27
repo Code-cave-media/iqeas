@@ -7,13 +7,14 @@ import toast from "react-hot-toast";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useAPICall } from "@/hooks/useApiCall";
-import { API_ENDPOINT } from "@/config/backend";
+import { API_ENDPOINT, API_URL } from "@/config/backend";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 import { Pencil, Check, X } from "lucide-react";
 
 import SendToEstimationModal from "./SendToEstimationModal";
@@ -51,7 +52,6 @@ const EditableInfoItem = ({
     <div className="space-y-1">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">{label}</p>
-
         {!isEditing ? (
           <Button
             variant="ghost"
@@ -71,7 +71,6 @@ const EditableInfoItem = ({
           </div>
         )}
       </div>
-
       {isEditing ? (
         <Input
           value={editValue || ""}
@@ -97,6 +96,17 @@ export default function RFQEnquiry() {
   const [sendingToPM, setSendingToPM] = useState(false);
   const [hasPurchaseOrder, setHasPurchaseOrder] = useState(false);
 
+  const [coordinators, setCoordinators] = useState<any[]>([]);
+  const [selectedCoordinatorId, setSelectedCoordinatorId] = useState<
+    number | null
+  >(null);
+
+  // Debug selectedCoordinatorId
+  useEffect(() => {
+    console.log("selectedCoordinatorId (effect):", selectedCoordinatorId);
+  }, [selectedCoordinatorId]);
+
+  // Fetch project details, deliverables and PO
   useEffect(() => {
     if (!project_id) return;
 
@@ -142,8 +152,6 @@ export default function RFQEnquiry() {
         );
 
         const poRows = Array.isArray(poRes?.data) ? poRes.data : [];
-
-        console.log("PO rows:", poRows);
         setHasPurchaseOrder(poRows.length > 0);
       } else {
         toast.error("Failed to fetch project");
@@ -153,7 +161,37 @@ export default function RFQEnquiry() {
     };
 
     fetchProjectAndMeta();
-  }, [project_id]);
+  }, [project_id, authToken, makeApiCall]);
+
+  // Fetch coordinators once (you already confirmed this returns id 32, Aromal S)
+  useEffect(() => {
+    const fetchCoordinators = async () => {
+      try {
+        const res = await makeApiCall(
+          "get",
+          `${API_URL}/updates/coordinators`,
+          {},
+          "application/json",
+          authToken,
+          "getCoordinators"
+        );
+
+        if (res.status === 200) {
+          setCoordinators(res.data || []);
+        } else {
+          toast.error("Failed to fetch project coordinators");
+        }
+      } catch (err) {
+        console.error("Error fetching coordinators", err);
+        toast.error("Failed to fetch project coordinators");
+      }
+    };
+
+    if (authToken) {
+      fetchCoordinators();
+    }
+  }, [authToken, makeApiCall]);
+
 
   const handleSaveField = async (field: string, newValue: any) => {
     if (!project_id) return;
@@ -175,36 +213,42 @@ export default function RFQEnquiry() {
     }
   };
 
-  const handleSendToPM = async () => {
-    const estimationId = project?.estimation?.id;
-    if (!estimationId) return;
+  const handleSendToProjectCoordinator = async () => {
+    if (!project_id || !selectedCoordinatorId) {
+      toast.error("Missing coordinator");
+      return;
+    }
+
+    const payload = {
+      send_to_coordinator: true,
+      coordinator_id: selectedCoordinatorId,
+    };
+
+    console.log("PATCH payload:", payload);
 
     setSendingToPM(true);
-
     const res = await makeApiCall(
       "patch",
-      API_ENDPOINT.EDIT_ESTIMATION(estimationId),
-      { sent_to_pm: true },
+      API_ENDPOINT.EDIT_PROJECT(project_id),
+      payload,
       "application/json",
       authToken,
       "sendToPM"
     );
+    setSendingToPM(false);
+
+    console.log("sendToPM response:", res);
 
     if (res.status === 200) {
-      toast.success("Sent to Project Manager");
-
+      toast.success("Sent to Project Coordinator");
       setProject((prev: any) => ({
         ...prev,
-        estimation: {
-          ...prev.estimation,
-          sent_to_pm: true,
-        },
+        send_to_coordinator: true,
+        coordinator_id: selectedCoordinatorId,
       }));
     } else {
-      toast.error("Failed to send to PM");
+      toast.error(res.detail || "Failed to send to Project Coordinator");
     }
-
-    setSendingToPM(false);
   };
 
   if (loading) {
@@ -220,7 +264,14 @@ export default function RFQEnquiry() {
   const hasPO = hasPurchaseOrder;
 
   const showSendToPMBanner =
-    hasPO && project.estimation && project.estimation.sent_to_pm === false;
+    hasPO &&
+    project.estimation.approved == true &&
+    project.send_to_coordinator === false;
+
+  console.log("hasPO", hasPO);
+  console.log("estimation", project.estimation);
+  console.log("sent_to_pm", project.estimation?.sent_to_pm);
+  console.log("showSendToPMBanner", showSendToPMBanner);
 
   return (
     <section className="max-w-6xl mx-auto p-6 space-y-6">
@@ -234,20 +285,42 @@ export default function RFQEnquiry() {
                   Action Required
                 </Badge>
               </AlertTitle>
-
               <AlertDescription>
                 PO is uploaded and estimation is completed. Send this project to
-                Project Manager.
+                Project Coordinator.
               </AlertDescription>
             </div>
-
-            <Button
-              onClick={handleSendToPM}
-              disabled={sendingToPM}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              {sendingToPM ? "Sending..." : "Send to PM"}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                value={selectedCoordinatorId ?? ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  console.log("onChange raw value:", value);
+                  setSelectedCoordinatorId(Number(value) );
+                }}
+                className="border rounded px-2 py-1"
+              >
+                <option value="">Select Coordinator</option>
+                {coordinators.map((c: any) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                onClick={() => {
+                  console.log(
+                    "Send button clicked with id:",
+                    selectedCoordinatorId
+                  );
+                  handleSendToProjectCoordinator();
+                }}
+                disabled={sendingToPM || selectedCoordinatorId === null}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {sendingToPM ? "Sending..." : "Send to Project Coordinator"}
+              </Button>
+            </div>
           </div>
         </Alert>
       )}
@@ -276,7 +349,6 @@ export default function RFQEnquiry() {
                 RFQ deliverables are completed. Send the project to estimation.
               </AlertDescription>
             </div>
-
             <Button onClick={() => setOpenModal(true)}>
               Send to Estimation
             </Button>
@@ -288,7 +360,7 @@ export default function RFQEnquiry() {
         <CardHeader>
           <CardTitle className="flex gap-2">
             Project Details
-            {project.estimation.approved ? (
+            {project.estimation?.approved ? (
               <span className="text-xs text-teal-700 border border-teal-600 px-2 py-1 bg-green-300 rounded-full">
                 Approved
               </span>

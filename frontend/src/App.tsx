@@ -45,6 +45,7 @@ import ProjectControlAdmin from "./components/admin/ProjectControllAdmin";
 import ProjectControlPm from "./components/pm/ProjectControllPm";
 import WorkersDashboard from "./components/workers/WorkersDashboard";
 import WorkDetails from "./components/workers/WorkDetails";
+import ProjectCoordinatorDashboard from "./components/project_coordinator/ProjectCoordinatorDashboard";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -137,7 +138,7 @@ const App = () => (
                     </RFQLayout>
                   }
                 />
-               
+
                 <Route
                   path=":project_id/estimation"
                   element={
@@ -367,6 +368,28 @@ const App = () => (
                   element={
                     <DashboardLayout>
                       <DocumentFiles />
+                    </DashboardLayout>
+                  }
+                />
+              </Route>
+
+              <Route
+                path="/project-coordinator"
+                element={<RoleProtectedRoute />}
+              >
+                <Route
+                  index
+                  element={
+                    <DashboardLayout>
+                      <ProjectCoordinatorDashboard />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path=":project_id/:type"
+                  element={
+                    <DashboardLayout>
+                      <CommonCalendar />
                     </DashboardLayout>
                   }
                 />

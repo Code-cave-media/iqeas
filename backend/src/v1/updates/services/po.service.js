@@ -31,13 +31,6 @@ export async function createPurchaseOrder(data, client = pool) {
   const result = await client.query(query, values);
   const po = result.rows[0];
 
-  // NO NEED TO UPDATE projects table — remove this completely
-  // await client.query(
-  //   `UPDATE projects SET po_id = $1 WHERE id = $2`,
-  //   [po.id, project_id]
-  // );
-
-  // Link uploaded files (this is correct)
   if (uploaded_file_ids.length > 0) {
     const filePromises = uploaded_file_ids.map((fileId) =>
       client.query(
@@ -114,8 +107,7 @@ export async function forwardPOToPM(poId, forwardedByUserId, client = pool) {
   `;
 
   const result = await client.query(query, [poId]);
-  
-  // Also update project status if needed
+
   const po = await getPurchaseOrderById(poId, client);
   if (po) {
     await client.query(
@@ -172,3 +164,126 @@ export async function updatePO(poId, updates, client = pool) {
   return result.rows[0];
 }
 
+export async function getProjectCoordinatorWorks(
+  coordinator_id,
+  page = 1,
+  limit = 20,
+  client = pool
+) {
+  const offset = (page - 1) * limit;
+
+  const dataQuery = `
+    SELECT
+      p.*,
+
+      -- Estimation
+      e.id AS estimation_id,
+      e.sent_to_pm AS estimation_sent_to_pm,
+
+      -- Purchase Order
+      po.id AS purchase_order_id,
+      po.po_number,
+      po.received_date,
+      po.notes,
+      po.terms_and_conditions,
+
+      -- Uploaded Files
+      COALESCE(
+        json_agg(
+          DISTINCT jsonb_build_object(
+            'id', uf.id,
+            'label', uf.label,
+            'file', uf.file,
+            'status', uf.status,
+            'created_at', uf.created_at
+          )
+        ) FILTER (WHERE uf.id IS NOT NULL),
+        '[]'
+      ) AS uploaded_files
+
+    FROM projects p
+
+    -- 🔗 Estimation joined by project_id
+    LEFT JOIN estimations e
+      ON e.project_id = p.id
+
+    -- Purchase Order
+    LEFT JOIN purchase_orders po
+      ON po.project_id = p.id
+
+    LEFT JOIN purchase_order_files pof
+      ON pof.po_id = po.id
+
+    LEFT JOIN uploaded_files uf
+      ON uf.id = pof.uploaded_file_id
+
+    WHERE
+      p.send_to_coordinator = true
+      AND p.coordinator_id = $1
+
+    GROUP BY
+      p.id,
+      e.id,
+      po.id
+
+    ORDER BY p.created_at DESC
+    LIMIT $2 OFFSET $3
+  `;
+
+  const countQuery = `
+    SELECT COUNT(*)
+    FROM projects
+    WHERE
+      send_to_coordinator = true
+      AND coordinator_id = $1
+  `;
+
+  const [dataResult, countResult] = await Promise.all([
+    client.query(dataQuery, [coordinator_id, limit, offset]),
+    client.query(countQuery, [coordinator_id]),
+  ]);
+
+  return {
+    data: dataResult.rows,
+    total: Number(countResult.rows[0].count),
+    page,
+    limit,
+  };
+}
+
+
+export async function getAllCoordinators() {
+  const query = `
+    SELECT id, name
+    FROM users
+    WHERE role = 'project_coordinator'
+    ORDER BY name
+  `;
+
+  const result = await pool.query(query);
+  return result.rows;
+}
+
+export async function getAllPMs() {
+  const query = `
+    SELECT id, name
+    FROM users
+    WHERE role = 'pm'
+    ORDER BY name
+  `;
+
+  const result = await pool.query(query);
+  return result.rows;
+}
+
+export async function getAllleaders() {
+  const query = `
+    SELECT id, name
+    FROM users
+    WHERE role = 'project_leader'
+    ORDER BY name
+  `;
+
+  const result = await pool.query(query);
+  return result.rows;
+}

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from "react";
-import { useLocation, Navigate, Outlet } from "react-router-dom";
-// You may need to adjust the import path for your AuthContext
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 const roleToPath: Record<string, string> = {
@@ -11,6 +10,7 @@ const roleToPath: Record<string, string> = {
   working: "/working",
   documentation: "/documentation",
   admin: "/admin",
+  project_coordinator: "/project-coordinator",
 };
 
 const Forbidden = () => (
@@ -25,14 +25,25 @@ const Forbidden = () => (
 const RoleProtectedRoute = () => {
   const { user } = useAuth();
   const location = useLocation();
+
+  // Not logged in → login
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  const expectedPrefix = roleToPath[user.role?.toLowerCase?.()] || "";
-  const currentPath = location.pathname;
+  const expectedPrefix = roleToPath[user.role];
 
-  if (expectedPrefix && currentPath.startsWith(expectedPrefix)) {
+  if (!expectedPrefix) {
+    return <Forbidden />;
+  }
+
+  // 🔥 Auto redirect from "/"
+  if (location.pathname === "/") {
+    return <Navigate to={expectedPrefix} replace />;
+  }
+
+  // Allow only role-based paths
+  if (location.pathname.startsWith(expectedPrefix)) {
     return <Outlet />;
   }
 
