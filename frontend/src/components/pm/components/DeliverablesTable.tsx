@@ -1,6 +1,12 @@
 // src/components/project/DeliverablesTable.tsx
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { API_ENDPOINT } from "@/config/backend";
+import { useAPICall } from "@/hooks/useApiCall";
+import { useAuth } from "@/contexts/AuthContext";
+import { useParams } from "react-router-dom";
+import toast from "react-hot-toast";
 
 type Worker = { id: number; name: string };
 type RFQDeliverable = {
@@ -46,6 +52,7 @@ const formatDuration = (t: any) => {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 };
+type Leader = { id: number; name: string };
 
 export const DeliverablesTable: React.FC<Props> = ({
   visibleRows,
@@ -63,6 +70,93 @@ export const DeliverablesTable: React.FC<Props> = ({
   onDeleteRow,
   loadingRFQ,
 }) => {
+    const { projectId } = useParams<{ projectId: string }>();
+  
+  const { makeApiCall, fetching, fetchType } = useAPICall();
+  const { authToken } = useAuth();
+  const [leaders, setLeaders] = useState<Leader[]>([]);
+  const [loadingLeaders, setLoadingLeaders] = useState(false);
+  const [selectedLeaderId, setSelectedLeaderId] = useState<number | null>(null);
+  const [savingLeader, setSavingLeader] = useState(false);
+  const [project, setProject] = useState<any>(null);
+
+  useEffect(() => {
+      const fetchProject = async () => {
+        if (!projectId) return;
+        const response = await makeApiCall(
+          "get",
+          API_ENDPOINT.GET_PROJECT_BY_ID(projectId),
+          {},
+          "application/json",
+          authToken,
+          "getProject"
+        );
+        if (response.status === 200) {
+          setProject(response.data);
+        }
+      };
+      fetchProject();
+  }, [projectId, makeApiCall, authToken]);
+  
+  useEffect(() => {
+    const fetchLeaders = async () => {
+      setLoadingLeaders(true);
+      const response = await makeApiCall(
+        "get",
+        API_ENDPOINT.GET_Leaders,
+        {},
+        "application/json",
+        authToken,
+        "getLeaders"
+      );
+      if (response?.status === 200 && Array.isArray(response.data)) {
+        setLeaders(response.data.map((l: any) => ({ id: l.id, name: l.name })));
+      } else {
+        setLeaders([]);
+        toast.error("Failed to load leaders");
+      }
+      setLoadingLeaders(false);
+    };
+    fetchLeaders();
+  }, [makeApiCall, authToken]);
+
+  // Set current leader from project data
+  useEffect(() => {
+    if (project?.estimation?.leader) {
+      const leaderId =
+        typeof project.estimation.leader === "object"
+          ? project.estimation.leader.id
+          : project.estimation.leader;
+      setSelectedLeaderId(leaderId);
+    }
+  }, [project]);
+
+    const handleSaveLeader = async () => {
+      if (!project?.estimation?.id || selectedLeaderId === null) return;
+      setSavingLeader(true);
+      try {
+        const resp = await makeApiCall(
+          "patch",
+          API_ENDPOINT.EDIT_ESTIMATION(project.estimation.id),
+          { leader: selectedLeaderId },
+          "application/json",
+          authToken,
+          "assignLeader"
+        );
+        if (resp?.status === 200) {
+          setProject((prev: any) => ({
+            ...prev,
+            estimation: { ...prev.estimation, leader: selectedLeaderId },
+          }));
+          toast.success("Leader assigned successfully");
+        } else throw new Error("Assign failed");
+      } catch (e: any) {
+        toast.error(e.message || "Failed to assign leader");
+      } finally {
+        setSavingLeader(false);
+      }
+    };
+
   const isParent = (item: RFQDeliverable) =>
     item.sno == null || !String(item.sno).includes(".");
   const isChild = (item: RFQDeliverable) =>
@@ -91,6 +185,9 @@ export const DeliverablesTable: React.FC<Props> = ({
     );
   }
 
+    const currentLeaderName =
+      leaders.find((l) => l.id === selectedLeaderId)?.name || "Not assigned";
+
   return (
     <div className="overflow-x-auto">
       <div className="flex items-center justify-between mb-4">
@@ -108,6 +205,54 @@ export const DeliverablesTable: React.FC<Props> = ({
               </option>
             ))}
           </select>
+        </div>
+        <div className="mt-8 p-2 px-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="flex-1">
+              <p className="text-sm text-slate-600">Current Leader:</p>
+              <p className="text-md font-bold text-indigo-700">
+                {currentLeaderName}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <select
+                value={selectedLeaderId ?? ""}
+                onChange={(e) =>
+                  setSelectedLeaderId(
+                    e.target.value ? Number(e.target.value) : null
+                  )
+                }
+                disabled={loadingLeaders || savingLeader}
+                className="flex-1 sm:flex-initial min-w-[220px] border rounded-lg px-4 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="">Choose a leader...</option>
+                {leaders.map((leader) => (
+                  <option key={leader.id} value={leader.id}>
+                    {leader.name}
+                  </option>
+                ))}
+              </select>
+
+              <Button
+                onClick={handleSaveLeader}
+                disabled={
+                  !selectedLeaderId ||
+                  savingLeader ||
+                  selectedLeaderId ===
+                    (project?.estimation?.leader?.id ||
+                      project?.estimation?.leader)
+                }
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                {savingLeader ? "Saving..." : "Assign"}
+              </Button>
+            </div>
+          </div>
+
+          {loadingLeaders && (
+            <p className="text-sm text-slate-500 mt-3">Loading leaders...</p>
+          )}
         </div>
       </div>
 

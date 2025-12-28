@@ -11,6 +11,7 @@ const roleToPath: Record<string, string> = {
   documentation: "/documentation",
   admin: "/admin",
   project_coordinator: "/project-coordinator",
+  project_leader: "/project-leader",
 };
 
 const Forbidden = () => (

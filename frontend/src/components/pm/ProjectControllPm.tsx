@@ -199,39 +199,7 @@ const ProjectControlPm: React.FC = () => {
   }, [makeApiCall, authToken]);
 
   // Fetch Leaders
-  useEffect(() => {
-    const fetchLeaders = async () => {
-      setLoadingLeaders(true);
-      const response = await makeApiCall(
-        "get",
-        API_ENDPOINT.GET_Leaders,
-        {},
-        "application/json",
-        authToken,
-        "getLeaders"
-      );
-      if (response?.status === 200 && Array.isArray(response.data)) {
-        setLeaders(response.data.map((l: any) => ({ id: l.id, name: l.name })));
-      } else {
-        setLeaders([]);
-        toast.error("Failed to load leaders");
-      }
-      setLoadingLeaders(false);
-    };
-    fetchLeaders();
-  }, [makeApiCall, authToken]);
-
-  // Set current leader from project data
-  useEffect(() => {
-    if (project?.estimation?.leader) {
-      const leaderId =
-        typeof project.estimation.leader === "object"
-          ? project.estimation.leader.id
-          : project.estimation.leader;
-      setSelectedLeaderId(leaderId);
-    }
-  }, [project]);
-
+  
   useEffect(() => {
     if (project) {
       setEnableDelivery(project.status.toLowerCase() === "completed");
@@ -616,59 +584,7 @@ const ProjectControlPm: React.FC = () => {
               />
 
               {/* Leader Assignment Section */}
-              <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">
-                  Assign Project Leader
-                </h3>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <div className="flex-1">
-                    <p className="text-sm text-slate-600">Current Leader:</p>
-                    <p className="text-xl font-bold text-indigo-700">
-                      {currentLeaderName}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <select
-                      value={selectedLeaderId ?? ""}
-                      onChange={(e) =>
-                        setSelectedLeaderId(
-                          e.target.value ? Number(e.target.value) : null
-                        )
-                      }
-                      disabled={loadingLeaders || savingLeader}
-                      className="flex-1 sm:flex-initial min-w-[220px] border rounded-lg px-4 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                      <option value="">Choose a leader...</option>
-                      {leaders.map((leader) => (
-                        <option key={leader.id} value={leader.id}>
-                          {leader.name}
-                        </option>
-                      ))}
-                    </select>
-
-                    <Button
-                      onClick={handleSaveLeader}
-                      disabled={
-                        !selectedLeaderId ||
-                        savingLeader ||
-                        selectedLeaderId ===
-                          (project?.estimation?.leader?.id ||
-                            project?.estimation?.leader)
-                      }
-                      className="bg-indigo-600 hover:bg-indigo-700"
-                    >
-                      {savingLeader ? "Saving..." : "Assign"}
-                    </Button>
-                  </div>
-                </div>
-
-                {loadingLeaders && (
-                  <p className="text-sm text-slate-500 mt-3">
-                    Loading leaders...
-                  </p>
-                )}
-              </div>
+             
             </>
           )}
 

@@ -136,3 +136,35 @@ export async function updateConsumedTime(worker_id, t1, t2) {
 
   return result.rows[0];
 }
+
+
+export async function markEstimationDeliverableChecking(
+  estimation_deliverable_id,
+  worker_id,
+  client = pool
+) {
+  const query = `
+    UPDATE estimation_deliverables ed
+    SET status = 'checking',
+        updated_at = NOW()
+    WHERE ed.id = $1
+      AND EXISTS (
+        SELECT 1
+        FROM workers_uploaded_files wuf
+        WHERE wuf.project_id = ed.project_id
+          AND wuf.worker_id = $2
+      )
+    RETURNING ed.*;
+  `;
+
+  const { rows } = await client.query(query, [
+    estimation_deliverable_id,
+    worker_id,
+  ]);
+
+  if (rows.length === 0) {
+    throw new Error("Not authorized or invalid estimation deliverable");
+  }
+
+  return rows[0];
+}

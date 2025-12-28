@@ -106,6 +106,7 @@ const roleLabels: Record<string, string> = {
   working: "Working Team",
   admin: "Admin",
   project_coordinator: "project_coordinator",
+  project_leader: "/project-leader",
 };
 
 type UserType = { id: string; name: string; role: string; email: string };
