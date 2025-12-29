@@ -43,8 +43,6 @@ export async function getWorkersWorkByProjectIdWorkId(
   };
 }
 
-
-
 export async function getWorkerProjectIds(worker_id, limit, offset) {
   console.debug(
     "[SERVICE][WORKERS][PROJECT] Fetching project IDs for worker:",
@@ -85,9 +83,12 @@ export async function getProjectDetails(project_id) {
   );
   return result.rows[0];
 }
-
-
-export async function updateConsumedTime(worker_id, t1, t2) {
+export async function updateConsumedTime(
+  worker_id,
+  estimation_deliverable_id,
+  t1,
+  t2
+) {
   const timeInitial = new Date(t1);
   const endTime = new Date(t2);
 
@@ -99,12 +100,20 @@ export async function updateConsumedTime(worker_id, t1, t2) {
   const getCurrentTimeQuery = `
     SELECT consumed_time
     FROM estimation_deliverables
-    WHERE worker_id = $1
+    WHERE id = $1
+      AND worker_id = $2
   `;
 
-  const { rows } = await pool.query(getCurrentTimeQuery, [worker_id]);
+  const { rows } = await pool.query(getCurrentTimeQuery, [
+    estimation_deliverable_id,
+    worker_id,
+  ]);
 
-  const consumed = rows[0]?.consumed_time || {
+  if (rows.length === 0) {
+    throw new Error("Estimation deliverable not found for worker");
+  }
+
+  const consumed = rows[0].consumed_time || {
     hours: 0,
     minutes: 0,
     seconds: 0,
@@ -125,18 +134,19 @@ export async function updateConsumedTime(worker_id, t1, t2) {
     UPDATE estimation_deliverables
     SET consumed_time = $1,
         updated_at = NOW()
-    WHERE worker_id = $2
+    WHERE id = $2
+      AND worker_id = $3
     RETURNING consumed_time
   `;
 
   const result = await pool.query(updateConsumedTimeQuery, [
     updatedConsumedTime,
+    estimation_deliverable_id,
     worker_id,
   ]);
 
   return result.rows[0];
 }
-
 
 export async function markEstimationDeliverableChecking(
   estimation_deliverable_id,
@@ -151,7 +161,7 @@ export async function markEstimationDeliverableChecking(
       AND EXISTS (
         SELECT 1
         FROM workers_uploaded_files wuf
-        WHERE wuf.project_id = ed.project_id
+        WHERE wuf.project_id = ed.project_id::INTEGER
           AND wuf.worker_id = $2
       )
     RETURNING ed.*;
@@ -167,4 +177,40 @@ export async function markEstimationDeliverableChecking(
   }
 
   return rows[0];
+}
+
+export async function uploadWorkerFiles(
+  worker_id,
+  uploaded_file_ids,
+  project_id,
+  client = pool
+) {
+  if (!Array.isArray(uploaded_file_ids) || uploaded_file_ids.length === 0) {
+    throw new Error("uploaded_file_id must be a non-empty array");
+  }
+
+  const values = [];
+  const placeholders = uploaded_file_ids.map((_, index) => {
+    const base = index * 3;
+    values.push(worker_id, uploaded_file_ids[index], project_id);
+    return `($${base + 1}, $${base + 2}, $${base + 3})`;
+  });
+
+  const query = `
+    INSERT INTO workers_uploaded_files (
+      worker_id,
+      uploaded_file_id,
+      project_id
+    )
+    VALUES ${placeholders.join(", ")}
+    RETURNING *
+  `;
+
+  const { rows } = await client.query(query, values);
+
+  if (rows.length === 0) {
+    throw new Error("Failed to upload worker files");
+  }
+
+  return rows;
 }

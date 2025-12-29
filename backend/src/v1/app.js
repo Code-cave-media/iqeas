@@ -34,6 +34,8 @@ import updatesWeeklyTimesheetRoute from "./updates/routes/updates_weeklyTimeshee
 import updatesStageBillingRoute from "./updates/routes/updates_stageBilling.routes.js";
 import UpdatesGetId from "./updates/routes/includes.route.js";
 import workersRoute from "./updates/routes/workers.route.js"
+import leadersRoute from "./updates/routes/leader.route.js";
+
 
 import cors from "cors";
 import createInitialAdmin from "./utils/seed.js";
@@ -73,6 +75,8 @@ app.use("/api/v1/updates", updatesWeeklyTimesheetRoute);
 app.use("/api/v1/updates", updatesStageBillingRoute);
 app.use("/api/v1/updates", UpdatesGetId);
 app.use("/api/v1/updates", workersRoute);
+app.use("/api/v1/updates", leadersRoute);
+
 
 
 const PORT = process.env.PORT || 8080;

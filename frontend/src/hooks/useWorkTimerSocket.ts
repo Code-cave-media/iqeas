@@ -37,7 +37,7 @@ export function useWorkTimerSocket(workerId?: number, onUpdate?: () => void) {
     };
   }, [workerId]);
 
-  const sendAction = (action: ActionType) => {
+  const sendAction = (p0: string, p1: { worker_id: string; estimation_deliverable_id: any; }, action: ActionType) => {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
       console.warn("WS not ready");
       return;

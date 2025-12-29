@@ -126,8 +126,19 @@ export const API_ENDPOINT = {
   GET_PM: `${API_URL}/updates/pms`,
   GET_Leaders: `${API_URL}/updates/leaders`,
 
+  GET_Leaders_projects: `${API_URL}/updates/estimations/team-projects/to-be-approved`,
+
   GET_PURCHASE_ORDER: (project_id: string) =>
     `${API_URL}/updates/getPo/${project_id}`,
+
+  UPDATE_CHECKING_WORKERS_PROJECT: (
+    estimation_deliverable_id: string,
+    worker_id
+  ) =>
+    `${API_URL}/updates/estimation-deliverables/${estimation_deliverable_id}/checking/${worker_id}`,
+
+  UPLOAD_WORKER_FILE: (project_id: string, worker_id: string) =>
+    `${API_URL}/updates/projects/${project_id}/workers/${worker_id}/upload`,
 
   GET_PROJECTS_FOR_COORDINATOR: (
     project_coordinator_id: string,

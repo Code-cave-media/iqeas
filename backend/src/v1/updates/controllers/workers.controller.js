@@ -3,6 +3,8 @@ import {
   getWorkersWorkByProjectIdWorkId,
   getWorkerProjectIds,
   getProjectDetails,
+  markEstimationDeliverableChecking,
+  uploadWorkerFiles,
 } from "../services/workers.service.js";
 
 export async function getWorkersController(req, res) {
@@ -48,7 +50,12 @@ export async function getWorkerWorkByIdAndProjectIdController(req, res) {
       page
     );
 
-    const { data, total } = await getWorkersWorkByProjectIdWorkId(worker_id, project_id, limit, offset);
+    const { data, total } = await getWorkersWorkByProjectIdWorkId(
+      worker_id,
+      project_id,
+      limit,
+      offset
+    );
 
     return res.status(200).json({
       status: 200,
@@ -70,8 +77,6 @@ export async function getWorkerWorkByIdAndProjectIdController(req, res) {
     });
   }
 }
-
-
 
 // Controller to handle request and response with pagination
 export async function getWorkersProjectWorkByIdController(req, res) {
@@ -118,11 +123,72 @@ export async function getWorkersProjectWorkByIdController(req, res) {
     });
   } catch (error) {
     console.error("[CONTROLLER][WORKERS][PROJECT][ERROR]", error);
-    return res
-      .status(500)
-      .json({
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching projects",
+    });
+  }
+}
+
+export async function markDeliverableCheckingController(req, res) {
+  try {
+    const estimation_deliverable_id = Number(
+      req.params.estimation_deliverable_id
+    );
+    const worker_id = Number(req.params.worker_id);
+
+    if (!estimation_deliverable_id) {
+      return res.status(400).json({
         success: false,
-        message: "Server error while fetching projects",
+        message: "estimation_deliverable_id is required",
       });
+    }
+
+    const updatedDeliverable = await markEstimationDeliverableChecking(
+      estimation_deliverable_id,
+      worker_id
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Estimation deliverable marked as checking",
+      data: updatedDeliverable,
+    });
+  } catch (error) {
+    console.error("markDeliverableCheckingController error:", error.message);
+
+    return res.status(403).json({
+      success: false,
+      message: error.message || "Not authorized to update this deliverable",
+    });
+  }
+}
+
+export async function uploadWorkerFilesController(req, res) {
+  try {
+    const { worker_id, project_id } = req.params;
+    const { uploaded_file_id } = req.body;
+
+    if (!uploaded_file_id) {
+      return res.status(400).json({
+        message: "uploaded_file_id is required",
+      });
+    }
+
+    const result = await uploadWorkerFiles(
+      worker_id,
+      uploaded_file_id,
+      project_id
+    );
+
+    return res.status(201).json({
+      message: "File uploaded successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: error.message || "Failed to upload file",
+    });
   }
 }
