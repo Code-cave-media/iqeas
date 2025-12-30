@@ -30,7 +30,7 @@ export async function handleStart(ws, worker_id, estimation_deliverable_id) {
 
     const status = rows[0].status;
 
-    if (!["under_progress", "rework"].includes(status)) {
+    if (!["under progress", "rework"].includes(status)) {
       return ws.send(
         JSON.stringify({
           error: "Cannot start timer in current status",

@@ -1,3 +1,5 @@
 /node_modules
 .env*
 ~$*.xlsx
+/backend/src/v1/uploads   
+/backend/uploads   
