@@ -7,6 +7,10 @@ import {
   uploadWorkerFilesController,
 } from "../controllers/workers.controller.js";
 
+import { authenticateToken } from "../../middleware/authMiddleware.js";
+
+import { checkInDeliverable } from "../services/workers.service.js";
+
 const router = express.Router();
 
 
@@ -26,6 +30,15 @@ router.patch(
   "/estimation-deliverables/:estimation_deliverable_id/checking/:worker_id",
   markDeliverableCheckingController
 );
+
+
+
+router.patch(
+  "/estimation-deliverables/:estimation_deliverable_id/check-in",
+  authenticateToken,
+  checkInDeliverable
+);
+
 
 
 router.post(

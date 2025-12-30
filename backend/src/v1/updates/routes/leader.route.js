@@ -1,5 +1,12 @@
 import express from "express";
-import { getAllProjectsToBeApprovedController } from "../controllers/leader.controller.js";
+import {
+  getAllProjectsToBeApprovedController,
+  approveEstimationDeliverable,
+  rejectEstimationDeliverable,
+  addReworkNoteController,
+} from "../controllers/leader.controller.js";
+
+import { authenticateToken } from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -8,4 +15,27 @@ router.get(
   getAllProjectsToBeApprovedController
 );
 
+
+router.patch(
+  "/estimation-deliverables/:estimation_deliverable_id/approve/:worker_id",
+  authenticateToken,
+  approveEstimationDeliverable
+);
+
+
+router.patch(
+  "/estimation-deliverables/:estimation_deliverable_id/rework/:worker_id",
+  authenticateToken,
+  rejectEstimationDeliverable
+);
+
+
+router.patch(
+  "/rework-note/:estimation_deliverable_id/:worker_id",
+  authMiddleware,
+  addReworkNoteController
+);
+
 export default router;
+
+

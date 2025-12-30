@@ -179,6 +179,52 @@ export async function markEstimationDeliverableChecking(
   return rows[0];
 }
 
+
+
+
+/*
+
+This is the new deliverable checking
+*/
+
+export async function checkInDeliverable(req, res) {
+  try {
+    const { estimation_deliverable_id } = req.params;
+    const worker_id = req.user.id;
+
+    const query = `
+      UPDATE estimation_deliverables
+      SET status = 'checking',
+          updated_at = NOW()
+      WHERE id = $1
+        AND worker_id = $2
+        AND status IN ('under progress', 'rework')
+      RETURNING *;
+    `;
+
+    const { rows } = await pool.query(query, [
+      estimation_deliverable_id,
+      worker_id,
+    ]);
+
+    if (!rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot check-in in current status",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Checked in successfully",
+      data: rows[0],
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+
 export async function uploadWorkerFiles(
   worker_id,
   uploaded_file_ids,

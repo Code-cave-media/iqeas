@@ -81,3 +81,85 @@ LIMIT $1 OFFSET $2;
     totalPages: Math.ceil(countResult.rows[0].total / limit),
   };
 }
+
+
+
+export async function markEstimationDeliverableRejected(
+  estimation_deliverable_id,
+  worker_id,
+  client = pool
+) {
+  const query = `
+    UPDATE estimation_deliverables ed
+    SET status = 'rework',
+        updated_at = NOW()
+    WHERE ed.id = $1
+      AND ed.worker_id = $2
+    RETURNING ed.*;
+  `;
+
+  const { rows } = await client.query(query, [
+    estimation_deliverable_id,
+    worker_id,
+  ]);
+
+  if (rows.length === 0) {
+    throw new Error("Not authorized or invalid estimation deliverable");
+  }
+
+  return rows[0];
+}
+
+export async function markEstimationDeliverableApproved(
+  estimation_deliverable_id,
+  worker_id,
+  client = pool
+) {
+  const query = `
+    UPDATE estimation_deliverables ed
+    SET status = 'approved',
+        updated_at = NOW()
+    WHERE ed.id = $1
+      AND ed.worker_id = $2
+    RETURNING ed.*;
+  `;
+
+  const { rows } = await client.query(query, [
+    estimation_deliverable_id,
+    worker_id,
+  ]);
+
+  if (rows.length === 0) {
+    throw new Error("Not authorized or invalid estimation deliverable");
+  }
+
+  return rows[0];
+}
+
+export async function AddReworkNote(
+  note,
+  estimation_deliverable_id,
+  worker_id,
+  client = pool
+) {
+  const query = `
+    UPDATE estimation_deliverables ed
+    SET note = $1,
+        updated_at = NOW()
+    WHERE ed.id = $2
+      AND ed.worker_id = $3
+    RETURNING ed.*;
+  `;
+
+  const { rows } = await client.query(query, [
+    note,
+    estimation_deliverable_id,
+    worker_id,
+  ]);
+
+  if (rows.length === 0) {
+    throw new Error("Not authorized or invalid estimation deliverable");
+  }
+
+  return rows[0];
+}
