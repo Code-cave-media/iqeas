@@ -5,78 +5,42 @@ import {
   Folder,
   BookOpen,
   Calendar,
-  Home,
-  LogOut,
-  Menu,
-  X,
   Users,
   Clock,
   FileText,
-  ListChecks,
-  FilePlus2,
-  BarChart3,
+  Blocks,
+  LogOut,
+  Menu,
+  X,
   ChevronDown,
   User,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { API_ENDPOINT } from "@/config/backend";
 import { useAPICall } from "@/hooks/useApiCall";
 import toast from "react-hot-toast";
 
-const menuConfig = {
+/* ---------------- TYPES & CONFIG ---------------- */
+
+interface MenuItem {
+  label: string;
+  to: string;
+  icon: React.ElementType;
+  match?: string[];
+}
+
+// Ensure the keys here match the exact strings returned by your backend role field
+const menuConfig: Record<string, MenuItem[]> = {
   pm: [
     { label: "Projects", to: "/pm", icon: Folder, match: ["/pm/project/"] },
-    {
-      label: "Document Center",
-      to: "/pm/documents",
-      icon: BookOpen,
-      match: ["/pm/documents/"],
-    },
+    { label: "Document Center", to: "/pm/documents", icon: BookOpen },
   ],
-  rfq: [
-    { label: "Dashboard", to: "/rfq", icon: Home },
-    {
-      label: "Document Center",
-      to: "/rfq/documents",
-      icon: BookOpen,
-      match: ["/rfq/documents/"],
-    },
-  ],
-  estimation: [
-    { label: "Estimation Tracker", to: "/estimation", icon: BarChart3 },
-    {
-      label: "Document Center",
-      to: "/estimation/documents",
-      icon: BookOpen,
-      match: ["/estimation/documents/"],
-    },
-  ],
-  documentation: [
-    {
-      label: "Document submission",
-      to: "/documentation",
-      icon: FilePlus2,
-      match: ["/documentation/project/"],
-    },
-    {
-      label: "Document Center",
-      to: "/documentation/documents",
-      icon: BookOpen,
-      match: ["/documentation/documents/"],
-    },
-  ],
-  working: [
-    {
-      label: "My Task",
-      to: "/working",
-      icon: ListChecks,
-      match: ["/working/project/"],
-    },
-    {
-      label: "Document Center",
-      to: "/working/documents",
-      icon: BookOpen,
-      match: ["/working/documents/"],
-    },
+  rfq: [{ label: "Dashboard", to: "/rfq", icon: Blocks }],
+  project_leader: [{ label: "Dashboard", to: "/project-leader", icon: Blocks }],
+  project_coordinator: [
+    { label: "Dashboard", to: "/project-coordinator", icon: Blocks },
   ],
   admin: [
     {
@@ -88,336 +52,275 @@ const menuConfig = {
     { label: "Members", to: "/admin/members", icon: Users },
     { label: "Attendance", to: "/admin/attendance", icon: Clock },
     { label: "Salary", to: "/admin/salary", icon: FileText },
-    { label: "Leave ", to: "/admin/leave", icon: Calendar },
-    {
-      label: "Document Center",
-      to: "/admin/documents",
-      icon: BookOpen,
-      match: ["/admin/documents/"],
-    },
+    { label: "Leave", to: "/admin/leave", icon: Calendar },
   ],
 };
 
 const roleLabels: Record<string, string> = {
   pm: "Project Manager",
-  rfq: "RFQ Team",
-  estimation: "Estimation Department",
-  documentation: "Documentation Team",
-  working: "Working Team",
   admin: "Admin",
-  project_coordinator: "project_coordinator",
-  project_leader: "/project-leader",
+  rfq: "RFQ Team",
+  project_leader: "Project Leader",
+  project_coordinator: "Project Coordinator",
 };
 
-type UserType = { id: string; name: string; role: string; email: string };
+// Map roles to their specific dashboard entry points
+const rolePathMap: Record<string, string> = {
+  pm: "/pm",
+  rfq: "/rfq",
+  admin: "/admin",
+  project_leader: "/project-leader",
+  project_coordinator: "/project-coordinator",
+  documentation: "/documentation",
+  working: "/working",
+  estimation: "/estimation",
+};
 
-// Added optional onUserSwitch prop so parent can react when a user is switched
-const DashboardLayout = ({
-  children,
-  onUserSwitch,
-}: {
-  children: React.ReactNode;
-  onUserSwitch?: (user: UserType) => void;
-}) => {
+const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, logout, login, authToken } = useAuth();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { makeApiCall } = useAPICall();
+
+  const [openMenu, setOpenMenu] = useState(false);
   const role = user?.role?.toLowerCase() || "";
   const links = menuConfig[role] || [];
   const roleLabel = roleLabels[role] || role;
-  const { pathname } = useLocation();
-  const [openMenu, setOpenMenu] = useState(false);
-  const [users, setUsers] = useState<UserType[]>([]);
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const { makeApiCall, fetching, isFetched } = useAPICall();
-  const navigate = useNavigate();
-  // refs for detecting outside clicks
-  const desktopDropdownRef = useRef<HTMLDivElement | null>(null);
-  const mobileDropdownRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setOpenMenu(false), [pathname]);
 
   useEffect(() => {
-    setOpenMenu(false);
-  }, [pathname]);
-
-  // Disable background scroll on mobile menu open
-  useEffect(() => {
-    document.body.style.overflow = openMenu ? "hidden" : "";
-  }, [openMenu]);
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-  useEffect(() => {
-    if (!userDropdownOpen) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
+    const handleClick = (e: MouseEvent) => {
       if (
-        desktopDropdownRef.current &&
-        !desktopDropdownRef.current.contains(target) &&
-        mobileDropdownRef.current &&
-        !mobileDropdownRef.current.contains(target)
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
       ) {
         setUserDropdownOpen(false);
       }
-
-      // if only one ref exists, also handle that case
-      if (desktopDropdownRef.current && !mobileDropdownRef.current) {
-        if (!desktopDropdownRef.current.contains(target))
-          setUserDropdownOpen(false);
-      }
-      if (mobileDropdownRef.current && !desktopDropdownRef.current) {
-        if (!mobileDropdownRef.current.contains(target))
-          setUserDropdownOpen(false);
-      }
     };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [userDropdownOpen]);
-
-  // ------------------
-  // Quick user switching helpers
-  // ------------------
-  const fetchUsers = async () => {
-    const response = await makeApiCall(
-      "GET",
-      API_ENDPOINT.GET_ALL_SWITCH_USER,
-      {},
-      "application/json",
-      authToken,
-      "verifying"
-    );
-    console.log(response);
-    if (response.status == 200) {
-      console.log(response);
-      setUsers(response.data.users);
-      console.log("set");
+  const fetchUsers = async (page: number) => {
+    setIsLoadingUsers(true);
+    try {
+      const response = await makeApiCall(
+        "GET",
+        `${API_ENDPOINT.GET_ALL_SWITCH_USER}?page=${page}`,
+        {},
+        "application/json",
+        authToken
+      );
+      if (response.status === 200) {
+        setUsers(response.data.users || []);
+        setTotalPages(response.data.total_pages || 1);
+        setCurrentPage(page);
+      }
+    } catch (error) {
+      toast.error("Failed to load users");
+    } finally {
+      setIsLoadingUsers(false);
     }
-    console.log("done");
   };
 
-  const switchUser = async (u: UserType) => {
+  useEffect(() => {
+    if (authToken) fetchUsers(1);
+  }, [authToken]);
+
+  const handleSwitch = async (u: any) => {
     const response = await makeApiCall(
-      "post",
+      "POST",
       API_ENDPOINT.SWITCH_USER,
-      {
-        email: u.email,
-      },
+      { email: u.email },
       "application/json",
-      authToken,
-      "login"
+      authToken
     );
-    console.log(response);
-    if (response.status == 200) {
-      console.log(response.data, response.data);
-      login(response.data.user, response.data.token);
-      toast.success(`User switched to ${response.data.user.name} successfully`);
-      navigate("/");
-    } else {
-      toast.error("Credentials invalid, try again");
-    }
-  };
+    if (response.status === 200) {
+      const newUser = response.data.user;
+      const newToken = response.data.token;
 
-  const toggleUserDropdown = () => {
-    const willOpen = !userDropdownOpen;
-    setUserDropdownOpen(willOpen);
+      // Update local context
+      login(newUser, newToken);
+
+      // Determine destination path based on role
+      const targetRole = newUser.role?.toLowerCase();
+      const destination = rolePathMap[targetRole] || "/";
+
+      toast.success(`Access granted: ${newUser.name}`);
+      setUserDropdownOpen(false);
+
+      // Explicitly navigate to the correct dashboard
+      navigate(destination);
+    }
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Mobile menu overlay */}
+    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans antialiased text-slate-900">
       {openMenu && (
         <div
-          className="fixed inset-0 z-30 bg-black bg-opacity-30 md:hidden"
+          className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setOpenMenu(false)}
         />
       )}
 
-      {/* Mobile menu button */}
-      {!openMenu && (
-        <button
-          className="md:hidden fixed top-3 right-3 z-50 bg-white rounded-full p-2 shadow border border-slate-200"
-          onClick={() => setOpenMenu(true)}
-          aria-label="Open menu"
-        >
-          <Menu size={24} />
-        </button>
-      )}
-
-      {/* Sidebar */}
       <aside
         className={`
-    fixed top-0 left-0 h-screen pt-5 z-40 bg-white border-r border-slate-200 flex flex-col overflow-y-auto
-    w-64 transition-transform duration-200
-    ${openMenu ? "translate-x-0" : "-translate-x-full"}
-    md:translate-x-0 md:static md:block
-  `}
-        style={{ minWidth: "16rem" }}
+          fixed md:static inset-y-0 left-0 z-50
+          bg-white border-r border-slate-200/80
+          transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] group
+          ${
+            openMenu
+              ? "translate-x-0 w-64"
+              : "-translate-x-full md:translate-x-0 md:w-[72px] md:hover:w-64"
+          }
+        `}
       >
-        <div className="flex h-full flex-col flex-1 justify-between relative">
-          <div>
-            <div className="md:hidden flex justify-between p-3 relative">
-              {/* Mobile header: name with role in brackets (smaller, responsive) */}
-              <div className="flex-1 pr-2">
-                <h2 className="text-lg font-bold text-blue-700 mb-1 truncate">
-                  <span className="block truncate">{user.name}</span>
-                  <span className="block text-xs sm:text-sm text-slate-500">
-                    ({roleLabel})
-                  </span>
-                </h2>
+        <div className="flex flex-col h-full">
+          <div className="p-4 mb-2">
+            <div className="flex items-center gap-3 h-12">
+              <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+                <User size={18} strokeWidth={2.5} />
               </div>
-
-              <div className="flex items-center gap-2">
-                {/* Mobile: user switch button visible on small screens */}
-                <div className="relative" ref={mobileDropdownRef}>
-                  <button
-                    onClick={toggleUserDropdown}
-                    className="flex items-center gap-2 rounded-md px-2 py-1 border border-slate-200 hover:bg-slate-50"
-                    aria-expanded={userDropdownOpen}
-                  >
-                    <User size={16} />
-                    <ChevronDown size={16} />
-                  </button>
-
-                  {/* Mobile dropdown — align to right side of the sidebar / screen */}
-                  {userDropdownOpen && (
-                    <div className="absolute -right-8 top-12 mt-2 w-56 bg-white border rounded shadow-lg z-50 md:hidden">
-                      <div className="p-2">
-                        <div className="text-xs text-slate-500 mb-2">
-                          Available users
-                        </div>
-                        <div className="max-h-48 overflow-auto">
-                          {users.map((u) => (
-                            <button
-                              key={u.id}
-                              onClick={() => switchUser(u)}
-                              className="w-full text-left px-3 py-2 rounded hover:bg-slate-100"
-                            >
-                              <div className="font-medium">{u.name}</div>
-                              <div className="text-xs text-slate-500">
-                                {u.role}
-                              </div>
-                            </button>
-                          ))}
-                          {users.length === 0 && (
-                            <div className="px-3 py-2 text-sm text-slate-500">
-                              No users
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => setOpenMenu(false)}
-                  aria-label="Close menu"
-                  className="text-slate-500 hover:text-red-500"
-                >
-                  <X size={24} />
-                </button>
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 truncate">
+                <p className="font-semibold text-sm text-slate-900 truncate tracking-tight">
+                  {user?.name}
+                </p>
+                <p className="text-[11px] font-medium text-slate-400 truncate">
+                  {roleLabel}
+                </p>
               </div>
             </div>
 
-            {/* Sidebar content */}
-            <div>
-              <div className="max-md:hidden flex-col p-2 pb-2 border-b border-slate-100 flex justify-between">
-                <div className="flex-1">
-                  {/* Desktop header: name with role in brackets (smaller, responsive) */}
-                  <h2 className="text-2xl md:text-2xl sm:text-xl font-bold text-blue-700 mb-1 truncate">
-                    <span className="block truncate">{user.name}</span>
-                    <span className="block text-sm md:text-xs text-slate-500">
-                      ({roleLabel})
-                    </span>
-                  </h2>
-                </div>
+            <div
+              className="mt-4 opacity-0 group-hover:opacity-100 transition-all duration-200"
+              ref={dropdownRef}
+            >
+              <button
+                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                className="w-full flex items-center justify-between text-[11px] font-semibold tracking-wide uppercase text-slate-500 bg-slate-50 border border-slate-200/60 px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-700 transition-all"
+              >
+                <span className="truncate">Switch Account</span>
+                {isLoadingUsers ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <ChevronDown size={12} />
+                )}
+              </button>
 
-                {/* Quick User Switch Dropdown (desktop) — hidden on small screens */}
-                <div className="relative" ref={desktopDropdownRef}>
-                  <button
-                    onClick={toggleUserDropdown}
-                    className="flex items-center gap-2 rounded-md px-2 py-1 border border-slate-200 hover:bg-slate-50"
-                    aria-expanded={userDropdownOpen}
-                  >
-                    <User size={16} />
-                    <span className="text-sm">Switch user</span>
-                    <ChevronDown size={16} />
-                  </button>
-
-                  {userDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white border rounded shadow-lg z-50">
-                      <div className="p-2">
-                        <div className="text-xs text-slate-500 mb-2">
-                          Available users
-                        </div>
-                        <div className="max-h-48 overflow-auto">
-                          {users.map((u) => (
-                            <button
-                              key={u.id}
-                              onClick={() => switchUser(u)}
-                              className="w-full text-left px-3 py-2 rounded hover:bg-slate-100"
-                            >
-                              <div className="font-medium">{u.name}</div>
-                              <div className="text-xs text-slate-500">
-                                {u.role}
-                              </div>
-                            </button>
-                          ))}
-                          {users.length === 0 && (
-                            <div className="px-3 py-2 text-sm text-slate-500">
-                              No users
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <nav className="flex flex-col space-y-1 p-3">
-                {links.map(({ label, match, to, icon: Icon }) => {
-                  const isMatch =
-                    (Array.isArray(match) &&
-                      match.some((m) => pathname.startsWith(m))) ||
-                    pathname === to;
-
-                  return (
-                    <NavLink
-                      key={to}
-                      to={to}
-                      className={`flex items-center px-4 py-2 rounded-lg font-medium transition ${
-                        isMatch
-                          ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600"
-                          : "text-slate-700 hover:bg-slate-50"
-                      }`}
-                      onClick={() => setOpenMenu(false)}
+              {userDropdownOpen && (
+                <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 shadow-xl rounded-xl z-[60] overflow-hidden flex flex-col">
+                  <div className="max-h-[280px] overflow-y-auto py-1">
+                    {users.map((u) => (
+                      <button
+                        key={u.id}
+                        onClick={() => handleSwitch(u)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors flex flex-col gap-0.5"
+                      >
+                        <span className="text-sm font-medium text-slate-700">
+                          {u.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium uppercase">
+                          {roleLabels[u.role?.toLowerCase()] || u.role}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="p-2 bg-slate-50 flex items-center justify-between border-t border-slate-100">
+                    <button
+                      disabled={currentPage === 1 || isLoadingUsers}
+                      onClick={() => fetchUsers(currentPage - 1)}
+                      className="p-1.5 rounded-md hover:bg-white border border-transparent hover:border-slate-200 disabled:opacity-20 transition"
                     >
-                      {Icon && <Icon size={18} className="mr-3" />}
-                      {label}
-                    </NavLink>
-                  );
-                })}
-              </nav>
+                      <ChevronLeft size={14} />
+                    </button>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      disabled={currentPage === totalPages || isLoadingUsers}
+                      onClick={() => fetchUsers(currentPage + 1)}
+                      className="p-1.5 rounded-md hover:bg-white border border-transparent hover:border-slate-200 disabled:opacity-20 transition"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Logout button */}
-          <div>
+          <nav className="flex-1 px-3 space-y-1 overflow-y-auto no-scrollbar">
+            {links.map(({ label, to, icon: Icon, match }) => {
+              const isActive =
+                pathname === to || match?.some((m) => pathname.startsWith(m));
+              return (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={`
+                    flex items-center h-[44px] rounded-lg transition-all duration-200 group/link
+                    ${
+                      isActive
+                        ? "bg-slate-900 text-white shadow-sm"
+                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                    }
+                  `}
+                >
+                  <div className="w-[48px] flex-shrink-0 flex justify-center">
+                    <Icon size={19} strokeWidth={isActive ? 2.5 : 2} />
+                  </div>
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap font-medium text-sm tracking-tight">
+                    {label}
+                  </span>
+                </NavLink>
+              );
+            })}
+          </nav>
+
+          <div className="p-4 mt-auto border-t border-slate-100">
             <button
               onClick={logout}
-              className="flex items-center w-full px-4 py-2 rounded-lg font-medium transition text-red-600 hover:bg-red-50"
-              style={{ border: 0, background: "none" }}
+              className="flex items-center h-[44px] w-full rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all duration-200 group/logout"
             >
-              <LogOut size={18} className="mr-3 text-red-600" />
-              Logout
+              <div className="w-[48px] flex-shrink-0 flex justify-center">
+                <LogOut size={19} />
+              </div>
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-medium text-sm tracking-tight">
+                Logout
+              </span>
             </button>
           </div>
         </div>
-        {/* Close button for mobile */}
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 max-md:pt-12 overflow-y-auto ">{children}</main>
+      <main className="flex-1 overflow-y-auto relative flex flex-col">
+        <header className="md:hidden flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 sticky top-0 z-30">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-xs">
+              P
+            </div>
+            <span className="font-bold text-sm tracking-tight text-slate-900 uppercase">
+              Portal
+            </span>
+          </div>
+          <button
+            onClick={() => setOpenMenu(true)}
+            className="p-2 text-slate-500 hover:bg-slate-50 rounded-lg transition"
+          >
+            <Menu size={20} />
+          </button>
+        </header>
+
+        <div className="p-6 md:p-10 max-w-7xl mx-auto w-full">{children}</div>
+      </main>
     </div>
   );
 };

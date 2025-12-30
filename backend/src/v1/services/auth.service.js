@@ -82,6 +82,7 @@ export async function switchUser({email}){
     },
   };
 }
+
 export async function sentForgotMail(email) {
   try {
     const result = await pool.query(
