@@ -15,20 +15,17 @@ router.get(
   getAllProjectsToBeApprovedController
 );
 
-
 router.patch(
   "/estimation-deliverables/:estimation_deliverable_id/approve/:worker_id",
   authenticateToken,
   approveEstimationDeliverable
 );
 
-
 router.patch(
   "/estimation-deliverables/:estimation_deliverable_id/rework/:worker_id",
   authenticateToken,
   rejectEstimationDeliverable
 );
-
 
 router.patch(
   "/rework-note/:estimation_deliverable_id/:worker_id",
@@ -37,5 +34,3 @@ router.patch(
 );
 
 export default router;
-
-

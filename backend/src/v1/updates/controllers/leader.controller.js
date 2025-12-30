@@ -72,7 +72,6 @@ export async function rejectEstimationDeliverable(req, res) {
 
 export async function addReworkNoteController(req, res) {
   try {
-  
     const { estimation_deliverable_id, worker_id } = req.params;
     const { note } = req.body;
 

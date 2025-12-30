@@ -44,23 +44,15 @@ export async function getWorkersWorkByProjectIdWorkId(
 }
 
 export async function getWorkerProjectIds(worker_id, limit, offset) {
-  console.debug(
-    "[SERVICE][WORKERS][PROJECT] Fetching project IDs for worker:",
-    worker_id
-  );
-
   const query = `
-    SELECT project_id
+    SELECT DISTINCT project_id
     FROM estimation_deliverables
     WHERE worker_id = $1
+    ORDER BY project_id
     LIMIT $2 OFFSET $3
   `;
 
   const result = await pool.query(query, [worker_id, limit, offset]);
-  console.debug(
-    "[SERVICE][WORKERS][PROJECT] Project IDs fetched:",
-    result.rows
-  );
   return result.rows;
 }
 
@@ -179,9 +171,6 @@ export async function markEstimationDeliverableChecking(
   return rows[0];
 }
 
-
-
-
 /*
 
 This is the new deliverable checking
@@ -223,7 +212,6 @@ export async function checkInDeliverable(req, res) {
     res.status(500).json({ success: false, message: err.message });
   }
 }
-
 
 export async function uploadWorkerFiles(
   worker_id,

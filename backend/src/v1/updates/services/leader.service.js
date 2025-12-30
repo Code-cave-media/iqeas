@@ -82,8 +82,6 @@ LIMIT $1 OFFSET $2;
   };
 }
 
-
-
 export async function markEstimationDeliverableRejected(
   estimation_deliverable_id,
   worker_id,

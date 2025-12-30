@@ -194,7 +194,7 @@ export default function WorkDetails() {
       {workData.map((w) => {
         const t = toClock(seconds[w.id] || 0);
         const running = status[w.id] === "RUNNING";
-        const canStart = w.status === "under_progress" || w.status === "rework";
+        const canStart = w.status === "under progress" || w.status === "rework";
 
         return (
           <div key={w.id} className="rounded-xl border bg-white p-5 space-y-4">

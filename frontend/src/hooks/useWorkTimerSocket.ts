@@ -17,9 +17,8 @@ export function useWorkTimerSocket(workerId?: number, onUpdate?: () => void) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-
     const token = localStorage.getItem("auth_token");
-    console.log(token)
+    console.log(token);
     if (!token) {
       console.error("❌ Missing auth token for WS");
       return;
