@@ -10,6 +10,7 @@ import {
   X,
   CheckCircle,
   RotateCcw,
+  Plus,
 } from "lucide-react";
 import Loading from "@/components/atomic/Loading";
 
@@ -32,11 +33,14 @@ export default function ProjectLeaderDashboard() {
     null
   );
 
+  // Rework note state
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState("");
+
   /* ---------- FETCH PAGINATED PROJECTS ---------- */
   const fetchProjects = async (pageNum: number = 1) => {
     setLoading(true);
     setError(null);
-
     try {
       const res = await makeApiCall(
         "get",
@@ -59,8 +63,11 @@ export default function ProjectLeaderDashboard() {
     }
   };
 
-  /* ---------- APPROVAL ACTIONS ---------- */
-  const handleApprove = async (estimation_deliverable_id: string, worker_id) => {
+  /* ---------- APPROVAL & REWORK ---------- */
+  const handleApprove = async (
+    estimation_deliverable_id: string,
+    worker_id
+  ) => {
     setActionLoading((prev) => ({
       ...prev,
       [estimation_deliverable_id]: true,
@@ -118,9 +125,35 @@ export default function ProjectLeaderDashboard() {
     }
   };
 
-  useEffect(() => {
-    fetchProjects(1);
-  }, [user?.id]);
+  /* ---------- ADD REWORK NOTE ---------- */
+  const handleAddNote = async (deliverable: any) => {
+    if (!noteText.trim()) return;
+
+    setActionLoading((prev) => ({
+      ...prev,
+      [deliverable.id]: true,
+    }));
+
+    try {
+      await makeApiCall(
+        "patch",
+        API_ENDPOINT.ADD_REWORK_NOTE(deliverable.id, deliverable.worker_id),
+        { note: noteText },
+        "application/json",
+        authToken
+      );
+      fetchProjects(page);
+      setActiveNoteId(null);
+      setNoteText("");
+    } catch (err: any) {
+      setError(`Failed to add note: ${err.message || "Please try again."}`);
+    } finally {
+      setActionLoading((prev) => ({
+        ...prev,
+        [deliverable.id]: false,
+      }));
+    }
+  };
 
   const openFileModal = (deliverable: any) => {
     setSelectedDeliverable(deliverable);
@@ -131,6 +164,10 @@ export default function ProjectLeaderDashboard() {
     setIsModalOpen(false);
     setSelectedDeliverable(null);
   };
+
+  useEffect(() => {
+    fetchProjects(1);
+  }, [user?.id]);
 
   if (loading && projects.length === 0) return <Loading />;
 
@@ -162,6 +199,7 @@ export default function ProjectLeaderDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {projects.map((deliverable) => {
           const isLoading = actionLoading[deliverable.id];
+          const isNoteActive = activeNoteId === deliverable.id;
 
           return (
             <div
@@ -188,46 +226,8 @@ export default function ProjectLeaderDashboard() {
                 </span>
               </div>
 
-              {/* Details */}
-              <div className="space-y-3 mb-6">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-gray-500 text-xs uppercase tracking-wide">
-                      Drawing No
-                    </p>
-                    <p className="font-medium text-gray-900">
-                      {deliverable.drawing_no}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 text-xs uppercase tracking-wide">
-                      Discipline
-                    </p>
-                    <p className="font-medium text-gray-900">
-                      {deliverable.discipline}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 text-xs uppercase tracking-wide">
-                      Stage
-                    </p>
-                    <p className="font-medium text-gray-900">
-                      {deliverable.stage}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 text-xs uppercase tracking-wide">
-                      Hours
-                    </p>
-                    <p className="font-medium text-gray-900">
-                      {deliverable.hours}h
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               {/* Files Count */}
-              <div className="mb-6 p-3 border border-gray-100 rounded-md bg-gray-50">
+              <div className="mb-4 p-3 border border-gray-100 rounded-md bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-gray-500" />
@@ -248,15 +248,51 @@ export default function ProjectLeaderDashboard() {
                 </div>
               </div>
 
+              {/* Add Rework Note */}
+              <div className="mb-4">
+                {isNoteActive ? (
+                  <div className="flex flex-col gap-2">
+                    <textarea
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-yellow-200"
+                      placeholder="Type your rework note..."
+                      rows={3}
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => handleAddNote(deliverable)}
+                        disabled={isLoading}
+                        className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md text-sm font-medium transition-colors"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setActiveNoteId(null)}
+                        className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md text-sm font-medium transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setActiveNoteId(deliverable.id)}
+                    className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                  >
+                    <Plus className="w-4 h-4" /> Add Rework Note
+                  </button>
+                )}
+              </div>
+
               {/* Actions */}
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={
-                    (() =>
-                      handleApprove(
-                        deliverable.id.toString(),
-                        deliverable.worker_id
-                      ))
+                  onClick={() =>
+                    handleApprove(
+                      deliverable.id.toString(),
+                      deliverable.worker_id
+                    )
                   }
                   disabled={isLoading}
                   className={`flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
@@ -266,28 +302,7 @@ export default function ProjectLeaderDashboard() {
                   }`}
                 >
                   {isLoading ? (
-                    <>
-                      <svg
-                        className="w-4 h-4 animate-spin"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      Processing
-                    </>
+                    <span>Processing...</span>
                   ) : (
                     <>
                       <CheckCircle className="w-4 h-4" />
@@ -311,28 +326,7 @@ export default function ProjectLeaderDashboard() {
                   }`}
                 >
                   {isLoading ? (
-                    <>
-                      <svg
-                        className="w-4 h-4 animate-spin"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      Processing
-                    </>
+                    <span>Processing...</span>
                   ) : (
                     <>
                       <RotateCcw className="w-4 h-4" />
@@ -345,57 +339,6 @@ export default function ProjectLeaderDashboard() {
           );
         })}
       </div>
-
-      {/* No Projects */}
-      {projects.length === 0 && !loading && (
-        <div className="text-center py-20">
-          <svg
-            className="w-16 h-16 text-gray-400 mx-auto mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No deliverables to review
-          </h3>
-          <p className="text-gray-500">
-            All items are approved or no pending checking items.
-          </p>
-        </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            Page <span className="font-medium">{page}</span> of{" "}
-            <span className="font-medium">{totalPages}</span>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => fetchProjects(page - 1)}
-              disabled={page === 1 || loading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => fetchProjects(page + 1)}
-              disabled={page >= totalPages || loading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* FILES MODAL */}
       {isModalOpen && selectedDeliverable && (

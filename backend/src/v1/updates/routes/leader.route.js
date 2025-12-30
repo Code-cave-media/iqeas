@@ -32,7 +32,7 @@ router.patch(
 
 router.patch(
   "/rework-note/:estimation_deliverable_id/:worker_id",
-  authMiddleware,
+  authenticateToken,
   addReworkNoteController
 );
 
