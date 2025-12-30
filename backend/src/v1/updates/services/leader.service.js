@@ -53,8 +53,7 @@ LEFT JOIN workers_uploaded_files wuf
 LEFT JOIN uploaded_files uf
   ON uf.id = wuf.uploaded_file_id
 
-WHERE ed.status = 'checking'
-
+ WHERE ed.status IN ('checking', 'approved', 'rework')
 GROUP BY ed.id, p.id
 ORDER BY ed.created_at DESC
 LIMIT $1 OFFSET $2;
@@ -65,7 +64,7 @@ LIMIT $1 OFFSET $2;
   const countQuery = `
     SELECT COUNT(*)::int AS total
     FROM estimation_deliverables
-    WHERE status = 'checking';
+    WHERE status IN ('checking', 'approved', 'rework');
   `;
 
   const [dataResult, countResult] = await Promise.all([

@@ -169,6 +169,30 @@ export default function ProjectLeaderDashboard() {
     fetchProjects(1);
   }, [user?.id]);
 
+
+  const STATUS_BADGE: Record<string, string> = {
+    under_progress: "bg-blue-100 text-blue-700",
+    rework: "bg-orange-100 text-orange-700",
+    checking: "bg-yellow-100 text-yellow-700",
+    approved: "bg-green-100 text-green-700",
+  };
+
+  /* ---------- BUTTON COLORS ---------- */
+  const BTN_COLORS: any = {
+    green: "bg-green-600 hover:bg-green-700",
+    yellow: "bg-yellow-500 hover:bg-yellow-600",
+    red: "bg-red-600 hover:bg-red-700",
+  };
+
+  /* ---------- STATUS BADGE COMPONENT ---------- */
+  const StatusBadge = ({ status }: { status: string }) => (
+    <span
+      className={`px-2 py-0.5 rounded-md text-xs font-medium capitalize
+      ${STATUS_BADGE[status] || "bg-gray-100 text-gray-600"}`}
+    >
+      {status.replace("_", " ")}
+    </span>
+  );
   if (loading && projects.length === 0) return <Loading />;
 
   return (
@@ -221,9 +245,7 @@ export default function ProjectLeaderDashboard() {
                     </p>
                   </div>
                 </div>
-                <span className="px-2 py-1 bg-yellow-50 text-yellow-800 text-xs font-medium rounded">
-                  {deliverable.status}
-                </span>
+                <StatusBadge status={deliverable.status} />
               </div>
 
               {/* Files Count */}
