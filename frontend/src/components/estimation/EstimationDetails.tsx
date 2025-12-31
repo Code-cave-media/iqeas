@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAPICall } from "@/hooks/useApiCall";
@@ -13,13 +12,18 @@ export default function EstimationDetails() {
   const { authToken, user } = useAuth();
   const { makeApiCall } = useAPICall();
 
-
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [deliverables, setDeliverables] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
 
+  // ✅ estimationStatus is a string now
+  const [estimationStatus, setEstimationStatus] = useState<string>("");
+
+  /* =========================
+     FETCH DELIVERABLES
+  ========================= */
   useEffect(() => {
     if (!project_id) return;
 
@@ -52,6 +56,39 @@ export default function EstimationDetails() {
     fetchDeliverables();
   }, [project_id, authToken, makeApiCall]);
 
+  /* =========================
+     FETCH PROJECT DETAILS
+  ========================= */
+  useEffect(() => {
+    if (!project_id) return;
+
+    const getProject = async () => {
+      setLoading(true);
+
+      const response = await makeApiCall(
+        "get",
+        API_ENDPOINT.GET_PROJECT_BY_ID(project_id),
+        {},
+        "application/json",
+        authToken,
+        "getProjects"
+      );
+
+      if (response?.status === 200) {
+        setEstimationStatus(response.data.estimation_status || "");
+      } else {
+        toast.error("Failed to fetch project details");
+      }
+
+      setLoading(false);
+    };
+
+    getProject();
+  }, [project_id, authToken, makeApiCall]);
+
+  /* =========================
+     HANDLE HOURS EDITING
+  ========================= */
   const handleHourChange = (id: number, value: string) => {
     setDeliverables((prev) =>
       prev.map((item) => (item.id === id ? { ...item, hours: value } : item))
@@ -65,6 +102,9 @@ export default function EstimationDetails() {
     }, 0);
   };
 
+  /* =========================
+     SAVE HOURS
+  ========================= */
   const saveHours = async () => {
     if (!project_id) return;
 
@@ -104,79 +144,75 @@ export default function EstimationDetails() {
     setSaving(false);
   };
 
-const sendToAdmin = async () => {
-  if (!project_id) return;
+  /* =========================
+     SEND TO ADMIN
+  ========================= */
+  const sendToAdmin = async () => {
+    if (!project_id) return;
 
-  const payload = deliverables
-    .filter((d) => d.hours !== "" && d.hours !== null)
-    .map((d) => ({
-      sno: d.sno,
-    }));
+    const payload = deliverables
+      .filter((d) => d.hours !== "" && d.hours !== null)
+      .map((d) => ({ sno: d.sno }));
 
-  if (payload.length === 0) {
-    toast.error("Save hours before sending to admin");
-    return;
-  }
+    if (payload.length === 0) {
+      toast.error("Save hours before sending to admin");
+      return;
+    }
 
-  setSending(true);
+    setSending(true);
 
-  try {
-    const response = await makeApiCall(
-      "patch",
-      API_ENDPOINT.SEND_DELIVERABLES_TO_ADMIN(project_id),
-      { estimation_status: "sent_to_admin" },
-      "application/json",
-      authToken,
-      "sendToAdmin"
-    );
-
-
-
-    if (response?.status === 200) {
-      toast.success("Deliverables sent to admin successfully");
-
-      const data = {
-        project_id: Number(project_id),
-        status: "created",
-        log: null,
-        cost: null,
-        deadline: null,
-        approval_date: null,
-        approved: false,
-        sent_to_pm: false,
-        forwarded_user_id: 12,
-        notes: null,
-        uploaded_file_ids: [],
-      };
-
-      const createResponse = await makeApiCall(
-        "post",
-        API_ENDPOINT.CREATE_ESTIMATION,
-        data,
+    try {
+      // 1️⃣ Update project status
+      const updateProjectRes = await makeApiCall(
+        "patch",
+        API_ENDPOINT.EDIT_PROJECT(project_id),
+        { estimation_status: "sent_to_admin" },
         "application/json",
         authToken,
-        "createEstimation"
+        "updateProjectEstimationStatus"
       );
 
-      if (createResponse?.status === 200) {
-        toast.success("Estimation record created successfully");
-      } else {
-        toast.error("Failed to create estimation record");
+      if (updateProjectRes?.status !== 200) {
+        toast.error("Failed to update project status");
+        return;
       }
-    } else {
-      toast.error("Failed to send deliverables to admin");
+
+      // 2️⃣ Send deliverables to admin
+      const sendDeliverablesRes = await makeApiCall(
+        "patch",
+        API_ENDPOINT.SEND_DELIVERABLES_TO_ADMIN(project_id),
+        {
+          estimation_status: "sent_to_admin",
+          deliverables: payload,
+        },
+        "application/json",
+        authToken,
+        "sendDeliverablesToAdmin"
+      );
+
+      if (sendDeliverablesRes?.status !== 200) {
+        toast.error("Failed to send deliverables to admin");
+        return;
+      }
+
+      toast.success("Deliverables sent to admin successfully");
+
+      // 3️⃣ Update local state to disable button
+      setEstimationStatus("sent_to_admin");
+    } catch (error) {
+      console.error(error);
+      toast.error("An error occurred while sending to admin");
+    } finally {
+      setSending(false);
     }
-  } catch (error) {
-    toast.error("An error occurred while sending to admin");
-    console.error(error);
-  }
+  };
 
-  setSending(false);
-};
-
-
+  /* =========================
+     RENDER
+  ========================= */
   return (
     <section className="min-h-screen bg-gray-50 p-6">
+      {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">
@@ -191,6 +227,7 @@ const sendToAdmin = async () => {
           </p>
         </div>
 
+        {/* Actions */}
         <div className="flex gap-2">
           <button
             onClick={saveHours}
@@ -202,7 +239,7 @@ const sendToAdmin = async () => {
 
           <button
             onClick={sendToAdmin}
-            disabled={sending}
+            disabled={sending || estimationStatus === "sent_to_admin"}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50"
           >
             {sending ? "Sending..." : "Send to Admin"}
@@ -210,7 +247,7 @@ const sendToAdmin = async () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Deliverables Table */}
       <div className="rounded-xl bg-white shadow-sm overflow-x-auto">
         {loading ? (
           <p className="p-6 text-sm text-gray-500">Loading deliverables...</p>
