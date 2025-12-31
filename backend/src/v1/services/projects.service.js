@@ -361,7 +361,7 @@ export async function getProjectsEstimationProjects({
               'email', fuser.email
             )
             FROM users fuser
-            WHERE fuser.id = e.forwarded_user_id
+            WHERE fuser.id = e.pm_id
           ),
           'uploaded_files', COALESCE((
             SELECT json_agg(json_build_object(
@@ -474,7 +474,7 @@ export async function getPMProjects({
       )
       AND EXISTS (
         SELECT 1 FROM estimations e
-        WHERE e.project_id = projects.id AND e.sent_to_pm = true AND e.forwarded_user_id = $6
+        WHERE e.project_id = projects.id AND e.sent_to_pm = true AND e.pm_id = $6
       )
       ORDER BY created_at DESC
       LIMIT $7 OFFSET $8
@@ -556,8 +556,8 @@ export async function getPMProjects({
         )
         FROM estimations e
         JOIN users eu ON e.user_id = eu.id
-        JOIN users fuser ON fuser.id = e.forwarded_user_id
-        WHERE e.project_id = fp.id AND e.forwarded_user_id = $6
+        JOIN users fuser ON fuser.id = e.pm_id
+        WHERE e.project_id = fp.id AND e.pm_id = $6
         LIMIT 1
       ) AS estimation,
 
@@ -615,7 +615,7 @@ export async function getPMProjects({
     )
     AND EXISTS (
       SELECT 1 FROM estimations e
-      WHERE e.project_id = projects.id AND e.sent_to_pm = true AND e.forwarded_user_id = $6
+      WHERE e.project_id = projects.id AND e.sent_to_pm = true AND e.pm_id = $6
     )
   `;
 
@@ -717,7 +717,7 @@ export async function getAdminProjects({ page = 1, size = 10, query = "" }) {
               'email', fuser.email
             )
             FROM users fuser
-            WHERE fuser.id = e.forwarded_user_id
+            WHERE fuser.id = e.pm_id
           ),
           'uploaded_files', COALESCE((
             SELECT json_agg(json_build_object(
@@ -818,7 +818,7 @@ export async function getPMProjectsCards({ userId }) {
       SELECT 1 FROM estimations e
       WHERE e.project_id = projects.id
       AND e.sent_to_pm = true
-      AND e.forwarded_user_id = $1
+      AND e.pm_id = $1
     );
   `;
 
@@ -1215,7 +1215,7 @@ export async function getWorkerProjectsPaginated(
       FROM drawing_stage_logs dsl
       JOIN drawings d ON dsl.drawing_id = d.id
       JOIN projects p ON d.project_id = p.id
-      WHERE (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
+      WHERE (dsl.created_by = $1 OR dsl.pm_id = $2)
       AND (
         LOWER(p.name) ILIKE $3 OR
         LOWER(p.project_id) ILIKE $4 OR
@@ -1228,19 +1228,19 @@ export async function getWorkerProjectsPaginated(
       (
         SELECT COUNT(*) FROM drawing_stage_logs dsl
         JOIN drawings d ON dsl.drawing_id = d.id
-        WHERE d.project_id = f.project_id AND (dsl.forwarded_user_id = $2)
+        WHERE d.project_id = f.project_id AND (dsl.pm_id = $2)
       ) AS total_works,
 
       (
         SELECT COUNT(*) FROM drawing_stage_logs dsl
         JOIN drawings d ON dsl.drawing_id = d.id
-        WHERE d.project_id = f.project_id AND (dsl.forwarded_user_id = $2) AND  dsl.is_sent='true'
+        WHERE d.project_id = f.project_id AND (dsl.pm_id = $2) AND  dsl.is_sent='true'
       ) AS completed_works,
 
       (
         SELECT COUNT(*) FROM drawing_stage_logs dsl
         JOIN drawings d ON dsl.drawing_id = d.id
-        WHERE d.project_id = f.project_id AND (dsl.forwarded_user_id = $2) AND dsl.is_sent='false'
+        WHERE d.project_id = f.project_id AND (dsl.pm_id = $2) AND dsl.is_sent='false'
       ) AS pending_works
 
     FROM filtered f
@@ -1255,7 +1255,7 @@ export async function getWorkerProjectsPaginated(
       FROM drawing_stage_logs dsl
       JOIN drawings d ON dsl.drawing_id = d.id
       JOIN projects p ON d.project_id = p.id
-      WHERE (dsl.forwarded_user_id = $1::int)
+      WHERE (dsl.pm_id = $1::int)
       AND (
         LOWER(p.name) ILIKE $2 OR
         LOWER(p.project_id) ILIKE $3 OR
@@ -1275,7 +1275,7 @@ export async function getWorkerProjectsPaginated(
     FROM drawing_stage_logs dsl
     JOIN drawings d ON dsl.drawing_id = d.id
     JOIN projects p ON d.project_id = p.id
-    WHERE (dsl.forwarded_user_id = $1::int)
+    WHERE (dsl.pm_id = $1::int)
     AND (
       LOWER(p.name) ILIKE $2 OR
       LOWER(p.project_id) ILIKE $3 OR
@@ -1325,19 +1325,19 @@ export async function getWorkerProjectDetail(userId, projectId) {
       (
         SELECT COUNT(*) FROM drawing_stage_logs dsl
         JOIN drawings d ON dsl.drawing_id = d.id
-        WHERE d.project_id = p.id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2)
+        WHERE d.project_id = p.id AND (dsl.created_by = $1 OR dsl.pm_id = $2)
       ) AS total_works,
 
       (
         SELECT COUNT(*) FROM drawing_stage_logs dsl
         JOIN drawings d ON dsl.drawing_id = d.id
-        WHERE d.project_id = p.id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2) AND dsl.status = 'completed'
+        WHERE d.project_id = p.id AND (dsl.created_by = $1 OR dsl.pm_id = $2) AND dsl.status = 'completed'
       ) AS completed_works,
 
       (
         SELECT COUNT(*) FROM drawing_stage_logs dsl
         JOIN drawings d ON dsl.drawing_id = d.id
-        WHERE d.project_id = p.id AND (dsl.created_by = $1 OR dsl.forwarded_user_id = $2) AND dsl.status != 'completed'
+        WHERE d.project_id = p.id AND (dsl.created_by = $1 OR dsl.pm_id = $2) AND dsl.status != 'completed'
       ) AS pending_works
 
     FROM projects p
@@ -1413,12 +1413,12 @@ export async function getProjectDetailsById(projectId) {
             ),
 
             'forwarded_to', CASE 
-              WHEN e.forwarded_user_id IS NOT NULL THEN
+              WHEN e.pm_id IS NOT NULL THEN
                 (SELECT json_build_object(
                   'id', fuser.id,
                   'name', fuser.name,
                   'email', fuser.email
-                ) FROM users fuser WHERE fuser.id = e.forwarded_user_id)
+                ) FROM users fuser WHERE fuser.id = e.pm_id)
               ELSE NULL
             END,
 

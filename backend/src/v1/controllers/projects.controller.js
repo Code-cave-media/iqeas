@@ -175,6 +175,8 @@ export const getPMProjectsController = async (req, res) => {
     const size = parseInt(req.query.size) || 10;
     const query = req.query.search || "";
     const userId = req.user.id;
+
+    console.log(`id: ====> ${userId}`)
     const projects = await getPMProjects({
       page: page,
       size,
