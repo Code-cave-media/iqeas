@@ -1,0 +1,9 @@
+Planed Updations 
+-----------------------------
+~> Project Coordinator can select Pm while approving
+
+~> Project Coordinator can see deliverables list as well as the details 
+
+~> Project leader can see all the deliverables list and project details and every things will be shown as a table where the leader can edit in that table
+
+~> Pagination with button showing previous page -> Completed

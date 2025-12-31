@@ -961,28 +961,24 @@ export const RFCDashboard = () => {
         </div>
       )}
 
-      {/* Pagination Controls */}
       {!fetching && totalPages > 1 && (
-        <div className="flex justify-center mt-8 gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page === 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Previous
-          </Button>
-          <span className="px-3 py-1 text-sm font-medium">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page === totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          >
-            Next
-          </Button>
+        <div className="flex justify-center mt-8 gap-2 flex-wrap">
+          {Array.from({ length: totalPages }, (_, i) => {
+            const pageNumber = i + 1;
+            const isActive = page === pageNumber;
+
+            return (
+              <Button
+                key={pageNumber}
+                size="sm"
+                variant={isActive ? "default" : "outline"}
+                onClick={() => setPage(pageNumber)}
+                className={isActive ? "pointer-events-none" : ""}
+              >
+                {pageNumber}
+              </Button>
+            );
+          })}
         </div>
       )}
 
