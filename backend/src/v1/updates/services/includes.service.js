@@ -12,3 +12,13 @@ export async function ProjectIdTOID(projectId, client = pool) {
 }
 
 
+export async function getUserNameById(user_id, client = pool) {
+  const query = `
+    SELECT name
+    FROM users
+    WHERE id = $1
+  `;
+  const result = await client.query(query, [user_id]);
+  return result.rows[0]?.name || null;
+}
+

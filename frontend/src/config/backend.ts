@@ -140,6 +140,9 @@ export const API_ENDPOINT = {
   UPLOAD_WORKER_FILE: (project_id: string, worker_id: string) =>
     `${API_URL}/updates/projects/${project_id}/workers/${worker_id}/upload`,
 
+  GET_LEADER_WORK_DETAILS: (project_id: string) =>
+    `${API_URL}/updates/leader/${project_id}/details`,
+
   APPROVE_ESTIMATION_DELIVERABLE: (
     estimation_deliverable_id: string,
     worker_id: number
@@ -161,6 +164,7 @@ export const API_ENDPOINT = {
   ADD_REWORK_NOTE: (estimation_deliverable_id, worker_id) =>
     `${API_URL}/updates/rework-note/${estimation_deliverable_id}/${worker_id}`,
 
+  GET_USERNAME: (user_id) => `updates/username/${user_id}`,
   GET_PROJECTS_FOR_COORDINATOR: (
     project_coordinator_id: string,
     page: number = 1,

@@ -1,76 +1,36 @@
 import pool from "../../config/db.js";
 
 export async function getAllProjectsToBeApproved(
+  leader_id,
   page = 1,
   limit = 10,
   client = pool
 ) {
   const offset = (page - 1) * limit;
 
-  const dataQuery = `
-SELECT
-  ed.*,
-
-  -- Project data
-  jsonb_build_object(
-    'id', p.id,
-    'name', p.name,
-    'created_at', p.created_at,
-    'updated_at', p.updated_at
-  ) AS project,
-
-  -- Workers uploaded files + actual file data
-  COALESCE(
-    jsonb_agg(
-      DISTINCT jsonb_build_object(
-        'id', wuf.id,
-        'worker_id', wuf.worker_id,
-        'project_id', wuf.project_id,
-
-        -- File info from uploaded_files
-        'file', jsonb_build_object(
-          'id', uf.id,
-          'label', uf.label,
-          'file', uf.file,
-          'status', uf.status,
-          'uploaded_by_id', uf.uploaded_by_id,
-          'created_at', uf.created_at,
-          'updated_at', uf.updated_at
-        )
-      )
-    ) FILTER (WHERE wuf.id IS NOT NULL),
-    '[]'
-  ) AS workers_uploaded_files
-
-FROM estimation_deliverables ed
-
-JOIN projects p
-  ON p.id = ed.project_id::integer
-
-LEFT JOIN workers_uploaded_files wuf
-  ON wuf.project_id = ed.project_id::integer
-
-LEFT JOIN uploaded_files uf
-  ON uf.id = wuf.uploaded_file_id
-
- WHERE ed.status IN ('checking', 'approved', 'rework')
-GROUP BY ed.id, p.id
-ORDER BY ed.created_at DESC
-LIMIT $1 OFFSET $2;
-
-
+  // Fetch only estimation + project info where leader is assigned
+ const dataQuery = `
+    SELECT *
+    FROM projects p
+    JOIN estimations e
+      ON e.project_id = p.id
+    WHERE e.leader = $1
+    ORDER BY e.created_at DESC
+    LIMIT $2 OFFSET $3;
   `;
 
-  const countQuery = `
-    SELECT COUNT(*)::int AS total
-    FROM estimation_deliverables
-    WHERE status IN ('checking', 'approved', 'rework');
+ const countQuery = `
+    SELECT COUNT(DISTINCT p.id)::int AS total
+    FROM projects p
+    JOIN estimations e
+      ON e.project_id = p.id
+    WHERE e.leader = $1;
   `;
 
-  const [dataResult, countResult] = await Promise.all([
-    client.query(dataQuery, [limit, offset]),
-    client.query(countQuery),
-  ]);
+ const [dataResult, countResult] = await Promise.all([
+   client.query(dataQuery, [leader_id, limit, offset]),
+   client.query(countQuery, [leader_id]),
+ ]);
 
   return {
     data: dataResult.rows,
@@ -80,6 +40,7 @@ LIMIT $1 OFFSET $2;
     totalPages: Math.ceil(countResult.rows[0].total / limit),
   };
 }
+
 
 export async function markEstimationDeliverableRejected(
   estimation_deliverable_id,
@@ -159,4 +120,58 @@ export async function AddReworkNote(
   }
 
   return rows[0];
+}
+
+
+export async function getProjectDetails(project_id, client = pool) {
+  try {
+    const deliverablesQuery = `
+      SELECT *
+      FROM estimation_deliverables
+      WHERE project_id = $1
+      ORDER BY created_at DESC;
+    `;
+    const deliverablesResult = await client.query(deliverablesQuery, [
+      project_id,
+    ]);
+    const deliverables = deliverablesResult.rows;
+
+    // 2️⃣ Get all worker_uploaded_files for the project
+    const workerFilesQuery = `
+      SELECT worker_id, uploaded_file_id
+      FROM workers_uploaded_files
+      WHERE project_id = $1;
+    `;
+    const workerFilesResult = await client.query(workerFilesQuery, [
+      project_id,
+    ]);
+    const workerFiles = workerFilesResult.rows;
+
+    // 3️⃣ Get uploaded_files based on uploaded_file_id
+    const uploadedFileIds = workerFiles.map((wf) => wf.uploaded_file_id);
+    let uploadedFiles = [];
+    if (uploadedFileIds.length > 0) {
+      const uploadedFilesQuery = `
+        SELECT *
+        FROM uploaded_files
+        WHERE id = ANY($1);
+      `;
+      const uploadedFilesResult = await client.query(uploadedFilesQuery, [
+        uploadedFileIds,
+      ]);
+      uploadedFiles = uploadedFilesResult.rows;
+    }
+
+    return {
+      success: true,
+      data: {
+        estimation_deliverables: deliverables,
+        workers_uploaded_files: workerFiles,
+        uploaded_files: uploadedFiles,
+      },
+    };
+  } catch (err) {
+    console.error("Error fetching project details:", err);
+    throw new Error("Failed to fetch project details");
+  }
 }

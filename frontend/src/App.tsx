@@ -48,6 +48,7 @@ import WorkDetails from "./components/workers/WorkDetails";
 import ProjectCoordinatorDashboard from "./components/project_coordinator/ProjectCoordinatorDashboard";
 import ProjectLeaderDashboard from "./components/project_leader/ProjectLeaderDashboard";
 import ProjectDetails from "./components/project_coordinator/ProjectDetails";
+import LeaderProjectDetails from "./components/project_leader/LeaderProjectDetails";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -407,10 +408,10 @@ const App = () => (
                   }
                 />
                 <Route
-                  path=":project_id/:type"
+                  path="/project-leader/:project_id/details"
                   element={
                     <DashboardLayout>
-                      <CommonCalendar />
+                      <LeaderProjectDetails />
                     </DashboardLayout>
                   }
                 />

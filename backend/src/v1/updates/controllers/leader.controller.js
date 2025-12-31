@@ -3,6 +3,7 @@ import {
   markEstimationDeliverableApproved,
   markEstimationDeliverableRejected,
   AddReworkNote,
+  getProjectDetails
 } from "../services/leader.service.js";
 
 export async function getAllProjectsToBeApprovedController(req, res) {
@@ -10,7 +11,8 @@ export async function getAllProjectsToBeApprovedController(req, res) {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
 
-    const result = await getAllProjectsToBeApproved(page, limit);
+    const leader_id = req.user.id;
+    const result = await getAllProjectsToBeApproved(leader_id, page, limit);
 
     return res.status(200).json({
       success: true,
@@ -95,5 +97,24 @@ export async function addReworkNoteController(req, res) {
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function getProjectDetailsController(req, res) {
+  try {
+    const project_id = parseInt(req.params.project_id, 10);
+    if (isNaN(project_id)) {
+      return res.status(400).json({ success: false, message: "Invalid project ID" });
+    }
+
+    const result = await getProjectDetails(project_id);
+    return res.status(200).json({
+      success: true,
+      message: "Project details fetched successfully",
+      data: result.data
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 }

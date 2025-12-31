@@ -319,7 +319,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
           </button>
         </header>
 
-        <div className="p-6 md:p-10 max-w-7xl mx-auto w-full">{children}</div>
+        <div className="p-6 md:p-10 max-w-10xl mx-auto w-full">{children}</div>
       </main>
     </div>
   );
