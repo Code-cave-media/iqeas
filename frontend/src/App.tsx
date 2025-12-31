@@ -47,6 +47,7 @@ import WorkersDashboard from "./components/workers/WorkersDashboard";
 import WorkDetails from "./components/workers/WorkDetails";
 import ProjectCoordinatorDashboard from "./components/project_coordinator/ProjectCoordinatorDashboard";
 import ProjectLeaderDashboard from "./components/project_leader/ProjectLeaderDashboard";
+import ProjectDetails from "./components/project_coordinator/ProjectDetails";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -387,19 +388,16 @@ const App = () => (
                   }
                 />
                 <Route
-                  path=":project_id/:type"
+                  path="/project-coordinator/:project_id/details"
                   element={
                     <DashboardLayout>
-                      <CommonCalendar />
+                      <ProjectDetails />
                     </DashboardLayout>
                   }
                 />
               </Route>
 
-              <Route
-                path="/project-leader"
-                element={<RoleProtectedRoute />}
-              >
+              <Route path="/project-leader" element={<RoleProtectedRoute />}>
                 <Route
                   index
                   element={

@@ -287,3 +287,81 @@ export async function getAllleaders() {
   const result = await pool.query(query);
   return result.rows;
 }
+
+
+
+
+export async function getProjectCoordinatorsByProject(project_id) {
+     const estimationMetaQuery = `
+    SELECT
+      id AS estimation_id,
+      sent_to_pm AS estimation_sent_to_pm
+    FROM estimations
+    WHERE project_id = $1
+    LIMIT 1
+  `;
+
+     const estimationMetaResult = await pool.query(estimationMetaQuery, [
+       project_id,
+     ]);
+
+     /* ===============================
+     Estimation Deliverables
+  =============================== */
+     const estimationQuery = `
+    SELECT *
+    FROM estimation_deliverables
+    WHERE project_id = $1
+    ORDER BY id ASC
+  `;
+
+     const estimationResult = await pool.query(estimationQuery, [project_id]);
+
+     /* ===============================
+     Purchase Orders + Uploaded Files
+  =============================== */
+     const purchaseQuery = `
+    SELECT
+      po.*,
+      COALESCE(
+        json_agg(
+          jsonb_build_object(
+            'id', uf.id,
+            'label', uf.label,
+            'file', uf.file,
+            'status', uf.status,
+            'uploaded_by_id', uf.uploaded_by_id,
+            'created_at', uf.created_at
+          )
+        ) FILTER (WHERE uf.id IS NOT NULL),
+        '[]'
+      ) AS uploaded_files
+    FROM purchase_orders po
+    LEFT JOIN purchase_order_files pof
+      ON pof.po_id = po.id
+    LEFT JOIN uploaded_files uf
+      ON uf.id = pof.uploaded_file_id
+    WHERE po.project_id = $1
+    GROUP BY po.id
+    ORDER BY po.id ASC
+  `;
+
+     const purchaseResult = await pool.query(purchaseQuery, [project_id]);
+
+     /* ===============================
+     FINAL RESPONSE (CRITICAL)
+  =============================== */
+     return {
+       estimation_id: estimationMetaResult.rows[0]?.estimation_id ?? null,
+
+       estimation_sent_to_pm:
+         estimationMetaResult.rows[0]?.estimation_sent_to_pm ?? false,
+
+       estimation_deliverables: estimationResult.rows,
+
+       purchase_orders: purchaseResult.rows,
+     };
+
+}
+
+

@@ -323,3 +323,18 @@ export async function getAllLeadersController(req, res) {
     });
   }
 }
+
+
+export async function fetchProjectCoordinators(req, res) {
+   try {
+     const { project_id } = req.params; // or req.params if you use URL param
+     if (!project_id)
+       return res.status(400).json({ message: "project_id is required" });
+
+     const data = await POService.getProjectCoordinatorsByProject(project_id);
+     res.json({ data });
+   } catch (error) {
+     console.error(error);
+     res.status(500).json({ message: "Internal server error" });
+   }
+}

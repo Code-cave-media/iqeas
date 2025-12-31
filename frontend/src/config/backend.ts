@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { get } from "http";
 
-// export const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1`;
-export const API_URL = `https://iqeas-x6eg.onrender.com/api/v1`;
+export const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1`;
+// export const API_URL = `https://iqeas-x6eg.onrender.com/api/v1`;
 
 export const API_ENDPOINT = {
   VERIFY_USER: `${API_URL}/auth/me `,
@@ -154,6 +154,9 @@ export const API_ENDPOINT = {
 
   CHECK_IN_DELIVERABLE: (estimation_deliverable_id) =>
     `${API_URL}/updates/estimation-deliverables/${estimation_deliverable_id}/check-in`,
+
+  GET_DATAS_FOR_COORDINATOR_FROM_ID: (project_id) =>
+    `${API_URL}/updates/project-coordinators/${project_id}`,
 
   ADD_REWORK_NOTE: (estimation_deliverable_id, worker_id) =>
     `${API_URL}/updates/rework-note/${estimation_deliverable_id}/${worker_id}`,

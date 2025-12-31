@@ -1,14 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
-import {
-  Search,
-  Grid,
-  List,
-  Folder,
-  Users,
-  CheckCircle2,
-  Clock,
-} from "lucide-react";
+import { Search, Grid, List, Users, CheckCircle2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProjectCard } from "./ProjectCard";
@@ -22,19 +14,15 @@ import { useNavigate } from "react-router-dom";
 
 export default function ProjectCoordinatorDashboard() {
   const navigate = useNavigate();
-
   const { fetching, isFetched, makeApiCall } = useAPICall();
   const { authToken, user } = useAuth();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
   const [cards, setCards] = useState({
     total_projects: 0,
     completed_works: 0,
@@ -62,7 +50,6 @@ export default function ProjectCoordinatorDashboard() {
       if (response.status === 200) {
         const resData = response.data;
 
-        // Normalise response shape
         const data: any[] = Array.isArray(resData?.data)
           ? resData.data
           : Array.isArray(resData)
@@ -97,8 +84,8 @@ export default function ProjectCoordinatorDashboard() {
      ========================= */
   return (
     <div className="p-6 relative">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      {/* Header & Quick Stats */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">
             Project Coordinator Dashboard
@@ -107,53 +94,47 @@ export default function ProjectCoordinatorDashboard() {
             Manage and track assigned projects
           </p>
         </div>
-      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-        <SummaryCard
-          icon={<Users className="text-blue-700" size={24} />}
-          value={cards.total_projects}
-          label="Total Projects"
-          bg="bg-blue-50"
-        />
-        <SummaryCard
-          icon={<CheckCircle2 className="text-emerald-700" size={24} />}
-          value={cards.completed_works}
-          label="Completed Projects"
-          bg="bg-emerald-50"
-        />
-        <SummaryCard
-          icon={<Clock className="text-yellow-700" size={24} />}
-          value={cards.pending_works}
-          label="Pending Projects"
-          bg="bg-yellow-50"
-        />
-      </div>
+        {/* Right side: Quick Stats + Search + Layout */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Quick Stats */}
+          <MiniSummaryCard
+            icon={<Users className="text-blue-700" size={16} />}
+            value={cards.total_projects}
+            label="Total"
+            bg="bg-blue-50"
+          />
+          <MiniSummaryCard
+            icon={<CheckCircle2 className="text-emerald-700" size={16} />}
+            value={cards.completed_works}
+            label="Completed"
+            bg="bg-emerald-50"
+          />
+          <MiniSummaryCard
+            icon={<Clock className="text-yellow-700" size={16} />}
+            value={cards.pending_works}
+            label="Pending"
+            bg="bg-yellow-50"
+          />
 
-      {/* Search & View Toggle */}
-      <div className="bg-white rounded-lg border border-slate-200 mb-6 p-4">
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex-1 min-w-64 relative">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <Input
-              placeholder="Search projects"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  setPage(1);
-                  setSearchTerm(searchInput);
-                }
-              }}
-              className="pl-10"
-            />
-          </div>
+          {/* Search & Layout toggle */}
+          <div className="flex items-center gap-2 ml-2">
+            <div className="relative">
+              <Search
+                size={16}
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <Input
+                placeholder="Search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") setSearchTerm(searchInput);
+                }}
+                className="py-4 rounded-full text-xs w-56 pl-10"
+              />
+            </div>
 
-          <div className="flex border rounded-lg">
             <Button
               variant={viewMode === "grid" ? "default" : "ghost"}
               size="sm"
@@ -192,14 +173,10 @@ export default function ProjectCoordinatorDashboard() {
                 ...project,
                 clientName: project.client_name,
                 createdDate: project.created_at,
-                progress: project.progress,
                 status: project.status || "",
                 poNumber: project.po_number,
-                purchaseOrderId: project.purchase_order_id,
-                uploadedFiles: project.uploaded_files || [],
               }}
               viewMode={viewMode}
-              userRole=""
               onSelect={() => navigate(`/coordinator/project/${project.id}`)}
             />
           ))}
@@ -247,7 +224,7 @@ export default function ProjectCoordinatorDashboard() {
    HELPER COMPONENTS
    ========================= */
 
-function SummaryCard({
+function MiniSummaryCard({
   icon,
   value,
   label,
@@ -259,11 +236,10 @@ function SummaryCard({
   bg: string;
 }) {
   return (
-    <div className={`flex items-center gap-3 rounded-lg p-3 ${bg}`}>
-      <div className="p-2 rounded-full bg-white">{icon}</div>
-      <div>
-        <div className="text-lg font-bold">{value}</div>
-        <div className="text-xs">{label}</div>
+    <div className={`flex items-center gap-2 rounded-full px-2 py-1 ${bg}`}>
+      <div className="p-1 rounded-full bg-white">{icon}</div>
+      <div className="text-xs text-slate-700 font-semibold">
+        {value} {label}
       </div>
     </div>
   );
@@ -272,7 +248,6 @@ function SummaryCard({
 function EmptyState() {
   return (
     <div className="text-center py-12 text-slate-400">
-      <Folder size={48} className="mx-auto mb-4" />
       <p className="text-lg font-medium">No projects found</p>
       <p className="text-sm">Try adjusting your search</p>
     </div>
