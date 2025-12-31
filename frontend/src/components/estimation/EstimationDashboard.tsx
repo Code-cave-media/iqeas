@@ -13,7 +13,6 @@ import {
   BadgeCheck,
   AlertCircle,
   Gauge,
-  ArrowLeft,
   ArrowRight,
 } from "lucide-react";
 
@@ -26,7 +25,7 @@ export default function EstimationDashboard() {
   const [projects, setProjects] = useState<IEstimationProject[]>([]);
   const [loading, setLoading] = useState(false);
   const [listView, setListView] = useState(false);
-  const [projectIdMap, setProjectIdMap] = useState<Record<string, string>>({});
+  const [totalPages, setTotalPages] = useState(1);
 
   /* ================= FETCH PROJECTS ================= */
   useEffect(() => {
@@ -43,7 +42,8 @@ export default function EstimationDashboard() {
       );
 
       if (response?.status === 200) {
-        setProjects(response.data.projects);
+        setProjects(response.data.projects || []);
+        setTotalPages(response.data.total_pages || 1);
       } else {
         toast.error("Failed to fetch projects");
       }
@@ -54,38 +54,10 @@ export default function EstimationDashboard() {
     getProjects();
   }, [searchTerm, page, authToken, makeApiCall]);
 
-  /* ================= MAP INTERNAL IDS ================= */
+  /* ================= RESET PAGE ON SEARCH ================= */
   useEffect(() => {
-    if (!projects.length) {
-      setProjectIdMap({});
-      return;
-    }
-
-    const fetchIds = async () => {
-      const map: Record<string, string> = {};
-
-      await Promise.all(
-        projects.map(async (project) => {
-          const response = await makeApiCall(
-            "get",
-            API_ENDPOINT.GET_ID_FROM_PROJECT_ID_NAME(project.project_id),
-            {},
-            "application/json",
-            authToken,
-            `getInternalId-${project.project_id}`
-          );
-
-          if (response?.status === 200 && response.data?.[0]?.id) {
-            map[project.project_id] = response.data[0].id;
-          }
-        })
-      );
-
-      setProjectIdMap(map);
-    };
-
-    fetchIds();
-  }, [projects, authToken, makeApiCall]);
+    setPage(1);
+  }, [searchTerm]);
 
   /* ================= SEND TO ADMIN ================= */
   const handleSendToAdmin = async (
@@ -119,7 +91,7 @@ export default function EstimationDashboard() {
 
   return (
     <section className="min-h-screen bg-gray-50 p-6">
-      {/* HEADER */}
+      {/* ================= HEADER ================= */}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">
@@ -146,7 +118,7 @@ export default function EstimationDashboard() {
         </div>
       </div>
 
-      {/* SEARCH */}
+      {/* ================= SEARCH ================= */}
       <div className="mb-6">
         <input
           value={searchTerm}
@@ -156,7 +128,7 @@ export default function EstimationDashboard() {
         />
       </div>
 
-      {/* CONTENT */}
+      {/* ================= CONTENT ================= */}
       <div className="rounded-xl bg-white p-6 shadow-sm">
         {loading ? (
           <p className="text-sm text-gray-500">Fetching projects...</p>
@@ -170,7 +142,7 @@ export default function EstimationDashboard() {
               return (
                 <li key={project.id} className="py-4 flex justify-between">
                   <div>
-                    <div className="font-medium text-gray-900 hover:underline">
+                    <div className="font-medium text-gray-900">
                       {project.name}
                     </div>
                     <p className="text-sm text-gray-500 flex items-center gap-2">
@@ -198,101 +170,93 @@ export default function EstimationDashboard() {
             })}
           </ul>
         ) : (
-          /* ================= GRID VIEW ================= */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {projects.map((project) => {
-              const canSendToAdmin = ["created", "edited"].includes(
-                project.estimation_status
-              );
-              const internalId = projectIdMap[project.project_id];
-
-              return (
-                <div
-                  key={project.id}
-                  className="group rounded-xl border bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="text-base font-semibold text-gray-900 group-hover:underline">
-                        {project.name}
-                      </h3>
-                      <p className="text-xs text-gray-500">
-                        {project.project_id}
-                      </p>
-                    </div>
-
-                    {project.estimation_status === "approved" ? (
-                      <BadgeCheck className="text-green-600" size={18} />
-                    ) : (
-                      <AlertCircle className="text-yellow-500" size={18} />
-                    )}
+            {projects.map((project) => (
+              <div
+                key={project.id}
+                className="rounded-xl border bg-white p-5 shadow-sm hover:shadow-lg transition"
+              >
+                <div className="flex justify-between mb-3">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">
+                      {project.name}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      {project.project_id}
+                    </p>
                   </div>
 
-                  <div className="space-y-2 text-sm text-gray-700">
-                    <div className="flex items-center gap-2">
-                      <User size={14} /> {project.client_name}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin size={14} /> {project.location}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar size={14} />
-                      {new Date(project.received_date).toLocaleDateString()}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-600">
-                      Progress
-                    </span>
-                    <span className="text-xs font-semibold text-gray-900">
-                      {project.progress}%
-                    </span>
-                  </div>
-
-                  <div className="mt-2 h-1.5 w-full rounded-full bg-gray-200">
-                    <div
-                      className="h-1.5 rounded-full bg-black"
-                      style={{ width: `${project.progress}%` }}
-                    />
-                  </div>
-
-                  {/* Consistent Button — Active only when ID is loaded */}
-                  <div className="mt-4">
-                    {internalId ? (
-                      <a
-                        href={`/estimation/${internalId}/details`}
-                        className="block"
-                      >
-                        <button className="w-full flex items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700 transition">
-                          View Deliverables <ArrowRight className="w-4 h-4" />
-                        </button>
-                      </a>
-                    ) : (
-                      <button
-                        disabled
-                        className="w-full flex items-center justify-center gap-2 rounded-lg bg-gray-300 px-3 py-2 text-xs font-semibold text-gray-600 cursor-not-allowed"
-                      >
-                        Loading link...
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Optional: Send to Admin button (only in certain statuses) */}
-                  {canSendToAdmin && (
-                    <button
-                      onClick={(e) => handleSendToAdmin(e, project)}
-                      className="mt-3 w-full rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-                    >
-                      Send to Admin
-                    </button>
+                  {project.estimation_status === "approved" ? (
+                    <BadgeCheck className="text-green-600" size={18} />
+                  ) : (
+                    <AlertCircle className="text-yellow-500" size={18} />
                   )}
                 </div>
-              );
-            })}
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex gap-2">
+                    <User size={14} /> {project.client_name}
+                  </div>
+                  <div className="flex gap-2">
+                    <MapPin size={14} /> {project.location}
+                  </div>
+                  <div className="flex gap-2">
+                    <Calendar size={14} />
+                    {new Date(project.received_date).toLocaleDateString()}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-between text-xs">
+                  <span>Progress</span>
+                  <span className="font-semibold">{project.progress}%</span>
+                </div>
+
+                <div className="mt-2 h-1.5 bg-gray-200 rounded-full">
+                  <div
+                    className="h-1.5 bg-black rounded-full"
+                    style={{ width: `${project.progress}%` }}
+                  />
+                </div>
+
+                <a
+                  href={`/estimation/${project.id}/details`}
+                  className="block mt-4"
+                >
+                  <button className="w-full flex justify-center items-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700">
+                    View Deliverables <ArrowRight size={14} />
+                  </button>
+                </a>
+              </div>
+            ))}
           </div>
         )}
       </div>
+
+      {/* ================= PAGINATION ================= */}
+      {!loading && totalPages > 1 && (
+        <div className="mt-8 flex justify-center gap-2 flex-wrap">
+          {Array.from({ length: totalPages }, (_, i) => {
+            const pageNumber = i + 1;
+            const isActive = page === pageNumber;
+
+            return (
+              <button
+                key={pageNumber}
+                onClick={() => setPage(pageNumber)}
+                disabled={isActive}
+                className={`min-w-[36px] rounded-md px-3 py-1.5 text-sm font-medium transition
+                  ${
+                    isActive
+                      ? "bg-black text-white cursor-default"
+                      : "border bg-white text-gray-700 hover:bg-gray-100"
+                  }`}
+              >
+                {pageNumber}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

@@ -50,11 +50,12 @@ export default function ProjectLeaderDashboard() {
         authToken
       );
 
-      if (res?.data) {
-        setProjects(res.data || []);
-        setPage(res.data.page || 1);
-        setTotalPages(res.data.totalPages || 1);
-      }
+     if (res?.data) {
+       setProjects(res.data || []);
+       setPage(res.data.page || 1);
+       setTotalPages(res.data.data.totalPages || 1);
+     }
+
     } catch (err: any) {
       console.error("Failed to fetch projects:", err);
       setError("Failed to load projects. Please try again.");
@@ -361,6 +362,35 @@ export default function ProjectLeaderDashboard() {
           );
         })}
       </div>
+
+      {!loading && totalPages > 1 && (
+        <div className="mt-8 flex justify-center gap-2 flex-wrap">
+          {Array.from({ length: totalPages }, (_, i) => {
+            const pageNumber = i + 1;
+            const isActive = page === pageNumber;
+
+            return (
+              <button
+                key={pageNumber}
+                onClick={() => {
+                  setPage(pageNumber);
+                  fetchProjects(pageNumber);
+                }}
+                disabled={isActive}
+                className={`min-w-[36px] rounded-md px-3 py-1.5 text-sm font-medium
+                  ${
+                    isActive
+                      ? "bg-black text-white"
+                      : "border bg-white text-gray-700 hover:bg-gray-100"
+                  }`}
+              >
+                {pageNumber}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
 
       {/* FILES MODAL */}
       {isModalOpen && selectedDeliverable && (
