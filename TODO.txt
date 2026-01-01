@@ -2,13 +2,12 @@ Planed Updations
 -----------------------------
 
 
-~> Project leader can see all the deliverables list and project details and every things will be shown as a table where the leader can edit in that table
 
 
 Updations
 --------
-~>Project leader can see all the deliverables list and project details and every things will be shown as a table where the leader can edit in that table
-
+~> Project leader can see all the deliverables list and project details and every things will be shown as a table where the leader can edit in that table
+~> Workers can see Files the uploaded and rework note
 ~> Pagination with button showing previous page
 ~> Fixed the estimation send to admin button 
 ~> Project Coordinator can see deliverables list as well as the details 

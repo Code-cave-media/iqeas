@@ -10,24 +10,44 @@ export async function getWorkersData() {
   const result = await pool.query(query);
   return result.rows;
 }
-
 export async function getWorkersWorkByProjectIdWorkId(
   worker_id,
   project_id,
   limit,
   offset
 ) {
+  // Count total deliverables
   const countQuery = `
     SELECT COUNT(*) 
     FROM estimation_deliverables
     WHERE worker_id = $1 AND project_id = $2
   `;
 
+  // Get deliverables + uploaded files
   const dataQuery = `
     SELECT
-      (to_jsonb(ed) - 'amount') AS data
+      (to_jsonb(ed) - 'amount') AS data,
+      COALESCE(
+        json_agg(
+          DISTINCT jsonb_build_object(
+            'id', uf.id,
+            'label', uf.label,
+            'file', uf.file,
+            'status', uf.status,
+            'uploaded_by_id', uf.uploaded_by_id,
+            'created_at', uf.created_at
+          )
+        ) FILTER (WHERE uf.id IS NOT NULL),
+        '[]'
+      ) AS uploaded_files
     FROM estimation_deliverables ed
-    WHERE worker_id = $1 AND project_id = $2
+    LEFT JOIN workers_uploaded_files wuf
+      ON wuf.worker_id = ed.worker_id
+      AND wuf.project_id = ed.project_id::INTEGER
+    LEFT JOIN uploaded_files uf
+      ON uf.id = wuf.uploaded_file_id
+    WHERE ed.worker_id = $1 AND ed.project_id = $2
+    GROUP BY ed.id
     ORDER BY ed.created_at DESC
     LIMIT $3 OFFSET $4
   `;
@@ -39,7 +59,10 @@ export async function getWorkersWorkByProjectIdWorkId(
 
   return {
     total: Number(countResult.rows[0].count),
-    data: dataResult.rows.map((r) => r.data),
+    data: dataResult.rows.map((r) => ({
+      ...r.data,
+      uploaded_files: r.uploaded_files,
+    })),
   };
 }
 
@@ -55,6 +78,8 @@ export async function getWorkerProjectIds(worker_id, limit, offset) {
   const result = await pool.query(query, [worker_id, limit, offset]);
   return result.rows;
 }
+
+
 
 export async function getProjectDetails(project_id) {
   console.debug(
@@ -75,6 +100,9 @@ export async function getProjectDetails(project_id) {
   );
   return result.rows[0];
 }
+
+
+
 export async function updateConsumedTime(
   worker_id,
   estimation_deliverable_id,

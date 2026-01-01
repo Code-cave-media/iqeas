@@ -1,7 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState, DragEvent } from "react";
 import { useParams } from "react-router-dom";
-import { Play, Pause, Square } from "lucide-react";
+import {
+  Play,
+  Pause,
+  Square,
+  FileText,
+  MessageCircle,
+  LinkIcon,
+} from "lucide-react";
 
 import { API_ENDPOINT } from "@/config/backend";
 import { useAuth } from "@/contexts/AuthContext";
@@ -65,6 +72,13 @@ export default function WorkDetails() {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /* ---------- VIEW FILE FUNCTION ---------- */
+  const viewFile = (fileHash: string) => {
+    // Replace with your actual file view endpoint
+    const fileUrl = `${API_ENDPOINT.VIEW_FILE}/${fileHash}`;
+    window.open(fileUrl, "_blank");
+  };
 
   /* ---------- FETCH WORK ---------- */
   const fetchWork = async () => {
@@ -194,7 +208,9 @@ export default function WorkDetails() {
       {workData.map((w) => {
         const t = toClock(seconds[w.id] || 0);
         const running = status[w.id] === "RUNNING";
-        const canStart = w.status === "under progress" || w.status === "rework";
+        const canStart = w.status === "under_progress" || w.status === "rework";
+        const hasFiles = w.uploaded_files && w.uploaded_files.length > 0;
+        const hasNote = w.note && w.note.trim();
 
         return (
           <div key={w.id} className="rounded-xl border bg-white p-5 space-y-4">
@@ -211,11 +227,71 @@ export default function WorkDetails() {
               <StatusBadge status={w.status} />
             </div>
 
+            {/* TIMER */}
             <div className="font-mono text-lg text-gray-800">
               ⏱ {String(t.h).padStart(2, "0")}:{String(t.m).padStart(2, "0")}:
               {String(t.s).padStart(2, "0")}
             </div>
 
+            {/* REWORK NOTE - Only show if rework and has note */}
+            {w.status === "rework" && hasNote && (
+              <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-start gap-2 mb-1">
+                  <MessageCircle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-xs font-medium text-orange-800">
+                    Rework Note
+                  </span>
+                </div>
+                <p className="text-sm text-orange-900 leading-relaxed">
+                  {w.note}
+                </p>
+              </div>
+            )}
+
+            {/* UPLOADED FILES - Simplified + Viewable */}
+            {hasFiles && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start gap-2 mb-3">
+                  <FileText className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-xs font-medium text-blue-800">
+                    Uploaded Files ({w.uploaded_files.length})
+                  </span>
+                </div>
+                <div className="space-y-1 max-h-20 overflow-y-auto">
+                  {w.uploaded_files.slice(0, 3).map((file: any) => (
+                    <div
+                      key={file.id}
+                      className="flex items-center justify-between gap-2 p-2 bg-white hover:bg-blue-25 border border-blue-100 rounded-md cursor-pointer transition-all group"
+                      onClick={() => viewFile(file.file)}
+                    >
+                      <div className="flex items-center gap-2 truncate flex-1">
+                        <FileText className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 group-hover:text-blue-600" />
+                        <span className="text-sm font-medium text-blue-900 truncate">
+                          {file.label}
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          viewFile(file.file);
+                        }}
+                        className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors flex-shrink-0"
+                        title={`View ${file.label}`}
+                      >
+                        <LinkIcon className="w-3.5 h-3.5 text-blue-600 hover:text-blue-700" />
+                      </button>
+                    </div>
+                  ))}
+                  {w.uploaded_files.length > 3 && (
+                    <div className="text-xs text-blue-600 font-medium p-2 bg-white border border-blue-100 rounded-md cursor-pointer hover:bg-blue-25 transition-all">
+                      View all {w.uploaded_files.length} files
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ACTION BUTTONS */}
             <div className="grid grid-cols-3 gap-3">
               <ActionBtn
                 icon={Play}
