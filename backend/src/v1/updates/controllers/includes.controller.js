@@ -1,6 +1,42 @@
 import { getUserNameById } from "../services/includes.service.js";
 import { formatResponse } from "../../utils/response.js";
 
+
+export const getID = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    if (!projectId) {
+      return res.status(400).json({
+        success: false,
+        message: "projectId is required",
+      });
+    }
+
+    const projectDbId = await ProjectIdTOID(projectId);
+
+    if (!projectDbId) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: projectDbId,
+      },
+    });
+  } catch (error) {
+    console.error("ProjectIdTOID error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 export const getUserNameController = async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);

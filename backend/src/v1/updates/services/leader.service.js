@@ -122,56 +122,74 @@ export async function AddReworkNote(
   return rows[0];
 }
 
+export async function getProjectDetails(projectId, client = pool) {
+  const query = `
+    SELECT
+      ed.id,
+      ed.created_at,
+      ed.updated_at,
+      ed.estimation_id,
+      ed.sno,
+      ed.drawing_no,
+      ed.title,
+      ed.deliverables,
+      ed.discipline,
+      ed.hours,
+      ed.amount,
+      ed.project_id,
+      ed.stage,
+      ed.revision,
+      ed.worker_id,
+      u.name AS worker_name,
+      ed.consumed_time,
+      ed.total_time,
+      ed.additional_values,
+      ed.status,
+      ed.note,
 
-export async function getProjectDetails(project_id, client = pool) {
-  try {
-    const deliverablesQuery = `
-      SELECT *
-      FROM estimation_deliverables
-      WHERE project_id = $1
-      ORDER BY created_at DESC;
-    `;
-    const deliverablesResult = await client.query(deliverablesQuery, [
-      project_id,
-    ]);
-    const deliverables = deliverablesResult.rows;
+      COALESCE(
+        json_agg(
+          DISTINCT jsonb_build_object(
+            'id', uf.id,
+            'label', uf.label,
+            'file', uf.file,
+            'status', uf.status,
+            'uploaded_by_id', uf.uploaded_by_id,
+            'worker_id', wuf.worker_id,
+            'created_at', uf.created_at
+          )
+        ) FILTER (WHERE uf.id IS NOT NULL),
+        '[]'
+      ) AS uploaded_files
 
-    // 2️⃣ Get all worker_uploaded_files for the project
-    const workerFilesQuery = `
-      SELECT worker_id, uploaded_file_id
-      FROM workers_uploaded_files
-      WHERE project_id = $1;
-    `;
-    const workerFilesResult = await client.query(workerFilesQuery, [
-      project_id,
-    ]);
-    const workerFiles = workerFilesResult.rows;
+    FROM estimation_deliverables ed
 
-    // 3️⃣ Get uploaded_files based on uploaded_file_id
-    const uploadedFileIds = workerFiles.map((wf) => wf.uploaded_file_id);
-    let uploadedFiles = [];
-    if (uploadedFileIds.length > 0) {
-      const uploadedFilesQuery = `
-        SELECT *
-        FROM uploaded_files
-        WHERE id = ANY($1);
-      `;
-      const uploadedFilesResult = await client.query(uploadedFilesQuery, [
-        uploadedFileIds,
-      ]);
-      uploadedFiles = uploadedFilesResult.rows;
-    }
+    -- worker name
+    LEFT JOIN users u
+      ON u.id = ed.worker_id
 
-    return {
-      success: true,
-      data: {
-        estimation_deliverables: deliverables,
-        workers_uploaded_files: workerFiles,
-        uploaded_files: uploadedFiles,
-      },
-    };
-  } catch (err) {
-    console.error("Error fetching project details:", err);
-    throw new Error("Failed to fetch project details");
-  }
+    -- IMPORTANT: worker + project match
+    LEFT JOIN workers_uploaded_files wuf
+      ON wuf.worker_id = ed.worker_id
+      AND wuf.project_id = ed.project_id::INTEGER
+
+    LEFT JOIN uploaded_files uf
+      ON uf.id = wuf.uploaded_file_id
+
+    WHERE ed.project_id = $1::TEXT
+
+    GROUP BY ed.id, u.name
+    ORDER BY ed.created_at DESC;
+  `;
+
+  const result = await client.query(query, [projectId]);
+
+  return {
+    success: true,
+    message: "Project details fetched successfully",
+    data: {
+      estimation_deliverables: result.rows,
+    },
+  };
 }
+

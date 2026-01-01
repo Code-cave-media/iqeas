@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAPICall } from "@/hooks/useApiCall";
@@ -32,62 +32,6 @@ export default function LeaderProjectDetails() {
   const [editedRows, setEditedRows] = useState<
     Record<string, { status?: boolean; note?: boolean }>
   >({});
-  const [workerNames, setWorkerNames] = useState<Record<number, string>>({});
-  const [workerLoading, setWorkerLoading] = useState<Record<number, boolean>>(
-    {}
-  );
-
-  /* ---------- FETCH WORKER NAMES ---------- */
-  const fetchWorkerName = useCallback(
-    async (workerId: number) => {
-      if (workerNames[workerId] || workerLoading[workerId]) return;
-
-      setWorkerLoading((prev) => ({ ...prev, [workerId]: true }));
-
-      try {
-        console.log(`Fetching worker ${workerId}...`);
-        const res = await makeApiCall(
-          "get",
-          `${API_URL}/updates/username/${workerId}`,
-          {},
-          "application/json",
-          authToken
-        );
-
-        console.log(`Raw response for worker ${workerId}:`, res);
-
-        let name = "Unknown";
-        if (res?.data) {
-          if (typeof res.data === "string") {
-            name = res.data;
-          } else if (res.data.name) {
-            name = res.data.name;
-          } else if (res.data.username) {
-            name = res.data.username;
-          } else if (res.data.full_name) {
-            name = res.data.full_name;
-          } else {
-            // If it's an object, take first value or stringify
-            name =
-              (Object.values(res.data)[0] as string) ||
-              JSON.stringify(res.data);
-          }
-        }
-
-        console.log(`Processed name for worker ${workerId}: "${name}"`);
-        setWorkerNames((prev) => ({ ...prev, [workerId]: name }));
-      } catch (err: any) {
-        console.error(`Failed to fetch worker ${workerId}:`, err);
-        setWorkerNames((prev) => ({
-          ...prev,
-          [workerId]: `Worker ${workerId}`,
-        }));
-      } finally {
-        setWorkerLoading((prev) => ({ ...prev, [workerId]: false }));
-      }
-    },
-    [makeApiCall, authToken]
-  );
 
   /* ---------- FETCH DATA ---------- */
   const fetchProjectDetails = async () => {
@@ -104,41 +48,16 @@ export default function LeaderProjectDetails() {
         authToken
       );
 
-      if (res?.data) {
-        const {
-          estimation_deliverables,
-          workers_uploaded_files,
-          uploaded_files,
-        } = res.data;
-
-        const workerFilesMap: Record<number, any[]> = {};
-        workers_uploaded_files.forEach((wuf: any) => {
-          const file = uploaded_files.find(
-            (uf: any) => uf.id === wuf.uploaded_file_id
-          );
-          if (!workerFilesMap[wuf.worker_id])
-            workerFilesMap[wuf.worker_id] = [];
-          if (file) workerFilesMap[wuf.worker_id].push(file);
-        });
-
-        const tableRows: any[] = estimation_deliverables.map((ed: any) => ({
-          ...ed,
-          files: workerFilesMap[ed.worker_id] || [],
-        }));
+      if (res?.data?.estimation_deliverables) {
+        const tableRows: any[] = res.data.estimation_deliverables.map(
+          (ed: any) => ({
+            ...ed,
+            files: ed.uploaded_files || [],
+          })
+        );
 
         setRows(tableRows);
         setEditedRows({});
-
-        // Fetch worker names with slight delay to ensure rows are set
-        setTimeout(() => {
-          const uniqueWorkerIds = [
-            ...new Set(tableRows.map((row: any) => row.worker_id)),
-          ];
-          console.log("Unique worker IDs:", uniqueWorkerIds);
-          uniqueWorkerIds.forEach((workerId: number) => {
-            fetchWorkerName(workerId);
-          });
-        }, 100);
       }
     } catch (err: any) {
       console.error(err);
@@ -225,17 +144,15 @@ export default function LeaderProjectDetails() {
       .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  const getWorkerDisplayName = (workerId: number) => {
-    if (workerLoading[workerId]) return "Loading...";
-    return workerNames[workerId] || `Worker ${workerId}`;
-  };
+  // Helper to check if row is approved and non-editable
+  const isRowApproved = (row: any) => row.status === "approved";
 
   if (loading) return <Loading />;
   if (error) return <p className="text-red-600 p-6">{error}</p>;
 
   return (
     <section className="p-1">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/80 backdrop-blur-sm">
             <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -299,146 +216,177 @@ export default function LeaderProjectDetails() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {rows.map((row, index) => (
-                  <tr
-                    key={row.id}
-                    className={`transition-all duration-150 hover:bg-gray-50/80 group ${
-                      index % 2 === 0 ? "bg-white/50" : "bg-white"
-                    }`}
-                  >
-                    <td className="px-4 py-4 font-medium text-gray-900 text-xs border-r border-gray-100">
-                      {row.sno}
-                    </td>
-                    {/* Worker Name Column */}
-                    <td className="px-4 py-4 font-medium text-gray-900 text-sm border-r border-gray-100 max-w-[140px]">
-                      <div className="flex items-center gap-2">
-                        <User className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-                        <span className="truncate font-semibold bg-yellow-100 px-2 py-1 rounded text-xs">
-                          {getWorkerDisplayName(row.worker_id)}
+                {rows.map((row, index) => {
+                  const approved = isRowApproved(row);
+                  return (
+                    <tr
+                      key={row.id}
+                      className={`transition-all duration-150 hover:bg-gray-50/80 group ${
+                        index % 2 === 0 ? "bg-white/50" : "bg-white"
+                      } ${approved ? "opacity-75 bg-green-50/50" : ""}`}
+                    >
+                      <td className="px-4 py-4 font-medium text-gray-900 text-xs border-r border-gray-100">
+                        {row.sno}
+                      </td>
+                      <td className="px-4 py-4 font-medium text-gray-900 text-sm border-r border-gray-100 max-w-[140px]">
+                        <div className="flex items-center gap-2">
+                          <User className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                          <span className="truncate font-semibold bg-yellow-100 px-2 py-1 rounded text-xs">
+                            {row.worker_name || `Worker ${row.worker_id}`}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 font-mono text-sm text-gray-900 border-r border-gray-100">
+                        {row.drawing_no}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-900 max-w-[200px] truncate border-r border-gray-100">
+                        {row.title}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-700 border-r border-gray-100">
+                        {row.deliverables}
+                      </td>
+                      <td className="px-4 py-4 border-r border-gray-100">
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                          {row.discipline}
                         </span>
-                      </div>
-                    </td>
-                    {/* Rest of the columns remain the same... */}
-                    <td className="px-4 py-4 font-mono text-sm text-gray-900 border-r border-gray-100">
-                      {row.drawing_no}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 max-w-[200px] truncate border-r border-gray-100">
-                      {row.title}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-700 border-r border-gray-100">
-                      {row.deliverables}
-                    </td>
-                    <td className="px-4 py-4 border-r border-gray-100">
-                      <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                        {row.discipline}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 font-mono text-right font-semibold text-gray-900 text-sm border-r border-gray-100">
-                      {row.hours}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-right font-semibold text-gray-900 text-sm border-r border-gray-100">
-                      {row.amount}
-                    </td>
-                    <td className="px-4 py-4 font-medium text-gray-900 text-sm border-r border-gray-100">
-                      {row.stage}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-sm text-gray-700 border-r border-gray-100">
-                      {row.revision}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-sm text-gray-900 border-r border-gray-100">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-                        <span className="font-mono">
-                          {formatTime(row.consumed_time)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 border-r border-gray-100">
-                      <div className="flex items-center gap-2 h-11">
-                        <select
-                          value={row.status}
-                          onChange={(e) =>
-                            handleSelectChange(row.id, e.target.value)
-                          }
-                          disabled={actionLoading[`status-${row.id}`]}
-                          className="flex-1 h-10 px-3 border border-gray-200 rounded-lg text-sm bg-white/80 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-300 disabled:bg-gray-100/50 disabled:cursor-not-allowed transition-all duration-200"
-                        >
-                          <option value="approved">Approved</option>
-                          <option value="rework">Rework</option>
-                        </select>
-                        {editedRows[row.id]?.status && (
-                          <button
-                            onClick={() => handleSaveStatus(row)}
-                            disabled={actionLoading[`status-${row.id}`]}
-                            className="h-10 w-10 p-0 border border-emerald-200 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-sm flex items-center justify-center transition-all duration-200 hover:shadow-md active:scale-95 disabled:bg-gray-400/50 disabled:cursor-not-allowed flex-shrink-0 group-hover:bg-emerald-600"
-                            title="Save Status"
+                      </td>
+                      <td className="px-4 py-4 font-mono text-right font-semibold text-gray-900 text-sm border-r border-gray-100">
+                        {row.hours}
+                      </td>
+                      <td className="px-4 py-4 font-mono text-right font-semibold text-gray-900 text-sm border-r border-gray-100">
+                        {row.amount}
+                      </td>
+                      <td className="px-4 py-4 font-medium text-gray-900 text-sm border-r border-gray-100">
+                        {row.stage}
+                      </td>
+                      <td className="px-4 py-4 font-mono text-sm text-gray-700 border-r border-gray-100">
+                        {row.revision}
+                      </td>
+                      <td className="px-4 py-4 font-mono text-sm text-gray-900 border-r border-gray-100">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                          <span className="font-mono">
+                            {formatTime(row.consumed_time)}
+                          </span>
+                        </div>
+                      </td>
+                      {/* STATUS COLUMN - Disabled if approved */}
+                      <td className="px-4 py-4 border-r border-gray-100">
+                        <div className="flex items-center gap-2 h-11">
+                          <select
+                            value={row.status}
+                            onChange={(e) =>
+                              !approved &&
+                              handleSelectChange(row.id, e.target.value)
+                            }
+                            disabled={
+                              approved || actionLoading[`status-${row.id}`]
+                            }
+                            className={`flex-1 h-10 px-3 border rounded-lg text-sm shadow-sm focus:ring-2 transition-all duration-200 ${
+                              approved
+                                ? "border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed"
+                                : "border-gray-200 bg-white/80 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-300"
+                            }`}
                           >
-                            {actionLoading[`status-${row.id}`] ? (
-                              <RefreshCw className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <CheckCircle className="w-4 h-4" />
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 border-r border-gray-100">
-                      <div className="flex items-center gap-2 h-11">
-                        <input
-                          type="text"
-                          value={row.note || ""}
-                          onChange={(e) =>
-                            handleNoteChange(row.id, e.target.value)
-                          }
-                          disabled={actionLoading[`note-${row.id}`]}
-                          placeholder="Enter note..."
-                          className="flex-1 h-10 px-3 border border-gray-200 rounded-lg text-sm bg-white/80 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-gray-300 disabled:bg-gray-100/50 disabled:cursor-not-allowed transition-all duration-200"
-                        />
-                        {editedRows[row.id]?.note && (
-                          <button
-                            onClick={() => handleSaveNote(row)}
-                            disabled={actionLoading[`note-${row.id}`]}
-                            className="h-10 w-10 p-0 border border-indigo-200 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-sm flex items-center justify-center transition-all duration-200 hover:shadow-md active:scale-95 disabled:bg-gray-400/50 disabled:cursor-not-allowed flex-shrink-0 group-hover:bg-indigo-600"
-                            title="Save Note"
-                          >
-                            {actionLoading[`note-${row.id}`] ? (
-                              <RefreshCw className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Save className="w-4 h-4" />
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      {row.files.length > 0 ? (
-                        <div className="space-y-1.5">
-                          {row.files.slice(0, 3).map((f: any) => (
-                            <div
-                              key={f.id}
-                              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 truncate text-sm group/file"
+                            <option value="approved">Approved</option>
+                            <option value="rework">Rework</option>
+                          </select>
+                          {!approved && editedRows[row.id]?.status && (
+                            <button
+                              onClick={() => handleSaveStatus(row)}
+                              disabled={actionLoading[`status-${row.id}`]}
+                              className="h-10 w-10 p-0 border border-emerald-200 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-sm flex items-center justify-center transition-all duration-200 hover:shadow-md active:scale-95 disabled:bg-gray-400/50 disabled:cursor-not-allowed flex-shrink-0 group-hover:bg-emerald-600"
+                              title="Save Status"
                             >
-                              <FileText className="w-3.5 h-3.5 flex-shrink-0 text-blue-500 group-hover/file:text-blue-600" />
-                              <span className="truncate font-medium">
-                                {f.label}
-                              </span>
-                            </div>
-                          ))}
-                          {row.files.length > 3 && (
-                            <div className="text-gray-500 text-xs font-medium mt-1">
-                              +{row.files.length - 3} more files
+                              {actionLoading[`status-${row.id}`] ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                          {approved && (
+                            <div className="h-10 w-10 flex items-center justify-center flex-shrink-0">
+                              <CheckCircle className="w-4 h-4 text-emerald-500" />
                             </div>
                           )}
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-gray-400 italic text-sm">
-                          <FileText className="w-3.5 h-3.5" />
-                          No files uploaded
+                      </td>
+                      {/* NOTE COLUMN - Disabled if approved */}
+                      <td className="px-4 py-4 border-r border-gray-100">
+                        <div className="flex items-center gap-2 h-11">
+                          <input
+                            type="text"
+                            value={row.note || ""}
+                            onChange={(e) =>
+                              !approved &&
+                              handleNoteChange(row.id, e.target.value)
+                            }
+                            disabled={
+                              approved || actionLoading[`note-${row.id}`]
+                            }
+                            placeholder={
+                              approved
+                                ? "Approved - Read only"
+                                : "Enter note..."
+                            }
+                            className={`flex-1 h-10 px-3 border rounded-lg text-sm shadow-sm transition-all duration-200 ${
+                              approved
+                                ? "border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed"
+                                : "border-gray-200 bg-white/80 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-gray-300"
+                            }`}
+                          />
+                          {!approved && editedRows[row.id]?.note && (
+                            <button
+                              onClick={() => handleSaveNote(row)}
+                              disabled={actionLoading[`note-${row.id}`]}
+                              className="h-10 w-10 p-0 border border-indigo-200 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-sm flex items-center justify-center transition-all duration-200 hover:shadow-md active:scale-95 disabled:bg-gray-400/50 disabled:cursor-not-allowed flex-shrink-0 group-hover:bg-indigo-600"
+                              title="Save Note"
+                            >
+                              {actionLoading[`note-${row.id}`] ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Save className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                          {approved && (
+                            <div className="h-10 w-10 flex items-center justify-center flex-shrink-0">
+                              <CheckCircle className="w-4 h-4 text-emerald-500" />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-4 text-sm">
+                        {row.files && row.files.length > 0 ? (
+                          <div className="space-y-1.5">
+                            {row.files.slice(0, 3).map((f: any) => (
+                              <div
+                                key={f.id}
+                                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 truncate text-sm group/file"
+                              >
+                                <FileText className="w-3.5 h-3.5 flex-shrink-0 text-blue-500 group-hover/file:text-blue-600" />
+                                <span className="truncate font-medium">
+                                  {f.label}
+                                </span>
+                              </div>
+                            ))}
+                            {row.files.length > 3 && (
+                              <div className="text-gray-500 text-xs font-medium mt-1">
+                                +{row.files.length - 3} more files
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-gray-400 italic text-sm">
+                            <FileText className="w-3.5 h-3.5" />
+                            No files uploaded
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {rows.length === 0 && (
                   <tr>
                     <td
