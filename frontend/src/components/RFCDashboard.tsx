@@ -55,7 +55,7 @@ const initialForm = {
   clientName: "",
   clientCompany: "",
   location: "",
-  projectType: "Pipeline",
+  projectType: "",
   received_date: new Date().toISOString().slice(0, 10),
   uploadedFiles: [] as { file: File; label: string; tempUrl: string }[],
   contactPerson: "",
@@ -447,24 +447,13 @@ export const RFCDashboard = () => {
                       <label className="block text-sm font-medium mb-1">
                         Project Type
                       </label>
-                      <Select
+                      <Input
+                        name="projectType" // ← Correct name to match form state
+                        type="text"
+                        placeholder="e.g. Pipeline, Plant, Maintenance"
                         value={form.projectType}
-                        onValueChange={(v) =>
-                          setForm((f) => ({ ...f, projectType: v }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Project Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Pipeline">Pipeline</SelectItem>
-                          <SelectItem value="Plant">Plant</SelectItem>
-                          <SelectItem value="Maintenance">
-                            Maintenance
-                          </SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        onChange={handleFormChange} // ← Use the same handler as others
+                      />
                     </div>
 
                     <div>
