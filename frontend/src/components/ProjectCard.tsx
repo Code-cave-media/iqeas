@@ -56,6 +56,7 @@ export const ProjectCard = ({
 }: ProjectCardProps) => {
   const isOverdue =
     project.estimation &&
+    project.estimation.deadline &&
     new Date(project.estimation.deadline) < new Date() &&
     project.status.toLowerCase() !== "completed";
 
@@ -69,7 +70,9 @@ export const ProjectCard = ({
     ? new Date(project.estimation.deadline).toLocaleDateString()
     : "N/A";
 
-  // LIST VIEW
+  const isApproved = project.estimation?.approved === true;
+
+  /* ========== LIST VIEW ========== */
   if (viewMode === "list") {
     return (
       <Card
@@ -77,6 +80,15 @@ export const ProjectCard = ({
           isCompleted ? "bg-green-50" : "bg-gray-50"
         }`}
       >
+        {/* approved banner */}
+        {isApproved && (
+          <div className="px-4 pt-3">
+            <div className="rounded-md bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-800">
+              Estimation approved
+            </div>
+          </div>
+        )}
+
         <CardContent className="p-4 flex flex-col sm:flex-row justify-between gap-4">
           <div className="flex flex-col flex-1 gap-1">
             <div className="flex items-center gap-2">
@@ -131,7 +143,7 @@ export const ProjectCard = ({
             <span className="text-xs">{project.progress ?? 0}%</span>
           </div>
           <Progress
-            value={project.progress ?? 0}
+            value={Number(project.progress) || 0}
             className="h-2 bg-slate-100"
           />
         </div>
@@ -145,19 +157,24 @@ export const ProjectCard = ({
     );
   }
 
-  // GRID VIEW
+  /* ========== GRID VIEW ========== */
   return (
     <Card
       className={`hover:shadow-lg transition-shadow group h-full flex flex-col ${
         isCompleted ? "bg-green-50" : "bg-gray-50"
       }`}
     >
+      {/* approved banner */}
+
       <CardHeader className="flex flex-col pb-2 gap-2">
         <div className="flex justify-between items-start">
           <h3 className="font-semibold text-slate-800">{project.project_id}</h3>
-          <Badge className={getStatusColor(project.status)}>
-            {project.status || "N/A"}
-          </Badge>
+
+          {isApproved && (
+            <Badge className="bg-green-500 border border-teal-800">
+              Estimation approved
+            </Badge>
+          )}
         </div>
         <h2 className="text-lg font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
           {project.name}
@@ -207,7 +224,7 @@ export const ProjectCard = ({
             <span className="text-xs">{project.progress ?? 0}%</span>
           </div>
           <Progress
-            value={project.progress ?? 0}
+            value={Number(project.progress) || 0}
             className="h-2 bg-slate-100"
           />
         </div>

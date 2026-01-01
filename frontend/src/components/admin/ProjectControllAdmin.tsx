@@ -16,7 +16,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import toast from "react-hot-toast";
-import { useConfirmDialog } from "../ui/alert-dialog";
 
 type RFQDeliverable = {
   id: number;
@@ -35,7 +34,6 @@ const ProjectControlAdmin: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const { makeApiCall, fetching, fetchType } = useAPICall();
   const { authToken } = useAuth();
-  const confirmDialog = useConfirmDialog();
 
   const [project, setProject] = useState<any>(null);
   const [estimation, setEstimation] = useState<any>(null);
@@ -49,6 +47,9 @@ const ProjectControlAdmin: React.FC = () => {
   const [correctionText, setCorrectionText] = useState("");
 
   const [activeTab, setActiveTab] = useState<TabKey>("project");
+
+  // derived flag
+  const isApproved = project?.estimation?.approved === true;
 
   // Fetch project
   useEffect(() => {
@@ -166,34 +167,8 @@ const ProjectControlAdmin: React.FC = () => {
     setSavingAmounts(false);
   };
 
-
-  const handleCloseProject = async () => {
-    if (!project) return;
-    const confirmed = await confirmDialog({
-      title: "Close Project",
-      description: "Are you sure?",
-      confirmText: "Close",
-    });
-    if (confirmed) {
-      const response = await makeApiCall(
-        "patch",
-        API_ENDPOINT.EDIT_PROJECT(project.id),
-        { estimation_status: "rejected", status: "rejected" },
-        "application/json",
-        authToken
-      );
-      if (response.status === 200) {
-        setProject({
-          ...project,
-          estimation_status: "rejected",
-          status: "rejected",
-        });
-        toast.success("Project closed");
-      }
-    }
-  };
-
   const handleApproveProject = async () => {
+    if (isApproved) return;
     if (!project || !estimation) {
       toast.error("Estimation not yet created. Cannot approve.");
       return;
@@ -201,7 +176,7 @@ const ProjectControlAdmin: React.FC = () => {
     const response = await makeApiCall(
       "patch",
       API_ENDPOINT.EDIT_ESTIMATION(estimation.id),
-      { project_id: project.id, approved: true},
+      { project_id: project.id, approved: true },
       "application/json",
       authToken
     );
@@ -210,7 +185,7 @@ const ProjectControlAdmin: React.FC = () => {
         ...project,
         estimation_status: "approved",
         status: "working",
-        estimation: { ...project.estimation, approved: true},
+        estimation: { ...project.estimation, approved: true },
       });
       toast.success("Project approved");
     } else {
@@ -219,6 +194,7 @@ const ProjectControlAdmin: React.FC = () => {
   };
 
   const handleCorrectionRequest = async () => {
+    if (isApproved) return;
     if (!project || !project.estimation) return;
     if (!correctionText.trim()) {
       toast.error("Correction text is required");
@@ -266,7 +242,6 @@ const ProjectControlAdmin: React.FC = () => {
         </span>
       </div>
 
-      {/* Project info - customize fields as needed */}
       <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 border-b">
         <div>
           <p className="text-xs text-slate-500">Client</p>
@@ -342,7 +317,6 @@ const ProjectControlAdmin: React.FC = () => {
                   <th className="px-4 py-3 text-left">Discipline</th>
                   <th className="px-4 py-3 text-left">Deliverables</th>
                   <th className="px-4 py-3 text-left">Hours</th>
-
                   <th className="px-4 py-3 text-left font-semibold text-green-700">
                     Amount (₹)
                   </th>
@@ -412,21 +386,18 @@ const ProjectControlAdmin: React.FC = () => {
 
       {project.estimation_status === "sent_to_admin" && (
         <div className="w-full flex flex-col sm:flex-row gap-3 mt-4 px-6 pb-8">
+          {/* Reject removed */}
           <Button
-            className="bg-red-600 hover:bg-red-700 text-white flex-1"
-            onClick={handleCloseProject}
-          >
-            Reject / Close
-          </Button>
-          <Button
-            className="bg-yellow-500 hover:bg-yellow-600 text-white flex-1"
+            className="bg-yellow-500 hover:bg-yellow-600 text-white flex-1 disabled:opacity-50"
             onClick={() => setShowCorrectionDialog(true)}
+            disabled={isApproved}
           >
             Correction request
           </Button>
           <Button
-            className="bg-green-600 hover:bg-green-700 text-white flex-1"
+            className="bg-green-600 hover:bg-green-700 text-white flex-1 disabled:opacity-50"
             onClick={handleApproveProject}
+            disabled={isApproved}
           >
             Approve
           </Button>
@@ -460,7 +431,6 @@ const ProjectControlAdmin: React.FC = () => {
                 </p>
               </div>
             </div>
-            {/* Add more estimation fields as needed */}
           </>
         ) : (
           <p className="text-slate-500 text-sm">
@@ -612,7 +582,9 @@ const ProjectControlAdmin: React.FC = () => {
               >
                 Cancel
               </Button>
-              <Button onClick={handleCorrectionRequest}>Submit</Button>
+              <Button onClick={handleCorrectionRequest} disabled={isApproved}>
+                Submit
+              </Button>
             </div>
           </div>
         </DialogContent>

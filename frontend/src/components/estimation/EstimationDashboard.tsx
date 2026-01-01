@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Gauge,
   ArrowRight,
+  ArrowLeftRight, // Added for back_to_you badge
 } from "lucide-react";
 
 export default function EstimationDashboard() {
@@ -87,6 +88,29 @@ export default function EstimationDashboard() {
     } else {
       toast.error("Failed to send to admin");
     }
+  };
+
+  // Helper function to determine badge display and styling
+  const getStatusBadge = (project: IEstimationProject) => {
+    // Check for back_to_you status with not approved
+    if (
+      project.estimation_status === "back_to_you" &&
+      project.estimation?.approved === false
+    ) {
+      return (
+        <div className="flex items-center gap-1 rounded-full bg-orange-100 px-2 py-1 text-xs font-medium text-orange-800">
+          <ArrowLeftRight size={14} />
+          Back to You
+        </div>
+      );
+    }
+
+    // Existing logic for approved/not approved
+    if (project.estimation?.approved === true) {
+      return <BadgeCheck className="text-green-600" size={18} />;
+    }
+
+    return <AlertCircle className="text-yellow-500" size={18} />;
   };
 
   return (
@@ -186,11 +210,8 @@ export default function EstimationDashboard() {
                     </p>
                   </div>
 
-                  {project.estimation_status === "approved" ? (
-                    <BadgeCheck className="text-green-600" size={18} />
-                  ) : (
-                    <AlertCircle className="text-yellow-500" size={18} />
-                  )}
+                  {/* Updated badge logic */}
+                  <div>{getStatusBadge(project)}</div>
                 </div>
 
                 <div className="space-y-2 text-sm">

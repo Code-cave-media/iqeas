@@ -5,11 +5,11 @@ import { useAPICall } from "@/hooks/useApiCall";
 import { API_ENDPOINT } from "@/config/backend";
 import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
-import { Pencil } from "lucide-react";
+import { Pencil, ArrowLeftRight, MessageCircle } from "lucide-react";
 
 export default function EstimationDetails() {
   const { project_id } = useParams();
-  const { authToken, user } = useAuth();
+  const { authToken } = useAuth();
   const { makeApiCall } = useAPICall();
 
   const [loading, setLoading] = useState(false);
@@ -18,8 +18,8 @@ export default function EstimationDetails() {
   const [deliverables, setDeliverables] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  // ✅ estimationStatus is a string now
   const [estimationStatus, setEstimationStatus] = useState<string>("");
+  const [projectData, setProjectData] = useState<any>(null);
 
   /* =========================
      FETCH DELIVERABLES
@@ -71,11 +71,13 @@ export default function EstimationDetails() {
         {},
         "application/json",
         authToken,
-        "getProjects"
+        "getProjectById"
       );
 
       if (response?.status === 200) {
-        setEstimationStatus(response.data.estimation_status || "");
+        const data = response.data;
+        setEstimationStatus(data.estimation_status || "");
+        setProjectData(data);
       } else {
         toast.error("Failed to fetch project details");
       }
@@ -146,6 +148,7 @@ export default function EstimationDetails() {
 
   /* =========================
      SEND TO ADMIN
+     - Used for both normal flow and back_to_you flow
   ========================= */
   const sendToAdmin = async () => {
     if (!project_id) return;
@@ -162,7 +165,6 @@ export default function EstimationDetails() {
     setSending(true);
 
     try {
-      // 1️⃣ Update project status
       const updateProjectRes = await makeApiCall(
         "patch",
         API_ENDPOINT.EDIT_PROJECT(project_id),
@@ -177,7 +179,6 @@ export default function EstimationDetails() {
         return;
       }
 
-      // 2️⃣ Send deliverables to admin
       const sendDeliverablesRes = await makeApiCall(
         "patch",
         API_ENDPOINT.SEND_DELIVERABLES_TO_ADMIN(project_id),
@@ -196,15 +197,99 @@ export default function EstimationDetails() {
       }
 
       toast.success("Deliverables sent to admin successfully");
-
-      // 3️⃣ Update local state to disable button
       setEstimationStatus("sent_to_admin");
+      setProjectData((prev: any) =>
+        prev ? { ...prev, estimation_status: "sent_to_admin" } : prev
+      );
     } catch (error) {
       console.error(error);
       toast.error("An error occurred while sending to admin");
     } finally {
       setSending(false);
     }
+  };
+
+  /* =========================
+     RENDER CORRECTIONS
+  ========================= */
+const renderCorrections = () => {
+  const isBackToYou =
+    estimationStatus === "back_to_you" &&
+    projectData?.estimation?.approved === false;
+
+  if (!isBackToYou) return null;
+
+  // ✅ corrections live inside estimation
+  const corrections = projectData?.estimation?.corrections || [];
+  if (!corrections.length) return null;
+
+  return (
+    <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+      <div className="flex items-center gap-2 mb-3">
+        <ArrowLeftRight className="text-orange-600" size={18} />
+        <h3 className="font-semibold text-orange-900 text-sm">
+          Corrections ({corrections.length})
+        </h3>
+      </div>
+
+      <div className="space-y-2 max-h-40 overflow-y-auto">
+        {corrections.map((correction: any) => (
+          <div
+            key={correction.id}
+            className="flex items-start gap-2 p-2 bg-white rounded-md text-xs"
+          >
+            <MessageCircle
+              size={14}
+              className="text-orange-500 mt-0.5 flex-shrink-0"
+            />
+            <div>
+              <p className="font-medium text-gray-900">
+                {correction.correction}
+              </p>
+              <p className="text-gray-500">
+                {new Date(correction.created_at).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+
+  /* =========================
+     RENDER ACTION BUTTONS
+  ========================= */
+  const renderActionButtons = () => {
+    const isBackToYou =
+      estimationStatus === "back_to_you" &&
+      projectData?.estimation?.approved === false;
+    const isSentToAdmin = estimationStatus === "sent_to_admin";
+
+    return (
+      <>
+        <button
+          onClick={saveHours}
+          disabled={saving}
+          className="rounded-lg bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save Hours"}
+        </button>
+
+        <button
+          onClick={sendToAdmin}
+          disabled={sending || isSentToAdmin}
+          className={`rounded-lg px-4 py-2 text-sm text-white disabled:opacity-50 ${
+            isBackToYou
+              ? "bg-orange-600 hover:bg-orange-700"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
+        >
+          {sending ? "Sending..." : "Send to Admin"}
+        </button>
+      </>
+    );
   };
 
   /* =========================
@@ -220,6 +305,12 @@ export default function EstimationDetails() {
           </h1>
           <p className="text-sm text-gray-500">Project ID: {project_id}</p>
           <p className="mt-1 text-sm text-gray-600">
+            Status:{" "}
+            <span className="font-semibold capitalize">
+              {estimationStatus || "-"}
+            </span>
+          </p>
+          <p className="mt-1 text-sm text-gray-600">
             Total Estimated Time:{" "}
             <span className="font-semibold text-gray-900">
               {calculateTotalTime()} hrs
@@ -227,86 +318,74 @@ export default function EstimationDetails() {
           </p>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-2">
-          <button
-            onClick={saveHours}
-            disabled={saving}
-            className="rounded-lg bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save Hours"}
-          </button>
-
-          <button
-            onClick={sendToAdmin}
-            disabled={sending || estimationStatus === "sent_to_admin"}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50"
-          >
-            {sending ? "Sending..." : "Send to Admin"}
-          </button>
-        </div>
+        <div className="flex gap-2">{renderActionButtons()}</div>
       </div>
 
+      {/* Corrections (only when back_to_you && !approved) */}
+      {renderCorrections()}
+
       {/* Deliverables Table */}
-      <div className="rounded-xl bg-white shadow-sm overflow-x-auto">
+      <div className="rounded-xl bg-white shadow-sm overflow-hidden">
         {loading ? (
           <p className="p-6 text-sm text-gray-500">Loading deliverables...</p>
         ) : deliverables.length === 0 ? (
           <p className="p-6 text-sm text-gray-500">No deliverables found</p>
         ) : (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-50 text-left text-sm text-gray-600">
-                <th className="px-4 py-3">S.No</th>
-                <th className="px-4 py-3">Drawing No</th>
-                <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3">Deliverables</th>
-                <th className="px-4 py-3">Discipline</th>
-                <th className="px-4 py-3">Hours</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {deliverables.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-t text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  <td className="px-4 py-3">{item.sno}</td>
-                  <td className="px-4 py-3">{item.drawing_no}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    {item.title}
-                  </td>
-                  <td className="px-4 py-3">{item.deliverables}</td>
-                  <td className="px-4 py-3">{item.discipline}</td>
-                  <td className="px-4 py-3">
-                    {editingId === item.id ? (
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.hours}
-                        onChange={(e) =>
-                          handleHourChange(item.id, e.target.value)
-                        }
-                        onBlur={() => setEditingId(null)}
-                        className="w-20 rounded-md border px-2 py-1 text-sm focus:border-black focus:outline-none"
-                      />
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span>{item.hours || "-"}</span>
-                        <button
-                          onClick={() => setEditingId(item.id)}
-                          className="p-1 text-gray-500 hover:text-black"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-50 text-left text-sm text-gray-600">
+                  <th className="px-4 py-3">S.No</th>
+                  <th className="px-4 py-3">Drawing No</th>
+                  <th className="px-4 py-3">Title</th>
+                  <th className="px-4 py-3">Deliverables</th>
+                  <th className="px-4 py-3">Discipline</th>
+                  <th className="px-4 py-3">Hours</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+                {deliverables.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="border-t text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <td className="px-4 py-3">{item.sno}</td>
+                    <td className="px-4 py-3">{item.drawing_no}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {item.title}
+                    </td>
+                    <td className="px-4 py-3">{item.deliverables}</td>
+                    <td className="px-4 py-3">{item.discipline}</td>
+                    <td className="px-4 py-3">
+                      {editingId === item.id ? (
+                        <input
+                          type="tel"
+                          min="0"
+                          value={item.hours}
+                          onChange={(e) =>
+                            handleHourChange(item.id, e.target.value)
+                          }
+                          onBlur={() => setEditingId(null)}
+                          className="w-20 rounded-md border px-2 py-1 text-sm focus:border-black focus:outline-none"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span>{item.hours || "-"}</span>
+                          <button
+                            onClick={() => setEditingId(item.id)}
+                            className="p-1 text-gray-500 hover:text-black"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </section>
