@@ -131,6 +131,9 @@ export const API_ENDPOINT = {
   GET_PURCHASE_ORDER: (project_id: string) =>
     `${API_URL}/updates/getPo/${project_id}`,
 
+  CLIENT_AUTOFILL: (clientQuery) =>
+    `${API_URL}/updates/clients/search/?q=${clientQuery}`,
+
   UPDATE_CHECKING_WORKERS_PROJECT: (
     estimation_deliverable_id: string,
     worker_id
@@ -164,7 +167,10 @@ export const API_ENDPOINT = {
   ADD_REWORK_NOTE: (estimation_deliverable_id, worker_id) =>
     `${API_URL}/updates/rework-note/${estimation_deliverable_id}/${worker_id}`,
 
-  GET_USERNAME: (user_id) => `updates/username/${user_id}`,
+  GET_USERNAME: (user_id) => `${API_URL}/updates/username/${user_id}`,
+
+  UPDATE_PO_DATA: (id) => `${API_URL}/updates/update-po/${id}`,
+
   GET_PROJECTS_FOR_COORDINATOR: (
     project_coordinator_id: string,
     page: number = 1,

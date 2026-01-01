@@ -12,6 +12,7 @@ import {
   getAllPMsController,
   getAllLeadersController,
   fetchProjectCoordinators,
+  patchPurchaseOrder,
 } from "../controllers/po.controller.js";
 import { authenticateToken } from "../../middleware/authMiddleware.js";
 
@@ -31,6 +32,7 @@ router.get(
 
 
 router.get("/project-coordinators/:project_id", fetchProjectCoordinators);
+router.patch("/update-po/:id", patchPurchaseOrder);
 
 
 router.get("/coordinators", getAllCoordinatorsController);

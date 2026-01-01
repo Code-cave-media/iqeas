@@ -1,4 +1,7 @@
-import { getUserNameById } from "../services/includes.service.js";
+import {
+  getUserNameById,
+  searchClientsByName,
+} from "../services/includes.service.js";
 import { formatResponse } from "../../utils/response.js";
 
 
@@ -78,3 +81,19 @@ export const getUserNameController = async (req, res) => {
     );
   }
 };
+
+
+export async function searchClients(req, res) {
+  const { q } = req.query;
+
+  if (!q) return res.json([]);
+
+  const data = await searchClientsByName(q);
+  res.json(
+    formatResponse({
+      statusCode: 200,
+      detail: "User name retrieved successfully",
+      data
+    })
+  );
+}

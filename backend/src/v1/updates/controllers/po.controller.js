@@ -226,7 +226,6 @@ export const updatePOHandler = async (req, res) => {
   }
 };
 
-
 export async function getCoordinatorWorksController(req, res) {
   try {
     const { project_coordinator_id } = req.params;
@@ -265,7 +264,6 @@ export async function getCoordinatorWorksController(req, res) {
     });
   }
 }
-
 
 export async function getAllCoordinatorsController(req, res) {
   try {
@@ -324,17 +322,62 @@ export async function getAllLeadersController(req, res) {
   }
 }
 
-
 export async function fetchProjectCoordinators(req, res) {
-   try {
-     const { project_id } = req.params; // or req.params if you use URL param
-     if (!project_id)
-       return res.status(400).json({ message: "project_id is required" });
+  try {
+    const { project_id } = req.params;
+    if (!project_id)
+      return res.status(400).json({ message: "project_id is required" });
 
-     const data = await POService.getProjectCoordinatorsByProject(project_id);
-     res.json({ data });
-   } catch (error) {
-     console.error(error);
-     res.status(500).json({ message: "Internal server error" });
-   }
+    const data = await POService.getProjectCoordinatorsByProject(project_id);
+    res.json({ data });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+// ======================
+
+export async function patchPurchaseOrder(req, res) {
+  try {
+    const poId = Number(req.params.id);
+    const {
+      po_number,
+      received_date,
+      received_by_user_id,
+      notes,
+      terms_and_conditions,
+      uploaded_file_id, // optional, if provided replace file
+    } = req.body;
+
+    if (!poId) return res.status(400).json({ error: "PO ID is required" });
+
+    const updateData = {
+      po_number,
+      received_date,
+      received_by_user_id,
+      notes,
+      terms_and_conditions,
+    };
+
+    // Remove undefined fields
+    Object.keys(updateData).forEach(
+      (key) => updateData[key] === undefined && delete updateData[key]
+    );
+
+    const result = await POService.updatePurchaseOrder(
+      poId,
+      updateData,
+      uploaded_file_id
+    );
+
+    res.json({
+      status: 200,
+      message: "Purchase order updated successfully",
+      result,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update purchase order" });
+  }
 }

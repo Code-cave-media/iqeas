@@ -365,3 +365,74 @@ export async function getProjectCoordinatorsByProject(project_id) {
 }
 
 
+// ==============================================
+
+
+export async function updatePurchaseOrder(poId, updateData, newFileId) {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // 1️⃣ Update purchase_orders table (skip undefined fields)
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    for (const [key, value] of Object.entries(updateData)) {
+      if (value !== undefined) {
+        fields.push(`${key} = $${idx}`);
+        values.push(value);
+        idx++;
+      }
+    }
+
+    if (fields.length > 0) {
+      values.push(poId);
+      const updateQuery = `
+        UPDATE purchase_orders
+        SET ${fields.join(", ")}, updated_at = NOW()
+        WHERE id = $${idx}
+      `;
+      await client.query(updateQuery, values);
+    }
+
+    // 2️⃣ If a new file is provided, replace old file
+    if (newFileId) {
+      // Find existing files for this PO
+      const oldFilesResult = await client.query(
+        "SELECT uploaded_file_id FROM purchase_order_files WHERE po_id = $1",
+        [poId]
+      );
+      const oldFileIds = oldFilesResult.rows.map((r) => r.uploaded_file_id);
+
+      if (oldFileIds.length > 0) {
+        // Delete old file links
+        await client.query(
+          "DELETE FROM purchase_order_files WHERE po_id = $1",
+          [poId]
+        );
+
+        // Delete actual files
+        await client.query(
+          "DELETE FROM uploaded_files WHERE id = ANY($1::int[])",
+          [oldFileIds]
+        );
+      }
+
+      // Add new file link
+      await client.query(
+        "INSERT INTO purchase_order_files (po_id, uploaded_file_id) VALUES ($1, $2)",
+        [poId, newFileId]
+      );
+    }
+
+    await client.query("COMMIT");
+    return { success: true };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}

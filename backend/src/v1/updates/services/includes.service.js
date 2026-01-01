@@ -22,3 +22,25 @@ export async function getUserNameById(user_id, client = pool) {
   return result.rows[0]?.name || null;
 }
 
+
+
+export async function searchClientsByName(query) {
+  const result = await pool.query(
+    `
+    SELECT DISTINCT ON (LOWER(client_name))
+      client_name,
+      client_company,
+      location,
+      contact_person,
+      contact_person_phone,
+      contact_person_email
+    FROM projects
+    WHERE LOWER(client_name) LIKE LOWER($1)
+    ORDER BY LOWER(client_name), created_at DESC
+    LIMIT 10
+    `,
+    [`%${query}%`]
+  );
+
+  return result.rows;
+}

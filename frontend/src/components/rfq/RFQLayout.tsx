@@ -10,6 +10,7 @@ import {
   LogOut,
   ArrowLeft,
   User,
+  Plus,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -34,7 +35,7 @@ const RFQLayout = ({ children }: { children: React.ReactNode }) => {
     {
       label: "Create Deliverables",
       to: `/rfq/${project_id}/deliverables`,
-      icon: Calculator,
+      icon: Plus,
     },
     {
       label: "Estimation",

@@ -9,7 +9,9 @@ Updations
 ~> Project leader can see all the deliverables list and project details and every things will be shown as a table where the leader can edit in that table
 ~> Workers can see Files the uploaded and rework note
 ~> Correction request fixed
+~> PO can be updated befor sending to Project Coordinator
 ~> Pagination with button showing previous page
 ~> Fixed the estimation send to admin button 
 ~> Project Coordinator can see deliverables list as well as the details 
 ~> Project Coordinator can select Pm while approving
+~> Added Autofill feature on RFQ
