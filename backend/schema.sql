@@ -54,6 +54,7 @@ CREATE TABLE projects (
     received_date DATE NOT NULL,
     client_name VARCHAR(100) NOT NULL,
     client_company VARCHAR(100) NOT NULL,
+    is_pc_archived: BOOLEAN DEFAULT FALSE NOT NULL,
     location VARCHAR(100) NOT NULL,
     project_type VARCHAR(50) NOT NULL ,
     priority VARCHAR(20) NOT NULL ,

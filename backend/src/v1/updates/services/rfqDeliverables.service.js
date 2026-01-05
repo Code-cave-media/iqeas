@@ -1,8 +1,12 @@
 import pool from "../../config/db.js";
 
-export async function createRFQDeliverables(projectId, deliverables, client = pool) {
+export async function createRFQDeliverables(
+  projectId,
+  deliverables,
+  client = pool
+) {
   const results = [];
-  
+
   for (const deliverable of deliverables) {
     const {
       sno,
@@ -10,11 +14,12 @@ export async function createRFQDeliverables(projectId, deliverables, client = po
       title,
       deliverables: deliverableName,
       discipline,
+      additional = null,
     } = deliverable;
 
     const existing = await client.query(
-      `SELECT * FROM estimation_deliverables
-       WHERE project_id = $1 AND sno = $2 `,
+      `SELECT id FROM estimation_deliverables
+       WHERE project_id = $1 AND sno = $2`,
       [projectId, sno]
     );
 
@@ -25,19 +30,45 @@ export async function createRFQDeliverables(projectId, deliverables, client = po
              title = $2,
              deliverables = $3,
              discipline = $4,
+             additional = $5,
              updated_at = NOW()
-         WHERE id = $5
+         WHERE id = $6
          RETURNING *`,
-        [drawing_no, title, deliverableName, discipline, existing.rows[0].id]
+        [
+          drawing_no,
+          title,
+          deliverableName,
+          discipline,
+          additional,
+          existing.rows[0].id,
+        ]
       );
       results.push(updated.rows[0]);
     } else {
       const inserted = await client.query(
         `INSERT INTO estimation_deliverables (
-          project_id, estimation_id, sno, drawing_no, title, deliverables, discipline, hours, amount
-        ) VALUES ($1, NULL, $2, $3, $4, $5, $6, NULL, NULL)
+          project_id,
+          estimation_id,
+          sno,
+          drawing_no,
+          title,
+          deliverables,
+          discipline,
+          additional,
+          hours,
+          amount
+        )
+        VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, NULL, NULL)
         RETURNING *`,
-        [projectId, sno, drawing_no, title, deliverableName, discipline]
+        [
+          projectId,
+          sno,
+          drawing_no,
+          title,
+          deliverableName,
+          discipline,
+          additional,
+        ]
       );
       results.push(inserted.rows[0]);
     }
@@ -45,6 +76,7 @@ export async function createRFQDeliverables(projectId, deliverables, client = po
 
   return results;
 }
+
 
 export async function getRFQDeliverables(projectId, client = pool) {
   const query = `

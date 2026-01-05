@@ -304,11 +304,11 @@ export const DeliverablesTable: React.FC<Props> = ({
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-2 group">
+                  <div className="flex items-center gap-2">
                     {parent && (
                       <button
                         type="button"
-                        className="opacity-0 group-hover:opacity-100 transition text-emerald-600 hover:text-emerald-800"
+                        className="transition text-emerald-600 hover:text-emerald-800"
                         onClick={() => onAddSubRow(item)}
                       >
                         <Plus size={16} />
@@ -351,13 +351,26 @@ export const DeliverablesTable: React.FC<Props> = ({
                 </td>
                 <td className="px-4 py-3">
                   <input
-                    type="tel"
-                    value={item.hours ?? ""}
-                    onChange={(e) => onHoursChange(item.id, e.target.value)}
+                    type="number"
+                    value={
+                      item.hours !== null && item.hours !== undefined
+                        ? Math.floor(item.hours * 0.9) // 10% reduced
+                        : ""
+                    }
+                    onChange={(e) =>
+                      onHoursChange(
+                        item.id,
+                        e.target.value === ""
+                          ? null
+                          : Math.floor(Number(e.target.value) / 0.9)
+                      )
+                    }
                     className="w-20 border rounded px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
                     placeholder="Hours"
+                    step={1}
                   />
                 </td>
+
                 <td className="px-4 py-3">
                   <select
                     value={item.worker_id ?? ""}

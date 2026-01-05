@@ -583,26 +583,19 @@ const ProjectControlPm: React.FC = () => {
                 deliverables={rfqDeliverables}
               />
 
-              {/* Leader Assignment Section */}
              
             </>
           )}
 
-          {activeTab === "delivery" && (
-            <DeliveryTab
-              project={project}
-              enableDelivery={enableDelivery}
-              onMakeDelivery={handleMakeDeliveryClick}
-            />
-          )}
+          
         </div>
       </div>
 
       {/* Stage Manager Dialog */}
       <Dialog open={showStageModal} onOpenChange={setShowStageModal}>
-        <DialogContent>
+        <DialogContent className="p-8">
           <DialogHeader>
-            <DialogTitle>Manage Stages</DialogTitle>
+            <DialogTitle className="pb-3">Manage Stages</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex gap-2">
@@ -654,7 +647,7 @@ const ProjectControlPm: React.FC = () => {
 
       {/* Delivery Dialog */}
       <Dialog open={showDeliveryDialog} onOpenChange={setShowDeliveryDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg p-8">
           <DialogHeader>
             <DialogTitle>Select Files for Delivery</DialogTitle>
           </DialogHeader>

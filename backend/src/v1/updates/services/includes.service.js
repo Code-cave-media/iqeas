@@ -44,3 +44,47 @@ export async function searchClientsByName(query) {
 
   return result.rows;
 }
+
+
+export async function createHeader(features, client = pool) {
+  const query = `
+    INSERT INTO headers (features)
+    VALUES ($1)
+    RETURNING *;
+  `;
+
+  const { rows } = await client.query(query, [features]);
+  return rows[0];
+}
+
+/**
+ * Get all headers
+ */
+export async function getAllHeaders(client = pool) {
+  const query = `
+    SELECT *
+    FROM headers
+    ORDER BY created_at DESC;
+  `;
+
+  const { rows } = await client.query(query);
+  return rows;
+}
+
+/**
+ * Get header by id
+ */
+export async function getArchives() {
+  const query = `
+    SELECT 
+      projects.*,
+      estimations.sent_to_pm
+    FROM projects
+    LEFT JOIN estimations
+      ON estimations.project_id = projects.id
+    WHERE projects.is_pc_archived = true;
+  `;
+
+  const { rows } = await pool.query(query);
+  return rows;
+}

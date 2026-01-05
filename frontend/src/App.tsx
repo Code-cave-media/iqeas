@@ -49,6 +49,7 @@ import ProjectCoordinatorDashboard from "./components/project_coordinator/Projec
 import ProjectLeaderDashboard from "./components/project_leader/ProjectLeaderDashboard";
 import ProjectDetails from "./components/project_coordinator/ProjectDetails";
 import LeaderProjectDetails from "./components/project_leader/LeaderProjectDetails";
+import ProjectCoordinatorArchives from "./components/project_coordinator/Archives";
 
 const CommonCalendar = () => (
   <div className="p-8 text-2xl text-blue-800">
@@ -393,6 +394,14 @@ const App = () => (
                   element={
                     <DashboardLayout>
                       <ProjectDetails />
+                    </DashboardLayout>
+                  }
+                />
+                <Route
+                  path="/project-coordinator/archived"
+                  element={
+                    <DashboardLayout>
+                      <ProjectCoordinatorArchives />
                     </DashboardLayout>
                   }
                 />

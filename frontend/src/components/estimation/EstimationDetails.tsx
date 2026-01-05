@@ -105,7 +105,7 @@ export default function EstimationDetails() {
   };
 
   /* =========================
-     SAVE HOURS
+     SAVE HOURS (existing)
   ========================= */
   const saveHours = async () => {
     if (!project_id) return;
@@ -147,8 +147,13 @@ export default function EstimationDetails() {
   };
 
   /* =========================
-     SEND TO ADMIN
-     - Used for both normal flow and back_to_you flow
+     SEND TO ADMIN + CREATE ESTIMATION
+     - Creates a new estimation record if none exists
+     - Sets status to 'draft' (or 'sent_to_admin' if desired)
+     - Uses user_id from auth context
+     - Other fields remain null/default
+     - Updates project estimation_status to 'sent_to_admin'
+     - Sends deliverables
   ========================= */
   const sendToAdmin = async () => {
     if (!project_id) return;
@@ -165,6 +170,30 @@ export default function EstimationDetails() {
     setSending(true);
 
     try {
+      // Step 1: Create estimation record (only required fields + defaults)
+      const createEstimationRes = await makeApiCall(
+        "post",
+        API_ENDPOINT.CREATE_ESTIMATION,
+        {
+          project_id: Number(project_id),
+          user_id: Number(authToken?.user?.id || 0), // Adjust based on your auth structure
+          status: "sent_to_admin", // Or "draft" if you prefer to keep it draft initially
+          // Other fields (cost, deadline, etc.) are nullable → left out → become null/default
+        },
+        "application/json",
+        authToken,
+        "createEstimation"
+      );
+
+      if (
+        createEstimationRes?.status !== 201 &&
+        createEstimationRes?.status !== 200
+      ) {
+        toast.error("Failed to create estimation record");
+        return;
+      }
+
+      // Step 2: Update project status
       const updateProjectRes = await makeApiCall(
         "patch",
         API_ENDPOINT.EDIT_PROJECT(project_id),
@@ -179,6 +208,7 @@ export default function EstimationDetails() {
         return;
       }
 
+      // Step 3: Send deliverables (existing)
       const sendDeliverablesRes = await makeApiCall(
         "patch",
         API_ENDPOINT.SEND_DELIVERABLES_TO_ADMIN(project_id),
@@ -196,7 +226,9 @@ export default function EstimationDetails() {
         return;
       }
 
-      toast.success("Deliverables sent to admin successfully");
+      toast.success(
+        "Deliverables sent to admin and estimation created successfully"
+      );
       setEstimationStatus("sent_to_admin");
       setProjectData((prev: any) =>
         prev ? { ...prev, estimation_status: "sent_to_admin" } : prev
@@ -210,56 +242,54 @@ export default function EstimationDetails() {
   };
 
   /* =========================
-     RENDER CORRECTIONS
+     RENDER CORRECTIONS (unchanged)
   ========================= */
-const renderCorrections = () => {
-  const isBackToYou =
-    estimationStatus === "back_to_you" &&
-    projectData?.estimation?.approved === false;
+  const renderCorrections = () => {
+    const isBackToYou =
+      estimationStatus === "back_to_you" &&
+      projectData?.estimation?.approved === false;
 
-  if (!isBackToYou) return null;
+    if (!isBackToYou) return null;
 
-  // ✅ corrections live inside estimation
-  const corrections = projectData?.estimation?.corrections || [];
-  if (!corrections.length) return null;
+    const corrections = projectData?.estimation?.corrections || [];
+    if (!corrections.length) return null;
 
-  return (
-    <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-      <div className="flex items-center gap-2 mb-3">
-        <ArrowLeftRight className="text-orange-600" size={18} />
-        <h3 className="font-semibold text-orange-900 text-sm">
-          Corrections ({corrections.length})
-        </h3>
-      </div>
+    return (
+      <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+        <div className="flex items-center gap-2 mb-3">
+          <ArrowLeftRight className="text-orange-600" size={18} />
+          <h3 className="font-semibold text-orange-900 text-sm">
+            Corrections ({corrections.length})
+          </h3>
+        </div>
 
-      <div className="space-y-2 max-h-40 overflow-y-auto">
-        {corrections.map((correction: any) => (
-          <div
-            key={correction.id}
-            className="flex items-start gap-2 p-2 bg-white rounded-md text-xs"
-          >
-            <MessageCircle
-              size={14}
-              className="text-orange-500 mt-0.5 flex-shrink-0"
-            />
-            <div>
-              <p className="font-medium text-gray-900">
-                {correction.correction}
-              </p>
-              <p className="text-gray-500">
-                {new Date(correction.created_at).toLocaleString()}
-              </p>
+        <div className="space-y-2 max-h-40 overflow-y-auto">
+          {corrections.map((correction: any) => (
+            <div
+              key={correction.id}
+              className="flex items-start gap-2 p-2 bg-white rounded-md text-xs"
+            >
+              <MessageCircle
+                size={14}
+                className="text-orange-500 mt-0.5 flex-shrink-0"
+              />
+              <div>
+                <p className="font-medium text-gray-900">
+                  {correction.correction}
+                </p>
+                <p className="text-gray-500">
+                  {new Date(correction.created_at).toLocaleString()}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
-  );
-};
-
+    );
+  };
 
   /* =========================
-     RENDER ACTION BUTTONS
+     RENDER ACTION BUTTONS (unchanged)
   ========================= */
   const renderActionButtons = () => {
     const isBackToYou =
@@ -293,7 +323,7 @@ const renderCorrections = () => {
   };
 
   /* =========================
-     RENDER
+     RENDER (unchanged)
   ========================= */
   return (
     <section className="min-h-screen bg-gray-50 p-6">
@@ -321,7 +351,7 @@ const renderCorrections = () => {
         <div className="flex gap-2">{renderActionButtons()}</div>
       </div>
 
-      {/* Corrections (only when back_to_you && !approved) */}
+      {/* Corrections */}
       {renderCorrections()}
 
       {/* Deliverables Table */}

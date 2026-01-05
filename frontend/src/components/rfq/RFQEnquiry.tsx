@@ -192,7 +192,6 @@ export default function RFQEnquiry() {
     }
   }, [authToken, makeApiCall]);
 
-
   const handleSaveField = async (field: string, newValue: any) => {
     if (!project_id) return;
 
@@ -296,7 +295,7 @@ export default function RFQEnquiry() {
                 onChange={(e) => {
                   const value = e.target.value;
                   console.log("onChange raw value:", value);
-                  setSelectedCoordinatorId(Number(value) );
+                  setSelectedCoordinatorId(Number(value));
                 }}
                 className="border rounded px-2 py-1"
               >

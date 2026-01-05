@@ -181,6 +181,8 @@ CREATE TABLE IF NOT EXISTS user_login_logs (
     user_agent TEXT
 );
 
+
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_po_project_id ON purchase_orders(project_id);
 CREATE INDEX IF NOT EXISTS idx_estimation_deliverables_estimation_id ON estimation_deliverables(estimation_id);

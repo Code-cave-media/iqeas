@@ -184,7 +184,11 @@ export default function ProjectDetails() {
                   <td className="p-3">{item.discipline}</td>
                   <td className="p-3">{item.stage}</td>
                   <td className="p-3">{item.revision}</td>
-                  <td className="p-3">{item.hours}</td>
+                  <td className="p-3">
+                    {item.hours !== null && item.hours !== undefined
+                      ? Math.floor(item.hours * 0.9) // show 10% reduced value
+                      : ""}
+                  </td>
                   <td className="p-3">₹ {item.amount}</td>
                   <td className="p-3">
                     <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-700">

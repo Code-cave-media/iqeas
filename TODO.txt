@@ -15,3 +15,20 @@ Updations
 ~> Project Coordinator can see deliverables list as well as the details 
 ~> Project Coordinator can select Pm while approving
 ~> Added Autofill feature on RFQ
+
+
+
+==============
+~> table + btn non hover  - DONE
+~> 10% reduction on hours [coordinator and pm] - DONE
+~> Pr coordinator archive - DONE
+~> Delete project [Admin] - DONE
+~> Icons reduced - DONE
+~> Removed delivery files from pm and admin - DONE
+~> Added the name and role below the sidebar for more visibility - DONE
+
+
+~> export excel, pdf
+
+
+RFQ -> ESTIMATION -> ADMIN [SWITCH{all}] -> PC[SWITCH{all except}]

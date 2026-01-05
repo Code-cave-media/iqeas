@@ -1584,3 +1584,49 @@ export async function getPublicProjectDetails(token) {
   if (!project) return null;
   return project;
 }
+
+
+
+
+
+export async function deleteProjectById(projectId) {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // 1. Delete workers uploaded files
+    await client.query(
+      `DELETE FROM workers_uploaded_files WHERE project_id = $1`,
+      [projectId]
+    );
+
+    // 2. Delete purchase orders
+    await client.query(`DELETE FROM purchase_orders WHERE project_id = $1`, [
+      projectId,
+    ]);
+
+    // 3. Delete estimations
+    await client.query(`DELETE FROM estimations WHERE project_id = $1`, [
+      projectId,
+    ]);
+
+    // 4. Delete project
+    const { rowCount } = await client.query(
+      `DELETE FROM projects WHERE id = $1`,
+      [projectId]
+    );
+
+    if (rowCount === 0) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    await client.query("COMMIT");
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}

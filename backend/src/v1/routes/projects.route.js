@@ -13,6 +13,7 @@ import {
   getAdminProjectsController,
   getProjectByIdController,
   getPublicProjectInfo,
+  deleteProject,
 } from "../controllers/projects.controller.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
@@ -30,4 +31,6 @@ router.get("/projects/uploaded-files-data-by-roles", getUploadedFilesForRoles)
 router.get("/projects/working", authenticateToken, listWorkerProjectsController);
 router.get("/projects/:id", authenticateToken, getProjectByIdController);
 router.get("/projects/public/:token", getPublicProjectInfo);
+router.delete("/projects-del-admin/:id", deleteProject);
+
 export default router;

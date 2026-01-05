@@ -441,29 +441,7 @@ const ProjectControlAdmin: React.FC = () => {
     </div>
   );
 
-  const renderFilesTab = () => (
-    <div className="rounded-2xl shadow-lg border bg-white">
-      <div className="flex items-center justify-between px-6 py-4 rounded-t-2xl bg-gradient-to-r from-indigo-600 to-indigo-400">
-        <div className="flex items-center gap-3">
-          <Clock className="text-white" size={28} />
-          <span className="text-lg font-bold text-white">Delivery Files</span>
-        </div>
-      </div>
-      <div className="px-6 py-4 flex flex-wrap gap-2">
-        {project.delivery_files?.length > 0 ? (
-          project.delivery_files.map((file: any, i: number) => (
-            <ShowFile
-              key={file.id || i}
-              label={file.label}
-              url={file.file || file.url}
-            />
-          ))
-        ) : (
-          <span className="text-slate-400">No delivery files available.</span>
-        )}
-      </div>
-    </div>
-  );
+
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -473,8 +451,6 @@ const ProjectControlAdmin: React.FC = () => {
         return renderDeliverablesTab();
       case "estimation":
         return renderEstimationTab();
-      case "files":
-        return renderFilesTab();
       default:
         return null;
     }
@@ -536,20 +512,7 @@ const ProjectControlAdmin: React.FC = () => {
                   Estimation
                 </button>
               </li>
-              <li className="me-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("files")}
-                  className={`inline-flex items-center gap-1 p-3 border-b-2 rounded-t-lg ${
-                    activeTab === "files"
-                      ? "text-blue-600 border-blue-600"
-                      : "text-gray-500 border-transparent hover:text-gray-600 hover:border-gray-300"
-                  }`}
-                >
-                  <Clock size={16} />
-                  Delivery Files
-                </button>
-              </li>
+             
             </ul>
           </div>
 

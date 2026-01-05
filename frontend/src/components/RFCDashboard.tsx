@@ -1,26 +1,27 @@
 import { useEffect, useState } from "react";
 import {
-  FileText,
-  Upload,
-  Search,
-  Calendar,
-  AlertCircle,
   Plus,
-  X,
+  Search,
+  Grid,
+  List,
+  Users,
+  Clock,
   User,
   Building2,
   MapPin,
-  Phone,
-  Mail,
-  StickyNote,
-  Info,
+  Calendar,
+  FileText,
   Send,
-  Blocks,
-  ListCollapse,
+  Info,
+  StickyNote,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label"; // Added
+import { Textarea } from "@/components/ui/textarea"; // Added
+import { Separator } from "@/components/ui/separator"; // Added
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import ClientAutofillInput from "@/shared/ClientAutofillInput";
 import {
@@ -34,21 +35,17 @@ import { useAPICall } from "@/hooks/useApiCall";
 import { API_ENDPOINT } from "@/config/backend";
 import { useAuth } from "@/contexts/AuthContext";
 import type { IRFCProject } from "@/types/apiTypes";
-import ShowFile from "./ShowFile";
 import toast from "react-hot-toast";
-import {
-  validateProjectForm,
-  validateRequiredFields,
-} from "@/utils/validation";
+import { validateProjectForm } from "@/utils/validation";
 import Loading from "./atomic/Loading";
-import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"; // Full import
 import { isValidEmail } from "@/lib/utils";
-
-function generateProjectId() {
-  return `PRJ-${new Date().getFullYear()}-${Math.floor(
-    Math.random() * 900 + 100
-  )}`;
-}
 
 const initialForm = {
   name: "",
@@ -62,7 +59,7 @@ const initialForm = {
   contactPhone: "",
   contactEmail: "",
   notes: "",
-  priority: "medium",
+  priority: "medium" as "high" | "medium" | "low",
 };
 
 const getPriorityBadgeProps = (priority: string) => {
@@ -72,10 +69,7 @@ const getPriorityBadgeProps = (priority: string) => {
     case "medium":
       return { variant: "secondary" as const };
     case "low":
-      return {
-        variant: "outline" as const,
-        className: "border-gray-400 text-gray-600",
-      };
+      return { variant: "outline" as const };
     default:
       return { variant: "default" as const };
   }
@@ -87,18 +81,12 @@ const getStatusBadgeProps = (status: string) => {
     case "rejected":
       return { variant: "destructive" as const };
     case "completed":
-      return {
-        variant: "secondary" as const,
-        className: "bg-green-100 text-green-800 border-green-300",
-      };
+      return { variant: "secondary" as const };
     case "estimating":
     case "ready for estimation":
-      return {
-        variant: "secondary" as const,
-        className: "bg-blue-100 text-blue-800 border-blue-300",
-      };
+      return { variant: "secondary" as const };
     default:
-      return { variant: "outline" as const, className: "capitalize" };
+      return { variant: "outline" as const };
   }
 };
 
@@ -113,7 +101,6 @@ export const RFCDashboard = () => {
   const { fetchType, fetching, isFetched, makeApiCall } = useAPICall();
   const { authToken } = useAuth();
   const [formStep, setFormStep] = useState(1);
-  const [sendToEstimation, setSendToEstimation] = useState(false);
   const [detailsProject, setDetailsProject] = useState<IRFCProject | null>(
     null
   );
@@ -129,7 +116,8 @@ export const RFCDashboard = () => {
     active_projects: 0,
     read_for_estimation: 0,
   });
-  const [listView, setListView] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [isSubmitting, setIsSubmitting] = useState(false); // Added for button state
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -164,8 +152,12 @@ export const RFCDashboard = () => {
     }));
   };
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, files } = e.target;
+  const handleFormChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    const files = (e.target as HTMLInputElement).files;
+
     if (name === "uploadedFiles" && files) {
       const newFiles = Array.from(files).map((file) => ({
         file,
@@ -205,33 +197,35 @@ export const RFCDashboard = () => {
     return response.status === 201 ? response.data : null;
   };
 
-  const submitProject = async (sendToEstimationNow = false) => {
+  const submitProject = async () => {
+    setIsSubmitting(true);
+
     const missing = validateProjectForm(form);
     if (missing.length > 0) {
       toast.error(`Missing required field: ${missing[0]}`);
+      setIsSubmitting(false);
       return;
     }
-    if (!isValidEmail(form.contactEmail)) {
+    if (form.contactEmail && !isValidEmail(form.contactEmail)) {
       toast.error("Please enter a valid contact email");
+      setIsSubmitting(false);
       return;
     }
-    if (
-      form.uploadedFiles.some(
-        (f) => f.file && (!f.label || f.label.trim() === "")
-      )
-    ) {
+    if (form.uploadedFiles.some((f) => f.file && !f.label.trim())) {
       toast.error("Please enter a label for every uploaded file.");
+      setIsSubmitting(false);
       return;
     }
 
-    const uploadedFileIds = [];
+    const uploadedFileIds: number[] = [];
     for (const uf of form.uploadedFiles) {
       if (uf.file) {
         const uploaded = await uploadFile(uf.file, uf.label);
-        if (uploaded && uploaded.id) {
+        if (uploaded?.id) {
           uploadedFileIds.push(uploaded.id);
         } else {
-          toast.error("Failed to upload files");
+          toast.error("Failed to upload one or more files");
+          setIsSubmitting(false);
           return;
         }
       }
@@ -249,7 +243,6 @@ export const RFCDashboard = () => {
       contact_person_phone: form.contactPhone,
       contact_person_email: form.contactEmail,
       notes: form.notes,
-      send_to_estimation: sendToEstimationNow,
       uploaded_files: uploadedFileIds,
     };
 
@@ -264,34 +257,23 @@ export const RFCDashboard = () => {
 
     if (response.status === 201) {
       setProjects([response.data, ...projects]);
-      setCards((prev) => ({
-        ...prev,
-        active_projects: response.data.send_to_estimation
-          ? prev.active_projects + 1
-          : prev.active_projects,
-        read_for_estimation: response.data.send_to_estimation
-          ? prev.read_for_estimation
-          : prev.read_for_estimation + 1,
-      }));
       toast.success("Project created successfully");
+      setShowForm(false);
+      setForm(initialForm);
     } else {
-      toast.error("Failed to create project");
+      toast.error(response.data?.message || "Failed to create project");
     }
-    setShowForm(false);
+    setIsSubmitting(false);
   };
 
   const submitMoreInfo = async () => {
     if (!moreInfoProject) return;
-    if (validateRequiredFields(moreInfoForm, ["enquiry", "notes"]).length > 0) {
-      toast.error("Fill all the required fields");
-      return;
-    }
 
-    const uploadedFileIds = [];
+    const uploadedFileIds: number[] = [];
     for (const uf of moreInfoForm.files) {
       if (uf.file) {
         const uploaded = await uploadFile(uf.file, uf.label);
-        if (uploaded && uploaded.id) {
+        if (uploaded?.id) {
           uploadedFileIds.push(uploaded.id);
         } else {
           toast.error("Failed to upload files");
@@ -337,530 +319,235 @@ export const RFCDashboard = () => {
     }
   };
 
-  if (!isFetched) {
-    return <Loading full />;
-  }
-
-  // Fixed: filteredProjects is now properly defined
-  const filteredProjects = projects;
+  if (!isFetched) return <Loading full />;
 
   return (
-    <div className="p-6 relative">
+    <div className="p-6 max-w-screen-2xl mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">
+          <h1 className="text-3xl font-bold text-slate-800">
             RFQ Team Dashboard
           </h1>
-          <p className="text-slate-600 mt-1">
+          <p className="text-slate-600">
             Manage client requests and project initiation
           </p>
         </div>
-        <Button
-          className="bg-blue-600 hover:bg-blue-700"
-          onClick={startNewProject}
-        >
-          <Plus size={18} className="mr-2" /> Add New Project
-        </Button>
-      </div>
 
-      {/* Add New Project Dialog */}
-      {showForm && (
-        <Dialog open={showForm} onOpenChange={() => setShowForm(false)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="px-6 py-4">
-              <h2 className="text-xl font-bold">Add New Project</h2>
-            </DialogHeader>
-            <div className="p-6">
-              <div className="flex mb-6 space-x-4">
-                <div
-                  className={`flex-1 text-center ${
-                    formStep === 1
-                      ? "font-bold text-blue-600"
-                      : "text-slate-500"
-                  }`}
-                >
-                  1. Data Collection
-                </div>
-                <div
-                  className={`flex-1 text-center ${
-                    formStep === 2
-                      ? "font-bold text-blue-600"
-                      : "text-slate-500"
-                  }`}
-                >
-                  2. Review & Confirm
-                </div>
-              </div>
-
-              {formStep === 1 && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Project Name
-                      </label>
-                      <Input
-                        name="name"
-                        value={form.name}
-                        onChange={handleFormChange}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Client Name
-                      </label>
-                      <ClientAutofillInput
-                        value={form.clientName}
-                        onChange={(val) =>
-                          setForm((prev) => ({ ...prev, clientName: val }))
-                        }
-                        onSelect={handleClientSelect}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Client Company
-                      </label>
-                      <Input
-                        name="clientCompany"
-                        value={form.clientCompany}
-                        onChange={handleFormChange}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Location
-                      </label>
-                      <Input
-                        name="location"
-                        value={form.location}
-                        onChange={handleFormChange}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Project Type
-                      </label>
-                      <Input
-                        name="projectType" // ← Correct name to match form state
-                        type="text"
-                        placeholder="e.g. Pipeline, Plant, Maintenance"
-                        value={form.projectType}
-                        onChange={handleFormChange} // ← Use the same handler as others
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Priority
-                      </label>
-                      <Select
-                        value={form.priority}
-                        onValueChange={(v) =>
-                          setForm((f) => ({ ...f, priority: v.toLowerCase() }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="low">Low</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Received Date
-                      </label>
-                      <Input
-                        type="date"
-                        name="received_date"
-                        value={form.received_date}
-                        onChange={handleFormChange}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Contact Person
-                      </label>
-                      <Input
-                        name="contactPerson"
-                        value={form.contactPerson}
-                        onChange={handleFormChange}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Phone
-                      </label>
-                      <Input
-                        name="contactPhone"
-                        value={form.contactPhone}
-                        onChange={handleFormChange}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Email
-                      </label>
-                      <Input
-                        name="contactEmail"
-                        value={form.contactEmail}
-                        onChange={handleFormChange}
-                      />
-                    </div>
-
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium mb-2">
-                        Uploaded Files
-                      </label>
-                      <Input
-                        type="file"
-                        multiple
-                        onChange={handleFormChange}
-                        name="uploadedFiles"
-                      />
-                      {form.uploadedFiles.map((uf, idx) => (
-                        <div key={idx} className="flex items-center gap-2 mt-2">
-                          <Input
-                            type="text"
-                            placeholder="Label"
-                            value={uf.label}
-                            onChange={(e) =>
-                              setForm((prev) => ({
-                                ...prev,
-                                uploadedFiles: prev.uploadedFiles.map((u, i) =>
-                                  i === idx
-                                    ? { ...u, label: e.target.value }
-                                    : u
-                                ),
-                              }))
-                            }
-                            className={
-                              !uf.label?.trim() ? "border-red-400" : ""
-                            }
-                          />
-                          <span className="text-xs text-gray-600">
-                            {uf.file.name}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() =>
-                              setForm((prev) => ({
-                                ...prev,
-                                uploadedFiles: prev.uploadedFiles.filter(
-                                  (_, i) => i !== idx
-                                ),
-                              }))
-                            }
-                          >
-                            ×
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium mb-1">
-                        Notes
-                      </label>
-                      <Input
-                        name="notes"
-                        value={form.notes}
-                        onChange={handleFormChange}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end mt-6">
-                    <Button
-                      onClick={nextStep}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {formStep === 2 && (
-                <div>
-                  <h3 className="font-semibold mb-4">Review Project Data</h3>
-                  <div className="bg-slate-50 p-4 rounded-lg text-sm space-y-2">
-                    <div>
-                      <strong>Project Name:</strong> {form.name}
-                    </div>
-                    <div>
-                      <strong>Client Name:</strong> {form.clientName}
-                    </div>
-                    <div>
-                      <strong>Client Company:</strong> {form.clientCompany}
-                    </div>
-                    <div>
-                      <strong>Location:</strong> {form.location}
-                    </div>
-                    <div>
-                      <strong>Project Type:</strong> {form.projectType}
-                    </div>
-                    <div>
-                      <strong>Received Date:</strong> {form.received_date}
-                    </div>
-                    <div>
-                      <strong>Priority:</strong> {form.priority}
-                    </div>
-                    <div>
-                      <strong>Contact Person:</strong> {form.contactPerson}
-                    </div>
-                    <div>
-                      <strong>Phone:</strong> {form.contactPhone}
-                    </div>
-                    <div>
-                      <strong>Email:</strong> {form.contactEmail}
-                    </div>
-                    {form.notes && (
-                      <div>
-                        <strong>Notes:</strong> {form.notes}
-                      </div>
-                    )}
-                    <div>
-                      <strong>Uploaded Files:</strong>
-                      <ul className="list-disc ml-6 mt-1">
-                        {form.uploadedFiles
-                          .filter((f) => f.file)
-                          .map((f, i) => (
-                            <li key={i}>
-                              {f.label ? `${f.label}: ` : ""}
-                              {f.file?.name}
-                            </li>
-                          ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between mt-6">
-                    <Button variant="outline" onClick={prevStep}>
-                      Back
-                    </Button>
-                    <Button
-                      className="bg-green-600 hover:bg-green-700"
-                      onClick={() => submitProject(sendToEstimation)}
-                      disabled={fetching}
-                    >
-                      Save Project
-                    </Button>
-                  </div>
-                </div>
-              )}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5">
+              <Users size={16} className="text-blue-700" />
+              <span className="text-sm font-semibold text-slate-700">
+                {cards.active_projects} Total
+              </span>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <FileText size={20} className="text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{cards.active_projects}</p>
-                <p className="text-sm text-slate-600">Active RFQs</p>
-              </div>
+            <div className="flex items-center gap-2 rounded-full bg-yellow-50 px-3 py-1.5">
+              <Clock size={16} className="text-yellow-700" />
+              <span className="text-sm font-semibold text-slate-700">
+                {cards.read_for_estimation} Pending
+              </span>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Calendar size={20} className="text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {cards.read_for_estimation}
-                </p>
-                <p className="text-sm text-slate-600">Ready for Estimation</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
 
-      {/* Search & View Toggle */}
-      <div className="mb-6">
-        <div className="relative flex items-center gap-2">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
-          />
-          <Input
-            placeholder="Search RFQs by client name or project ID..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && setSearchTerm(searchInput)}
-            className="pl-10"
-          />
+          <div className="relative">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <Input
+              placeholder="Search projects..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) =>
+                e.key === "Enter" && (setSearchTerm(searchInput), setPage(1))
+              }
+              className="pl-9 pr-4 py-2 w-64"
+            />
+          </div>
+
+          <div className="flex rounded-md border border-slate-200 overflow-hidden">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+              className="rounded-none"
+            >
+              <Grid size={16} />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className="rounded-none border-l border-slate-200"
+            >
+              <List size={16} />
+            </Button>
+          </div>
+
           <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setPage(1);
-              setSearchTerm(searchInput);
-            }}
+            onClick={startNewProject}
+            className="bg-blue-600 hover:bg-blue-700"
           >
-            <Search size={18} />
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setListView(!listView)}
-          >
-            {listView ? <ListCollapse size={18} /> : <Blocks size={18} />}
+            <Plus size={18} className="mr-2" />
+            New Project
           </Button>
         </div>
       </div>
 
-      {/* Project List */}
+      {/* Projects Display */}
       {fetching && fetchType === "getProjects" ? (
         <Loading full={false} />
+      ) : projects.length === 0 ? (
+        <div className="text-center py-16 text-slate-500">
+          <p className="text-lg font-medium">No projects found</p>
+          <p className="text-sm mt-1">
+            Try adjusting your search or create a new project
+          </p>
+        </div>
+      ) : viewMode === "list" ? (
+        <div className="space-y-3">
+          {projects.map((project) => (
+            <Card
+              key={project.id}
+              className="hover:shadow-md transition-shadow"
+            >
+              <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-8">
+                  <div className="w-24 font-mono text-sm font-semibold">
+                    {project.project_id}
+                  </div>
+                  <div className="w-64">
+                    <p className="font-medium text-slate-800 truncate">
+                      {project.name}
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      {project.client_name} • {project.client_company}
+                    </p>
+                  </div>
+                  <div className="text-sm text-slate-500">
+                    Received:{" "}
+                    {project.received_date
+                      ? new Date(project.received_date).toLocaleDateString()
+                      : "-"}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setDetailsProject(project)}
+                  >
+                    <Info size={16} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setMoreInfoProject(project)}
+                  >
+                    <StickyNote size={16} />
+                  </Button>
+                  <a href={`/rfq/${project.id}/enquiry`}>
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <Send size={14} className="mr-1" />
+                      View
+                    </Button>
+                  </a>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       ) : (
-        <>
-          {listView ? (
-            <div className="space-y-2">
-              {filteredProjects.map((project) => (
-                <a
-                  key={project.id}
-                  href={`/rfq/${project.id}/enquiry`}
-                  className="p-2 border rounded-lg cursor-pointer hover:bg-slate-50 flex items-center justify-between h-10"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  <div className="flex items-center gap-10">
-                    <p className="text-sm font-semibold w-20">
-                      {project.project_id}
-                    </p>
-                    <p className="text-sky-800 w-40 truncate">{project.name}</p>
-                    <p className="text-slate-500 text-sm w-32">
-                      Received:{" "}
-                      {project.received_date
-                        ? new Date(project.received_date).toLocaleDateString()
-                        : "-"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      className="w-7 h-7 rounded hover:bg-slate-200"
-                      onClick={() => setDetailsProject(project)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {projects.map((project) => (
+            <Card
+              key={project.id}
+              className="hover:shadow-lg transition-shadow"
+            >
+              <CardHeader>
+                <div className="flex justify-between items-start mb-3">
+                  <CardTitle className="text-lg font-mono">
+                    {project.project_id}
+                  </CardTitle>
+                  <div className="flex flex-col gap-1">
+                    <Badge
+                      {...getPriorityBadgeProps(project.priority)}
+                      className="text-xs"
                     >
-                      <Info size={14} />
-                    </button>
-                    <button
-                      className="w-7 h-7 rounded hover:bg-slate-200"
-                      onClick={() => setMoreInfoProject(project)}
+                      {project.priority?.toUpperCase()}
+                    </Badge>
+                    <Badge
+                      {...getStatusBadgeProps(project.status)}
+                      className="text-xs"
                     >
-                      <StickyNote size={14} />
-                    </button>
-                    <a href={`/rfq/${project.id}/enquiry`}>
-                      <Button
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        <Send size={14} className="mr-1" /> View project
-                      </Button>
-                    </a>
+                      {project.status || "New"}
+                    </Badge>
                   </div>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProjects.map((project) => (
-                <Card
-                  key={project.id}
-                  className="hover:shadow-lg transition-shadow"
-                >
-                  <CardHeader className="pb-4 mb-2 border-b border-slate-100">
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="space-y-2">
-                        <CardTitle className="text-lg">
-                          {project.project_id}
-                        </CardTitle>
-                        <p className="text-base font-bold text-slate-800 mb-1">
-                          {project.name}
-                        </p>
-                        <p className="text-slate-600 font-semibold flex items-center gap-1">
-                          <User size={14} /> {project.client_name}
-                        </p>
-                        <div className="text-xs text-slate-500 flex items-center gap-1">
-                          <Building2 size={12} /> {project.client_company}
-                        </div>
-                        <div className="text-xs text-slate-500 flex items-center gap-1">
-                          <MapPin size={12} /> {project.location}
-                        </div>
-                        <p className="text-xs text-slate-500 flex items-center gap-1">
-                          <Calendar size={12} /> Received:{" "}
-                          {project.received_date
-                            ? new Date(
-                                project.received_date
-                              ).toLocaleDateString()
-                            : "-"}
-                        </p>
-                        <div className="text-xs text-slate-500 flex items-center gap-1">
-                          <FileText size={12} /> {project.project_type}
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-3">
-                        <Badge {...getPriorityBadgeProps(project.priority)}>
-                          {project.priority}
-                        </Badge>
-                        <Badge {...getStatusBadgeProps(project.status)}>
-                          {project.status}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="flex gap-3 mt-5">
-                      <a href={`/rfq/${project.id}/enquiry`}>
-                        <Button
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          <Send size={14} className="mr-1" /> View project
-                        </Button>
-                      </a>
-                    </div>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+                </div>
 
-      {/* Empty State */}
-      {!fetching && filteredProjects.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-slate-400 mb-4">No RFQ projects found.</div>
+                <h3 className="font-semibold text-slate-800 mb-3 line-clamp-2">
+                  {project.name}
+                </h3>
+
+                <div className="space-y-2 text-sm text-slate-600">
+                  <p className="flex items-center gap-2">
+                    <User size={14} /> {project.client_name}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Building2 size={14} /> {project.client_company}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <MapPin size={14} /> {project.location}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Calendar size={14} />{" "}
+                    {project.received_date
+                      ? new Date(project.received_date).toLocaleDateString()
+                      : "-"}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <FileText size={14} /> {project.project_type}
+                  </p>
+                </div>
+
+                <div className="flex gap-2 mt-6">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setDetailsProject(project)}
+                  >
+                    <Info size={16} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setMoreInfoProject(project)}
+                  >
+                    <StickyNote size={16} />
+                  </Button>
+                  <a href={`/rfq/${project.id}/enquiry`} className="flex-1">
+                    <Button
+                      size="sm"
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      <Send size={14} className="mr-1" />
+                      View Project
+                    </Button>
+                  </a>
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
         </div>
       )}
 
       {/* Pagination */}
-      {!fetching && totalPages > 1 && (
-        <div className="flex justify-center mt-8 gap-2 flex-wrap">
+      {totalPages > 1 && !fetching && (
+        <div className="flex justify-center mt-10 gap-2">
           {Array.from({ length: totalPages }, (_, i) => (
             <Button
               key={i + 1}
@@ -874,43 +561,458 @@ export const RFCDashboard = () => {
         </div>
       )}
 
-      {/* Project Details Modal */}
-      {detailsProject && (
-        <Dialog
-          open={!!detailsProject}
-          onOpenChange={() => setDetailsProject(null)}
-        >
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold">Project Details</h2>
-                <span className="text-sm font-mono">
-                  {detailsProject.project_id}
-                </span>
-              </div>
+      {/* New Project Dialog - Enhanced UI */}
+      {showForm && (
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0">
+            <DialogHeader className="p-8 pb-4">
+              <DialogTitle className="text-3xl font-bold">
+                Add New Project
+              </DialogTitle>
+              <DialogDescription className="text-base mt-2">
+                Fill in the project details and upload supporting files.
+              </DialogDescription>
             </DialogHeader>
-            {/* ... (your existing detailed view content) */}
+
+            {/* Step Indicator */}
+            <div className="px-8">
+              <div className="flex items-center justify-center mb-8">
+                <div className="flex items-center w-full max-w-md">
+                  <div className="flex-1 flex items-center">
+                    <div
+                      className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all ${
+                        formStep >= 1
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-200 text-gray-600"
+                      }`}
+                    >
+                      1
+                    </div>
+                    <div
+                      className={`flex-1 h-1 mx-2 transition-colors ${
+                        formStep >= 2 ? "bg-blue-600" : "bg-gray-200"
+                      }`}
+                    />
+                  </div>
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all ${
+                      formStep === 2
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    2
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-center text-center mb-10">
+                <p
+                  className={`font-medium ${
+                    formStep === 1 ? "text-blue-600" : "text-gray-500"
+                  }`}
+                >
+                  {formStep === 1 ? "Data Collection" : "Review & Confirm"}
+                </p>
+              </div>
+            </div>
+
+            <div className="px-8 pb-8">
+              {formStep === 1 && (
+                <div className="space-y-8">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">
+                      Project Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">
+                          Project Name <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="name"
+                          name="name"
+                          value={form.name}
+                          onChange={handleFormChange}
+                          placeholder="Enter project name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="projectType">Project Type</Label>
+                        <Input
+                          id="projectType"
+                          name="projectType"
+                          value={form.projectType}
+                          onChange={handleFormChange}
+                          placeholder="e.g. Pipeline, Plant, Facility"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="location">Location</Label>
+                        <Input
+                          id="location"
+                          name="location"
+                          value={form.location}
+                          onChange={handleFormChange}
+                          placeholder="City, State/Province"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="priority">Priority</Label>
+                        <Select
+                          value={form.priority}
+                          onValueChange={(v) =>
+                            setForm((f) => ({ ...f, priority: v as any }))
+                          }
+                        >
+                          <SelectTrigger id="priority">
+                            <SelectValue placeholder="Select priority" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="high">
+                              <span className="flex items-center gap-2">
+                                <span className="w-3 h-3 bg-red-500 rounded-full" />
+                                High
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="medium">
+                              <span className="flex items-center gap-2">
+                                <span className="w-3 h-3 bg-yellow-500 rounded-full" />
+                                Medium
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="low">
+                              <span className="flex items-center gap-2">
+                                <span className="w-3 h-3 bg-green-500 rounded-full" />
+                                Low
+                              </span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="received_date">Received Date</Label>
+                        <Input
+                          id="received_date"
+                          type="date"
+                          name="received_date"
+                          value={form.received_date}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">
+                      Client & Contact
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="clientName">Client Name</Label>
+                        <ClientAutofillInput
+                          value={form.clientName}
+                          onChange={(val) =>
+                            setForm((prev) => ({ ...prev, clientName: val }))
+                          }
+                          onSelect={handleClientSelect}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="clientCompany">Client Company</Label>
+                        <Input
+                          id="clientCompany"
+                          name="clientCompany"
+                          value={form.clientCompany}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="contactPerson">Contact Person</Label>
+                        <Input
+                          id="contactPerson"
+                          name="contactPerson"
+                          value={form.contactPerson}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="contactEmail">Email</Label>
+                        <Input
+                          id="contactEmail"
+                          type="email"
+                          name="contactEmail"
+                          value={form.contactEmail}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="contactPhone">Phone</Label>
+                        <Input
+                          id="contactPhone"
+                          name="contactPhone"
+                          value={form.contactPhone}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-6">
+                    <div>
+                      <Label className="text-lg font-semibold mb-4 block">
+                        Attachments
+                      </Label>
+                      <Input
+                        type="file"
+                        multiple
+                        name="uploadedFiles"
+                        onChange={handleFormChange}
+                        className="cursor-pointer"
+                      />
+                      {form.uploadedFiles.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                          {form.uploadedFiles.map((uf, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border"
+                            >
+                              <div className="flex-1">
+                                <Input
+                                  placeholder="Add label (optional)"
+                                  value={uf.label}
+                                  onChange={(e) =>
+                                    setForm((prev) => ({
+                                      ...prev,
+                                      uploadedFiles: prev.uploadedFiles.map(
+                                        (u, i) =>
+                                          i === idx
+                                            ? { ...u, label: e.target.value }
+                                            : u
+                                      ),
+                                    }))
+                                  }
+                                  className="border-0 bg-transparent focus-visible:ring-1"
+                                />
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {uf.file.name}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() =>
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    uploadedFiles: prev.uploadedFiles.filter(
+                                      (_, i) => i !== idx
+                                    ),
+                                  }))
+                                }
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Additional Notes</Label>
+                      <Textarea
+                        id="notes"
+                        name="notes"
+                        value={form.notes}
+                        onChange={handleFormChange}
+                        placeholder="Any extra information about the project..."
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formStep === 2 && (
+                <div className="max-w-3xl mx-auto">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-8">
+                    <h3 className="text-xl font-semibold text-blue-900 mb-4">
+                      Project Summary
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                      <div>
+                        <p className="text-gray-600">Project Name</p>
+                        <p className="font-medium text-lg">
+                          {form.name || "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Type</p>
+                        <p className="font-medium">{form.projectType || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Location</p>
+                        <p className="font-medium">{form.location || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Priority</p>
+                        <p className="font-medium capitalize flex items-center gap-2">
+                          {form.priority && (
+                            <span
+                              className={`w-3 h-3 rounded-full ${
+                                form.priority === "high"
+                                  ? "bg-red-500"
+                                  : form.priority === "medium"
+                                  ? "bg-yellow-500"
+                                  : "bg-green-500"
+                              }`}
+                            />
+                          )}
+                          {form.priority || "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Client</p>
+                        <p className="font-medium">
+                          {form.clientName || "—"}
+                          {form.clientCompany && ` (${form.clientCompany})`}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Received Date</p>
+                        <p className="font-medium">
+                          {form.received_date || "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {(form.contactPerson ||
+                      form.contactEmail ||
+                      form.contactPhone) && (
+                      <>
+                        <Separator className="my-6" />
+                        <h4 className="font-medium mb-3">
+                          Contact Information
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          {form.contactPerson && (
+                            <div>
+                              <p className="text-gray-600">Name</p>
+                              <p className="font-medium">
+                                {form.contactPerson}
+                              </p>
+                            </div>
+                          )}
+                          {form.contactEmail && (
+                            <div>
+                              <p className="text-gray-600">Email</p>
+                              <p className="font-medium">{form.contactEmail}</p>
+                            </div>
+                          )}
+                          {form.contactPhone && (
+                            <div>
+                              <p className="text-gray-600">Phone</p>
+                              <p className="font-medium">{form.contactPhone}</p>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {form.notes && (
+                      <>
+                        <Separator className="my-6" />
+                        <div>
+                          <p className="text-gray-600 mb-2">Notes</p>
+                          <p className="font-medium whitespace-pre-wrap">
+                            {form.notes}
+                          </p>
+                        </div>
+                      </>
+                    )}
+
+                    {form.uploadedFiles.length > 0 && (
+                      <>
+                        <Separator className="my-6" />
+                        <div>
+                          <p className="text-gray-600 mb-3">
+                            Attached Files ({form.uploadedFiles.length})
+                          </p>
+                          <div className="flex flex-wrap gap-3">
+                            {form.uploadedFiles.map((f, i) => (
+                              <div
+                                key={i}
+                                className="bg-white px-4 py-2 rounded-lg border shadow-sm"
+                              >
+                                <p className="font-medium text-sm">
+                                  {f.label || f.file.name}
+                                </p>
+                                {f.label && (
+                                  <p className="text-xs text-gray-500">
+                                    {f.file.name}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between mt-10 pt-6 border-t">
+                <Button
+                  variant="outline"
+                  onClick={formStep === 2 ? prevStep : () => setShowForm(false)}
+                >
+                  {formStep === 2 ? "Back" : "Cancel"}
+                </Button>
+
+                <div className="flex gap-3">
+                  {formStep === 1 && (
+                    <Button onClick={nextStep} disabled={!form.name.trim()}>
+                      Next Step
+                    </Button>
+                  )}
+                  {formStep === 2 && (
+                    <Button
+                      onClick={submitProject}
+                      className="bg-green-600 hover:bg-green-700"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Creating..." : "Create Project"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       )}
 
-      {/* Add More Info Modal */}
+      {/* More Info Dialog */}
       {moreInfoProject && (
         <Dialog
           open={!!moreInfoProject}
           onOpenChange={() => setMoreInfoProject(null)}
         >
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <h2 className="text-xl font-bold">
-                Add More Info to {moreInfoProject.project_id}
-              </h2>
+              <DialogTitle className="text-xl font-bold">
+                Add More Info — {moreInfoProject.project_id}
+              </DialogTitle>
             </DialogHeader>
-            <div className="p-6 space-y-4">
+            <div className="space-y-5 mt-4">
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Upload Additional Files
-                </label>
+                <Label className="block text-sm font-medium mb-2">
+                  Additional Files
+                </Label>
                 <Input
                   type="file"
                   multiple
@@ -929,61 +1031,76 @@ export const RFCDashboard = () => {
                     }));
                   }}
                 />
-                {moreInfoForm.files.map((uf, idx) => (
-                  <div key={idx} className="flex items-center gap-2 mt-2">
-                    <Input
-                      placeholder="Label"
-                      value={uf.label}
-                      onChange={(e) =>
-                        setMoreInfoForm((prev) => ({
-                          ...prev,
-                          files: prev.files.map((u, i) =>
-                            i === idx ? { ...u, label: e.target.value } : u
-                          ),
-                        }))
-                      }
-                    />
-                    <span className="text-xs">{uf.file.name}</span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() =>
-                        setMoreInfoForm((prev) => ({
-                          ...prev,
-                          files: prev.files.filter((_, i) => i !== idx),
-                        }))
-                      }
+                {moreInfoForm.files.length > 0 &&
+                  moreInfoForm.files.map((uf, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-3 mt-3 p-3 bg-gray-50 rounded-lg"
                     >
-                      ×
-                    </Button>
-                  </div>
-                ))}
+                      <Input
+                        placeholder="Label (optional)"
+                        value={uf.label}
+                        onChange={(e) =>
+                          setMoreInfoForm((prev) => ({
+                            ...prev,
+                            files: prev.files.map((u, i) =>
+                              i === idx ? { ...u, label: e.target.value } : u
+                            ),
+                          }))
+                        }
+                      />
+                      <span className="text-sm text-slate-600 truncate">
+                        {uf.file.name}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          setMoreInfoForm((prev) => ({
+                            ...prev,
+                            files: prev.files.filter((_, i) => i !== idx),
+                          }))
+                        }
+                      >
+                        <X size={16} />
+                      </Button>
+                    </div>
+                  ))}
               </div>
+
               <div>
-                <label className="block text-sm font-medium mb-1">Notes</label>
-                <textarea
-                  className="border rounded w-full p-2"
+                <Label className="block text-sm font-medium mb-1">Notes</Label>
+                <Textarea
                   rows={3}
                   value={moreInfoForm.notes}
                   onChange={(e) =>
-                    setMoreInfoForm((f) => ({ ...f, notes: e.target.value }))
+                    setMoreInfoForm((prev) => ({
+                      ...prev,
+                      notes: e.target.value,
+                    }))
                   }
+                  placeholder="Additional notes..."
                 />
               </div>
+
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Enquiry
-                </label>
-                <textarea
-                  className="border rounded w-full p-2"
-                  rows={3}
+                <Label className="block text-sm font-medium mb-1">
+                  Enquiry Details
+                </Label>
+                <Textarea
+                  rows={4}
                   value={moreInfoForm.enquiry}
                   onChange={(e) =>
-                    setMoreInfoForm((f) => ({ ...f, enquiry: e.target.value }))
+                    setMoreInfoForm((prev) => ({
+                      ...prev,
+                      enquiry: e.target.value,
+                    }))
                   }
+                  placeholder="Detailed enquiry information..."
                 />
               </div>
-              <div className="flex justify-end gap-2">
+
+              <div className="flex justify-end gap-3">
                 <Button
                   variant="outline"
                   onClick={() => setMoreInfoProject(null)}
@@ -994,7 +1111,7 @@ export const RFCDashboard = () => {
                   onClick={submitMoreInfo}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  Submit
+                  Submit Info
                 </Button>
               </div>
             </div>

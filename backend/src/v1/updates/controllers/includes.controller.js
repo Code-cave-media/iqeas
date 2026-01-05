@@ -1,6 +1,9 @@
 import {
   getUserNameById,
   searchClientsByName,
+  createHeader,
+  getAllHeaders,
+  getArchives,
 } from "../services/includes.service.js";
 import { formatResponse } from "../../utils/response.js";
 
@@ -96,4 +99,79 @@ export async function searchClients(req, res) {
       data
     })
   );
+}
+
+
+
+
+// ===================
+
+/**
+ * POST /headers
+ */
+export async function createHeaderController(req, res) {
+  try {
+    const { features } = req.body;
+
+    if (!features) {
+      return res.status(400).json({
+        message: "features is required",
+      });
+    }
+
+    const header = await createHeader(features);
+
+    return res.status(201).json({
+      message: "Header created successfully",
+      data: header,
+    });
+  } catch (error) {
+    console.error("Create Header Error:", error);
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+}
+
+/**
+ * GET /headers
+ */
+export async function getAllHeadersController(req, res) {
+  try {
+    const headers = await getAllHeaders();
+
+    res.status(200).json({
+      data: headers,
+    });
+  } catch (error) {
+    console.error("Get Headers Error:", error);
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+}
+
+/**
+ * GET /headers/:id
+ */
+export async function getArchivesController(req, res) {
+  try {
+    const archives = await getArchives();
+
+    if (!archives) {
+      return res.status(404).json({
+        message: "No archives found",
+      });
+    }
+
+    res.status(200).json({
+      status: 200,
+      data: archives,
+    });
+  } catch (error) {
+    console.error("Get Archives Error:", error);
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
 }

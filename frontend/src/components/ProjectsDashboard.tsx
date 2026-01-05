@@ -1,26 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Search,
-  Plus,
   Grid,
   List,
-  Folder,
   Users,
-  ClipboardList,
   CheckCircle2,
   Clock,
+  Folder,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ProjectCard } from "@/components/ProjectCard";
-import { Badge } from "@/components/ui/badge";
 import { useAPICall } from "@/hooks/useApiCall";
 import { API_ENDPOINT } from "@/config/backend";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,13 +34,15 @@ export const ProjectsDashboard = () => {
     completed_works: 0,
     pending_works: 0,
   });
-  const isAdmin = user.role == "admin";
+
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
     const getProjects = async () => {
       const url = isAdmin
         ? API_ENDPOINT.GET_ALL_ADMIN_PROJECTS(searchTerm, page, 20)
         : API_ENDPOINT.GET_ALL_PM_PROJECTS(searchTerm, page, 20);
+
       const response = await makeApiCall(
         "get",
         url,
@@ -59,6 +51,7 @@ export const ProjectsDashboard = () => {
         authToken,
         "getProjects"
       );
+
       if (response.status === 200) {
         const data = response.data as ProjectListResponse;
         setProjects(data.projects);
@@ -68,147 +61,166 @@ export const ProjectsDashboard = () => {
         toast.error("Failed to fetch projects");
       }
     };
+
     getProjects();
-  }, [page, searchTerm]);
+  }, [page, searchTerm, authToken, isAdmin, makeApiCall]);
+
+  const handleSearch = () => {
+    setPage(1);
+    setSearchTerm(searchInput);
+  };
+
+  // Admin-only delete handler
+  const handleDelete = async (projectId: number) => {
+    const response = await makeApiCall(
+      "delete",
+      API_ENDPOINT.DELETE_PROJECT(projectId),
+      {},
+      "application/json",
+      authToken,
+      `deleteProject-${projectId}`
+    );
+
+    if (response.status === 200 || response.status === 204) {
+      toast.success("Project deleted permanently");
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+
+      const deletedProject = projects.find((p) => p.id === projectId);
+      if (deletedProject) {
+        setCards((prev) => ({
+          total_projects: prev.total_projects - 1,
+          completed_works:
+            deletedProject.status === "completed"
+              ? prev.completed_works - 1
+              : prev.completed_works,
+          pending_works:
+            deletedProject.status !== "completed"
+              ? prev.pending_works - 1
+              : prev.pending_works,
+        }));
+      }
+    } else {
+      toast.error("Failed to delete project");
+    }
+  };
 
   return (
-    <div className="p-6 relative ">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6 max-w-screen-2xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">
+          <h1 className="text-3xl font-bold text-slate-800">
             Projects Dashboard
           </h1>
-          <p className="text-slate-600 mt-1">
-            Manage and track oil engineering projects
+          <p className="text-slate-600">
+            Manage and track all engineering projects
           </p>
         </div>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-        <div className="flex items-center gap-3 bg-blue-50 rounded-lg p-3 max-sm:p-2">
-          <div className="bg-blue-200 p-2 rounded-full">
-            <Users className="text-blue-700" size={24} />
-          </div>
-          <div>
-            <div className="text-lg font-bold text-blue-900">
-              {cards.total_projects}
-            </div>
-            <div className="text-xs text-blue-700">Total Projects</div>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-3 bg-emerald-50 rounded-lg p-3 max-sm:p-2">
-          <div className="bg-emerald-200 p-2 rounded-full">
-            <CheckCircle2 className="text-emerald-700" size={24} />
-          </div>
-          <div>
-            <div className="text-lg font-bold text-emerald-900">
-              {cards.completed_works}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5">
+              <Users size={16} className="text-blue-700" />
+              <span className="text-sm font-semibold text-slate-700">
+                {cards.total_projects} Total
+              </span>
             </div>
-            <div className="text-xs text-emerald-700">Completed Projects</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 bg-yellow-50 rounded-lg p-3 max-sm:p-2">
-          <div className="bg-yellow-200 p-2 rounded-full">
-            <Clock className="text-yellow-700" size={24} />
-          </div>
-          <div>
-            <div className="text-lg font-bold text-yellow-900">
-              {cards.pending_works}
+            <div className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5">
+              <CheckCircle2 size={16} className="text-emerald-700" />
+              <span className="text-sm font-semibold text-slate-700">
+                {cards.completed_works} Completed
+              </span>
             </div>
-            <div className="text-xs text-yellow-700">Pending projects</div>
-          </div>
-        </div>
-      </div>
-      {/* Filters and Search */}
-      <div className="bg-white  rounded-lg border border-slate-200 mb-6">
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex-1 min-w-64">
-            <div className="relative flex items-center gap-2">
-              <Search
-                size={18}
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
-              />
-              <Input
-                placeholder="Search projects by ID, Company, name"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="pl-10 outline-none"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    setPage(1);
-                    setSearchTerm(searchInput);
-                  }
-                }}
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setPage(1);
-                  setSearchTerm(searchInput);
-                }}
-                className="px-2"
-                aria-label="Search"
-              >
-                <Search size={18} />
-              </Button>
-              <div className="flex border rounded-lg">
-                <Button
-                  variant={viewMode === "grid" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("grid")}
-                  className="rounded-r-none"
-                >
-                  <Grid size={16} />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("list")}
-                  className="rounded-l-none"
-                >
-                  <List size={16} />
-                </Button>
-              </div>
+            <div className="flex items-center gap-2 rounded-full bg-yellow-50 px-3 py-1.5">
+              <Clock size={16} className="text-yellow-700" />
+              <span className="text-sm font-semibold text-slate-700">
+                {cards.pending_works} Pending
+              </span>
             </div>
+          </div>
+
+          <div className="relative">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <Input
+              placeholder="Search by ID, company, name..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="pl-9 pr-4 py-2 w-64"
+            />
+          </div>
+
+          <div className="flex rounded-md border border-slate-200 overflow-hidden">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+            >
+              <Grid size={16} />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+            >
+              <List size={16} />
+            </Button>
           </div>
         </div>
       </div>
 
       {fetching || !isFetched ? (
         <Loading full={false} />
+      ) : projects.length === 0 ? (
+        <div className="text-center py-16 text-slate-500">
+          <Folder size={64} className="mx-auto mb-4 text-slate-300" />
+          <p className="text-lg font-medium">No projects found</p>
+          <p className="text-sm mt-1">Try adjusting your search or filters</p>
+        </div>
       ) : (
         <div
           className={
             viewMode === "grid"
-              ? "grid gap-6 w-full grid-cols-[repeat(auto-fill,minmax(300px,1fr))]"
+              ? "grid gap-6 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]"
               : "space-y-4"
           }
         >
           {projects.map((project) => {
-            // Map snake_case to camelCase for ProjectCard and provide defaults for missing fields
-            // Type as 'any' to suppress linter error due to type mismatch between API and ProjectCard
-            const mappedProject = {
-              ...project,
-              clientName: project.client_name,
-              createdDate: project.created_at,
-              progress: project.progress,
-              status: project.status || "",
-            };
+     const mappedProject: ProjectCardData = {
+       id: project.id,
+       name: project.name,
+       projectCode: project.project_id,
+       clientName: project.client_name,
+       location: project.location,
+       projectType: project.project_type,
+       priority: project.priority,
+       status: project.status,
+       progress: Number(project.progress ?? 0),
+       estimationSentToPM: project.estimation?.sent_to_pm ?? false,
+       isArchived: project.is_pc_archived,
+     };
+
+
             return (
-              <div key={project.id} className="relative">
+              <div
+                key={project.id}
+                className="cursor-pointer"
+                onClick={() =>
+                  navigate(
+                    isAdmin
+                      ? `/admin/project/${project.id}`
+                      : `/pm/project/${project.id}`
+                  )
+                }
+              >
                 <ProjectCard
                   project={mappedProject}
-                  onSelect={() => {
-                    navigate(
-                      isAdmin
-                        ? `/admin/project/${project.id}`
-                        : `/pm/project/${project.id}`
-                    );
-                  }}
                   viewMode={viewMode}
-                  userRole={""}
+                  onSelect={() => {}}
+                  onDelete={isAdmin ? handleDelete : undefined}
+                  isAdmin={isAdmin}
                 />
               </div>
             );
@@ -216,19 +228,8 @@ export const ProjectsDashboard = () => {
         </div>
       )}
 
-      {!fetching && projects.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-slate-400 mb-4">
-            <Folder size={48} className="mx-auto mb-4" />
-            <p className="text-lg font-medium">No projects found</p>
-            <p className="text-sm">Try adjusting your search criteria</p>
-          </div>
-        </div>
-      )}
-
-      {/* Pagination Controls */}
       {!fetching && totalPages > 1 && (
-        <div className="flex justify-center mt-8 gap-2">
+        <div className="flex justify-center mt-10 gap-2 flex-wrap">
           <Button
             size="sm"
             variant="outline"
@@ -237,14 +238,14 @@ export const ProjectsDashboard = () => {
           >
             Previous
           </Button>
-          {[...Array(totalPages)].map((_, idx) => (
+          {Array.from({ length: totalPages }, (_, i) => (
             <Button
-              key={idx + 1}
+              key={i + 1}
               size="sm"
-              variant={page === idx + 1 ? "default" : "outline"}
-              onClick={() => setPage(idx + 1)}
+              variant={page === i + 1 ? "default" : "outline"}
+              onClick={() => setPage(i + 1)}
             >
-              {idx + 1}
+              {i + 1}
             </Button>
           ))}
           <Button
@@ -260,3 +261,5 @@ export const ProjectsDashboard = () => {
     </div>
   );
 };
+
+export default ProjectsDashboard;

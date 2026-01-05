@@ -1,240 +1,239 @@
 import {
-  Calendar,
+  Verified,
+  AlertCircleIcon,
+  Trash2,
   MapPin,
-  Users,
-  Clock,
-  AlertCircle,
-  DollarSign,
+  Calendar,
 } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import { Project } from "@/types/apiTypes";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
 
-interface ProjectCardProps {
-  project: Project;
-  onSelect: () => void;
+type Props = {
+  project: {
+    id: number;
+    name: string;
+    projectCode: string;
+    clientName: string;
+    location?: string;
+    projectType?: string;
+    status?: string;
+    priority?: "high" | "medium" | "low";
+    progress?: number;
+    estimationSentToPM?: boolean;
+    isArchived?: boolean;
+    receivedDate?: string;
+  };
   viewMode: "grid" | "list";
-  userRole?: string;
-}
-
-const getPriorityColor = (priority: string) => {
-  switch (priority?.toLowerCase()) {
-    case "high":
-      return "text-red-600 capitalize";
-    case "medium":
-      return "text-yellow-600 capitalize";
-    case "low":
-      return "text-green-600 capitalize";
-    default:
-      return "text-gray-600 capitalize";
-  }
+  onDelete?: (projectId: number) => void;
+  isAdmin?: boolean;
 };
 
-const getStatusColor = (status: string) => {
-  switch (status?.toLowerCase()) {
-    case "draft":
-      return "bg-gray-200 text-gray-800 border-gray-300 hover:bg-gray-300 capitalize";
-    case "estimating":
-      return "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 capitalize";
-    case "working":
-      return "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 capitalize";
-    case "completed":
-      return "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 capitalize";
-    case "delivered":
-      return "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 capitalize";
-    default:
-      return "bg-slate-200 text-slate-700 border-slate-300 hover:bg-slate-300 capitalize";
-  }
-};
-
-export const ProjectCard = ({
+export function ProjectCard({
   project,
-  onSelect,
   viewMode,
-}: ProjectCardProps) => {
-  const isOverdue =
-    project.estimation &&
-    project.estimation.deadline &&
-    new Date(project.estimation.deadline) < new Date() &&
-    project.status.toLowerCase() !== "completed";
+  onDelete,
+  isAdmin = false,
+}: Props) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [confirmName, setConfirmName] = useState("");
 
-  const isCompleted = ["delivered"].includes(project.status.toLowerCase());
+  const priorityColors = {
+    high: "destructive",
+    medium: "secondary",
+    low: "outline",
+  };
 
-  const createdDate = project.created_at
-    ? new Date(project.created_at).toLocaleDateString()
-    : "N/A";
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeleteDialogOpen(true);
+    setConfirmName("");
+  };
 
-  const deadlineDate = project.estimation?.deadline
-    ? new Date(project.estimation.deadline).toLocaleDateString()
-    : "N/A";
+  const confirmDelete = () => {
+    if (
+      confirmName.trim().toLowerCase() === project.name.trim().toLowerCase()
+    ) {
+      onDelete?.(project.id);
+      setDeleteDialogOpen(false);
+    }
+  };
 
-  const isApproved = project.estimation?.approved === true;
-
-  /* ========== LIST VIEW ========== */
-  if (viewMode === "list") {
-    return (
-      <Card
-        className={`hover:shadow-md transition-shadow ${
-          isCompleted ? "bg-green-50" : "bg-gray-50"
-        }`}
+  return (
+    <>
+      <div
+        className={`
+          relative rounded-2xl border border-slate-200 bg-white p-6
+          transition-all duration-300 hover:shadow-xl hover:border-slate-300
+          ${viewMode === "list" ? "flex flex-col" : "space-y-6"}
+        `}
       >
-        {/* approved banner */}
-        {isApproved && (
-          <div className="px-4 pt-3">
-            <div className="rounded-md bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-800">
-              Estimation approved
-            </div>
-          </div>
-        )}
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-md  text-slate-900">{project.name}</h3>
 
-        <CardContent className="p-4 flex flex-col sm:flex-row justify-between gap-4">
-          <div className="flex flex-col flex-1 gap-1">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-slate-800">
-                {project.project_id}
-              </h3>
-              <Badge className={`${getStatusColor(project.status)} w-fit`}>
-                {project.status || "N/A"}
-              </Badge>
-              {isOverdue && <AlertCircle size={16} className="text-red-500" />}
-            </div>
-            <h2 className="text-lg font-semibold text-slate-800">
-              {project.name}
-            </h2>
-            <p className="text-sm text-slate-600">
-              {project.client_name || "N/A"} - {project.client_company || "N/A"}
-            </p>
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-2">
-              {project.location && (
-                <span className="flex items-center gap-1">
-                  <MapPin size={12} /> {project.location}
-                </span>
-              )}
-              <span className="flex items-center gap-1">
-                <Calendar size={12} /> {createdDate}
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+              <span className="font-mono font-semibold text-indigo-700">
+                {project.projectCode}
               </span>
+              <span>•</span>
+              <span className="truncate">{project.clientName}</span>
             </div>
-          </div>
 
-          <div className="flex flex-col sm:items-end gap-2 sm:gap-4">
-            {project.estimation && (
-              <div className="flex items-center gap-1 text-sm">
-                <DollarSign size={14} /> {project.estimation.cost || "N/A"}
+            {(project.location || project.receivedDate) && (
+              <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
+                {project.location && (
+                  <div className="flex items-center gap-1">
+                    <MapPin size={14} />
+                    <span>{project.location}</span>
+                  </div>
+                )}
+                {project.receivedDate && (
+                  <div className="flex items-center gap-1">
+                    <Calendar size={14} />
+                    <span>
+                      {new Date(project.receivedDate).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
-            <span
-              className={`text-sm font-medium ${getPriorityColor(
-                project.priority
-              )}`}
-            >
-              {project.priority || "N/A"}
-            </span>
-            <Badge variant="outline" className="text-xs">
-              {project.project_type || "N/A"}
+          </div>
+
+          {/* Right Side: Status Icon + Delete Button (Always Visible) */}
+          <div className="flex items-center gap-3">
+            {/* Estimation Status */}
+            <div className="flex-shrink-0">
+              {project.estimationSentToPM ? (
+                <div className="p-2.5 rounded-full bg-green-50">
+                  <Verified className="text-green-600" size={24} />
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-full bg-red-50">
+                  <AlertCircleIcon className="text-red-600" size={24} />
+                </div>
+              )}
+            </div>
+
+            {/* Delete Button - Always Visible for Admin */}
+            {isAdmin && onDelete && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleDeleteClick}
+              >
+                <Trash2 size={16} className="mr-2" />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Tags & Badges */}
+        <div className="flex flex-wrap gap-2">
+          {project.status && (
+            <Badge variant="secondary" className="capitalize">
+              {project.status}
             </Badge>
-          </div>
-        </CardContent>
+          )}
 
-        <div className="px-4 pb-4">
-          <div className="flex justify-between items-center mb-1 text-sm text-slate-600">
-            <span>Progress</span>
-            <span className="text-xs">{project.progress ?? 0}%</span>
-          </div>
-          <Progress
-            value={Number(project.progress) || 0}
-            className="h-2 bg-slate-100"
-          />
-        </div>
+          {project.projectType && (
+            <Badge
+              variant="outline"
+              className="bg-blue-50 text-blue-700 border-blue-200"
+            >
+              {project.projectType}
+            </Badge>
+          )}
 
-        <div className="px-4 pb-4">
-          <Button className="w-full bg-black text-white" onClick={onSelect}>
-            Manage Project
-          </Button>
-        </div>
-      </Card>
-    );
-  }
+          {project.priority && (
+            <Badge
+              variant={priorityColors[project.priority]}
+              className="capitalize"
+            >
+              {project.priority} Priority
+            </Badge>
+          )}
 
-  /* ========== GRID VIEW ========== */
-  return (
-    <Card
-      className={`hover:shadow-lg transition-shadow group h-full flex flex-col ${
-        isCompleted ? "bg-green-50" : "bg-gray-50"
-      }`}
-    >
-      {/* approved banner */}
-
-      <CardHeader className="flex flex-col pb-2 gap-2">
-        <div className="flex justify-between items-start">
-          <h3 className="font-semibold text-slate-800">{project.project_id}</h3>
-
-          {isApproved && (
-            <Badge className="bg-green-500 border border-teal-800">
-              Estimation approved
+          {project.isArchived && (
+            <Badge variant="secondary" className="bg-slate-100">
+              Archived
             </Badge>
           )}
         </div>
-        <h2 className="text-lg font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
-          {project.name}
-        </h2>
-        <p className="text-sm text-slate-600">
-          {project.client_name || "N/A"} - {project.client_company || "N/A"}
-        </p>
-      </CardHeader>
 
-      <CardContent className="flex flex-col gap-2">
-        <div className="flex justify-between items-center text-sm text-slate-600">
-          <div className="flex items-center gap-1">
-            <MapPin size={14} /> {project.location || "N/A"}
-          </div>
-          <div className="flex items-center gap-1">
-            <Calendar size={14} /> {createdDate}
-          </div>
-        </div>
-
-        {project.estimation && (
-          <div className="flex justify-between items-center text-sm text-slate-600 mt-1">
-            <div className="flex items-center gap-1">
-              <DollarSign size={14} /> {project.estimation.cost || "N/A"}
+        {/* Progress Bar */}
+        {/* {project.progress !== undefined && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-600 font-medium">Progress</span>
+              <span className="font-bold text-slate-800">
+                {project.progress}%
+              </span>
             </div>
-            <div className="flex items-center gap-1">
-              <Clock size={14} /> {deadlineDate}
-            </div>
+            <Progress value={project.progress} className="h-3" />
           </div>
-        )}
+        )} */}
+      </div>
 
-        <div className="flex justify-between items-center mt-2">
-          <span
-            className={`text-sm font-medium ${getPriorityColor(
-              project.priority
-            )}`}
+      {/* Delete Confirmation Dialog */}
+      {isAdmin && onDelete && (
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent
+            className="sm:max-w-md p-8"
+            onClick={(e) => e.stopPropagation()}
           >
-            {project.priority || "N/A"} Priority
-          </span>
-          <Badge variant="outline" className="text-xs">
-            {project.project_type || "N/A"}
-          </Badge>
-        </div>
-
-        <div className="mt-2">
-          <div className="flex justify-between items-center mb-1 text-sm text-slate-600">
-            <span>Progress</span>
-            <span className="text-xs">{project.progress ?? 0}%</span>
-          </div>
-          <Progress
-            value={Number(project.progress) || 0}
-            className="h-2 bg-slate-100"
-          />
-        </div>
-
-        <div className="mt-4">
-          <Button className="w-full bg-black text-white" onClick={onSelect}>
-            Manage Project
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+            <DialogHeader>
+              <DialogTitle className="text-red-600 text-2xl">
+                Permanently Delete Project?
+              </DialogTitle>
+              <DialogDescription className="pt-3">
+                This action <strong>cannot be undone</strong>. The project and
+                all its data will be permanently deleted.
+                <br />
+                <br />
+                To confirm, type the project name{" "}
+                <strong>"{project.name}"</strong> below:
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 px-4">
+              <Input
+                placeholder="Type project name to confirm"
+                value={confirmName}
+                onChange={(e) => setConfirmName(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={confirmName.trim() !== project.name.trim()}
+                onClick={confirmDelete}
+              >
+                Delete Permanently
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
-};
+}

@@ -29,9 +29,6 @@ export default function ProjectCoordinatorDashboard() {
     pending_works: 0,
   });
 
-  /* =========================
-      FETCH COORDINATOR PROJECTS
-     ========================= */
   useEffect(() => {
     if (!user?.id) return;
 
@@ -49,7 +46,6 @@ export default function ProjectCoordinatorDashboard() {
 
       if (response.status === 200) {
         const resData = response.data;
-
         const data: any[] = Array.isArray(resData?.data)
           ? resData.data
           : Array.isArray(resData)
@@ -61,27 +57,64 @@ export default function ProjectCoordinatorDashboard() {
           total: data.length,
         };
 
-        setProjects(data as any);
+        // Exclude archived projects
+        const activeProjects = data.filter((p: any) => !p.is_pc_archived);
+
+        setProjects(activeProjects as any);
         setTotalPages(pagination?.totalPages || 1);
 
         setCards({
-          total_projects: pagination?.total ?? data.length,
-          completed_works: data.filter((p: any) => p.status === "completed")
-            .length,
-          pending_works: data.filter((p: any) => p.status !== "completed")
-            .length,
+          total_projects: activeProjects.length,
+          completed_works: activeProjects.filter(
+            (p: any) => p.status === "completed"
+          ).length,
+          pending_works: activeProjects.filter(
+            (p: any) => p.status !== "completed"
+          ).length,
         });
       } else {
-        toast.error("Failed to fetch coordinator projects");
+        toast.error("Failed to fetch projects");
       }
     };
 
     fetchProjects();
   }, [page, searchTerm, user?.id, authToken, makeApiCall]);
 
-  /* =========================
-      UI
-     ========================= */
+  /* ========================= ARCHIVE HANDLER ========================= */
+  const handleArchive = async (projectId: number) => {
+    const response = await makeApiCall(
+      "patch",
+      API_ENDPOINT.EDIT_PROJECT(projectId),
+      { is_pc_archived: true },
+      "application/json",
+      authToken,
+      `archive-${projectId}`
+    );
+
+    if (response.status === 200) {
+      toast.success("Project archived successfully");
+
+      const archivedProject = projects.find((p: any) => p.id === projectId);
+      setProjects((prev) => prev.filter((p: any) => p.id !== projectId));
+
+      if (archivedProject) {
+        setCards((prev) => ({
+          total_projects: prev.total_projects - 1,
+          completed_works:
+            archivedProject.status === "completed"
+              ? prev.completed_works - 1
+              : prev.completed_works,
+          pending_works:
+            archivedProject.status !== "completed"
+              ? prev.pending_works - 1
+              : prev.pending_works,
+        }));
+      }
+    } else {
+      toast.error("Failed to archive project");
+    }
+  };
+
   return (
     <div className="p-6 relative">
       {/* Header & Quick Stats */}
@@ -95,9 +128,7 @@ export default function ProjectCoordinatorDashboard() {
           </p>
         </div>
 
-        {/* Right side: Quick Stats + Search + Layout */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Quick Stats */}
           <MiniSummaryCard
             icon={<Users className="text-blue-700" size={16} />}
             value={cards.total_projects}
@@ -117,7 +148,6 @@ export default function ProjectCoordinatorDashboard() {
             bg="bg-yellow-50"
           />
 
-          {/* Search & Layout toggle */}
           <div className="flex items-center gap-2 ml-2">
             <div className="relative">
               <Search
@@ -128,9 +158,9 @@ export default function ProjectCoordinatorDashboard() {
                 placeholder="Search"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") setSearchTerm(searchInput);
-                }}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && setSearchTerm(searchInput)
+                }
                 className="py-4 rounded-full text-xs w-56 pl-10"
               />
             </div>
@@ -153,7 +183,7 @@ export default function ProjectCoordinatorDashboard() {
         </div>
       </div>
 
-      {/* Projects */}
+      {/* Projects List/Grid */}
       {fetching || !isFetched ? (
         <Loading full={false} />
       ) : projects.length === 0 ? (
@@ -175,9 +205,13 @@ export default function ProjectCoordinatorDashboard() {
                 createdDate: project.created_at,
                 status: project.status || "",
                 poNumber: project.po_number,
+                isArchived: false,
               }}
               viewMode={viewMode}
-              onSelect={() => navigate(`/coordinator/project/${project.id}`)}
+              onSelect={() =>
+                navigate(`/project-coordinator/${project.id}/details`)
+              }
+              onArchive={handleArchive} // Pass archive handler
             />
           ))}
         </div>
@@ -194,7 +228,6 @@ export default function ProjectCoordinatorDashboard() {
           >
             Previous
           </Button>
-
           {[...Array(totalPages)].map((_, i) => (
             <Button
               key={i}
@@ -205,7 +238,6 @@ export default function ProjectCoordinatorDashboard() {
               {i + 1}
             </Button>
           ))}
-
           <Button
             size="sm"
             variant="outline"
@@ -220,9 +252,7 @@ export default function ProjectCoordinatorDashboard() {
   );
 }
 
-/* =========================
-   HELPER COMPONENTS
-   ========================= */
+/* ========================= HELPER COMPONENTS ========================= */
 
 function MiniSummaryCard({
   icon,

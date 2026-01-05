@@ -19,6 +19,7 @@ import {
   getProjectDetailsById,
   getPublicProjectDetails,
   getProjectShortDetailsById,
+  deleteProjectById,
 } from "../services/projects.service.js";
 import pool from "../config/db.js";
 
@@ -445,6 +446,34 @@ export async function getPublicProjectInfo(req, res) {
     });
   } catch (err) {
     console.error("Error fetching public project info:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+
+
+
+
+export async function deleteProject(req, res) {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "Project ID is required" });
+    }
+
+    const deletedProject = await deleteProjectById(id);
+
+    if (!deletedProject) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    return res.status(200).json({
+      message: "Project deleted successfully",
+      project_id: deletedProject.id,
+    });
+  } catch (error) {
+    console.error("Delete project error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
