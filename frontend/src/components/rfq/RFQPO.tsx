@@ -316,7 +316,6 @@ export default function RFQPO() {
 
     const payload: any = {
       project_id: project_id,
-      po_number: poFields.po_number,
       notes: poFields.notes,
       terms_and_conditions: poFields.terms_and_conditions,
       received_date: new Date().toISOString(),

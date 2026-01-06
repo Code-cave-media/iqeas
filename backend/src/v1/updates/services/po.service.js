@@ -1,57 +1,70 @@
 import pool from "../../config/db.js";
 
+
+
+
+function generatePONumber() {
+  const now = new Date();
+
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+
+  return `PO-${dd}-${mm}-${random}`;
+}
+
+
+
 export async function createPurchaseOrder(data, client = pool) {
-  const {
-    project_id,
-    po_number,
-    received_date,
-    received_by_user_id,
-    notes,
-    terms_and_conditions,
-    uploaded_file_ids = [],
-  } = data;
+  const MAX_RETRIES = 5;
 
-  const query = `
-    INSERT INTO purchase_orders (
-      project_id, po_number, received_date, received_by_user_id,
-      notes, terms_and_conditions, status
-    ) VALUES ($1, $2, $3, $4, $5, $6, 'received')
-    RETURNING *
-  `;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const po_number = generatePONumber();
 
-  const values = [
-    project_id,
-    po_number,
-    received_date,
-    received_by_user_id,
-    notes || null, // Handle undefined/null
-    terms_and_conditions || null,
-  ];
+    try {
+      const query = `
+        INSERT INTO purchase_orders (
+          project_id, po_number, received_date, received_by_user_id,
+          notes, terms_and_conditions, status
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, 'received')
+        RETURNING *
+      `;
 
-  const result = await client.query(query, values);
-  const po = result.rows[0];
+      const values = [
+        data.project_id,
+        po_number,
+        data.received_date,
+        data.received_by_user_id,
+        data.notes ?? null,
+        data.terms_and_conditions ?? null,
+      ];
 
-  if (uploaded_file_ids.length > 0) {
-    const filePromises = uploaded_file_ids.map((fileId) =>
-      client.query(
-        `INSERT INTO purchase_order_files (po_id, uploaded_file_id) VALUES ($1, $2)`,
-        [po.id, fileId]
-      )
-    );
-    await Promise.all(filePromises);
+      const result = await client.query(query, values);
+      const po = result.rows[0];
+
+      if (data.uploaded_file_ids?.length) {
+        await Promise.all(
+          data.uploaded_file_ids.map((fileId) =>
+            client.query(
+              `INSERT INTO purchase_order_files (po_id, uploaded_file_id)
+               VALUES ($1, $2)`,
+              [po.id, fileId]
+            )
+          )
+        );
+      }
+
+      return po;
+    } catch (err) {
+      if (err.code !== "23505" || attempt === MAX_RETRIES) {
+        throw err;
+      }
+    }
   }
-
-  return po;
 }
 
-export async function getPurchaseOrderById(project_id, client = pool) {
-  const query = `
-    SELECT * FROM purchase_orders WHERE project_id = $1
-  `;
-
-  const result = await client.query(query, [project_id]);
-  return result.rows[0] || null;
-}
 
 export async function getPOsByProjectId(projectId, client = pool) {
   const query = `
