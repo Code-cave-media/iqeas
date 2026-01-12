@@ -6,13 +6,20 @@ export const activeTimers = new Map();
 /* ---------- START ---------- */
 export async function handleStart(ws, worker_id, estimation_deliverable_id) {
   try {
+    console.log("▶ START requested", {
+      worker_id,
+      estimation_deliverable_id,
+    });
+
     const key = `${worker_id}:${estimation_deliverable_id}`;
 
+    console.log("▶ Active timers keys:", [...activeTimers.keys()]);
+
     if (activeTimers.has(key)) {
+      console.log("⛔ Timer already running for key:", key);
       return ws.send(JSON.stringify({ error: "Timer already running" }));
     }
 
-    // ✅ Check DB status before starting
     const statusQuery = `
       SELECT status
       FROM estimation_deliverables
@@ -24,13 +31,19 @@ export async function handleStart(ws, worker_id, estimation_deliverable_id) {
       worker_id,
     ]);
 
+    console.log("▶ DB rows:", rows);
+
     if (!rows.length) {
+      console.log("⛔ Task not found in DB");
       return ws.send(JSON.stringify({ error: "Task not found" }));
     }
 
     const status = rows[0].status;
+    console.log("▶ Current status from DB:", status);
 
     if (!["under progress", "rework"].includes(status)) {
+      console.log("⛔ Status not allowed to start:", status);
+
       return ws.send(
         JSON.stringify({
           error: "Cannot start timer in current status",
@@ -39,16 +52,24 @@ export async function handleStart(ws, worker_id, estimation_deliverable_id) {
       );
     }
 
-    activeTimers.set(key, { started_at: new Date() });
+    const startedAt = new Date();
+
+    activeTimers.set(key, { started_at: startedAt });
+
+    console.log("✅ Timer started:", {
+      key,
+      started_at: startedAt,
+    });
 
     ws.send(
       JSON.stringify({
         status: "started",
         estimation_deliverable_id,
-        started_at: new Date(),
+        started_at: startedAt,
       })
     );
   } catch (err) {
+    console.error("❌ START ERROR:", err);
     ws.send(JSON.stringify({ error: err.message }));
   }
 }

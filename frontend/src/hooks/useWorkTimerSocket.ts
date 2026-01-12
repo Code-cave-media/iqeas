@@ -8,31 +8,26 @@ interface Payload {
 
 export function useWorkTimerSocket(workerId?: number, onUpdate?: () => void) {
   const socketRef = useRef<WebSocket | null>(null);
-  const initializedRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     if (!workerId) return;
 
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-
     const token = localStorage.getItem("auth_token");
-    console.log(token);
     if (!token) {
       console.error("❌ Missing auth token for WS");
       return;
     }
 
-    // ✅ TOKEN PASSED HERE
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     const socket = new WebSocket(
-      `ws://localhost:8080?token=${encodeURIComponent(token)}`
+      `${protocol}://localhost:8080?token=${encodeURIComponent(token)}`
     );
 
     socketRef.current = socket;
 
     socket.onopen = () => {
-      console.log("🟢 WS connected");
+      console.log("🟢 WS connected (client)");
       setIsReady(true);
     };
 
@@ -50,14 +45,13 @@ export function useWorkTimerSocket(workerId?: number, onUpdate?: () => void) {
     };
 
     socket.onclose = () => {
-      console.log("🔴 WS closed");
+      console.log("🔴 WS closed (client)");
       setIsReady(false);
     };
 
     return () => {
       socket.close();
       socketRef.current = null;
-      initializedRef.current = false;
     };
   }, [workerId]);
 

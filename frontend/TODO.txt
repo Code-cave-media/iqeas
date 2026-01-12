@@ -1,1 +1,9 @@
-* toogle view should be implemented block icon to list-collapse icon
+The project manager doesn't need permission to edit project time.
+The project allocated time should be 10% less than the estimated hours.
+The icons mentioned below act as a filter, and they have to be small. [Added for project Coordinator]
+The Project Archive option needs to give (the Project Coordinator will do that once the project is finished)
+(Only for Admin) Project Delete option (Only in the table?)
+What is delivery Option in employee's [removed]
+Better to keep the employee's picture
+Name Fixed in the left side top corner
+Role Fixed in the left

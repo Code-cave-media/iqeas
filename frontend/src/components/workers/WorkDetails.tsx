@@ -26,6 +26,8 @@ const toClock = (s: number) => ({
   s: s % 60,
 });
 
+
+
 /* ---------- STATUS BADGES ---------- */
 const STATUS_BADGE: Record<string, string> = {
   under_progress: "bg-blue-100 text-blue-700",
@@ -73,6 +75,9 @@ export default function WorkDetails() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+
+
+  
   /* ---------- VIEW FILE FUNCTION ---------- */
   const viewFile = (fileHash: string) => {
     // Replace with your actual file view endpoint
@@ -297,12 +302,13 @@ export default function WorkDetails() {
                 icon={Play}
                 text="Start"
                 color="green"
-                disabled={!canStart || running}
+                disabled={!isReady || !canStart || running}
                 onClick={() => {
                   setStatus((s) => ({ ...s, [w.id]: "RUNNING" }));
                   sendAction("START", { estimation_deliverable_id: w.id });
                 }}
               />
+
               <ActionBtn
                 icon={Pause}
                 text="Pause"

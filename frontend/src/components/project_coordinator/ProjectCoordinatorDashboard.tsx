@@ -12,6 +12,13 @@ import Loading from "../atomic/Loading";
 import { Project } from "@/types/apiTypes";
 import { useNavigate } from "react-router-dom";
 
+/* ========================= TYPES ========================= */
+
+
+type ProjectFilter = "ALL" | "COMPLETED" | "ARCHIVED";
+
+
+/* ========================= COMPONENT ========================= */
 export default function ProjectCoordinatorDashboard() {
   const navigate = useNavigate();
   const { fetching, isFetched, makeApiCall } = useAPICall();
@@ -23,12 +30,15 @@ export default function ProjectCoordinatorDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [activeFilter, setActiveFilter] = useState<ProjectFilter>("ALL");
+
   const [cards, setCards] = useState({
     total_projects: 0,
     completed_works: 0,
-    pending_works: 0,
+    archived_works: 0,
   });
 
+  /* ========================= FETCH PROJECTS ========================= */
   useEffect(() => {
     if (!user?.id) return;
 
@@ -57,20 +67,16 @@ export default function ProjectCoordinatorDashboard() {
           total: data.length,
         };
 
-        // Exclude archived projects
-        const activeProjects = data.filter((p: any) => !p.is_pc_archived);
-
-        setProjects(activeProjects as any);
-        setTotalPages(pagination?.totalPages || 1);
+        setProjects(data as any);
+        setTotalPages(pagination.totalPages || 1);
 
         setCards({
-          total_projects: activeProjects.length,
-          completed_works: activeProjects.filter(
-            (p: any) => p.status === "completed"
+          total_projects: data.length,
+          completed_works: data.filter(
+            (p: any) => p.estimation_sent_to_pm === true
           ).length,
-          pending_works: activeProjects.filter(
-            (p: any) => p.status !== "completed"
-          ).length,
+          archived_works: data.filter((p: any) => p.is_pc_archived === true)
+            .length,
         });
       } else {
         toast.error("Failed to fetch projects");
@@ -79,6 +85,28 @@ export default function ProjectCoordinatorDashboard() {
 
     fetchProjects();
   }, [page, searchTerm, user?.id, authToken, makeApiCall]);
+
+  /* ========================= FILTERED PROJECTS ========================= */
+  const filteredProjects = projects.filter((project: any) => {
+    // Search
+    if (
+      searchTerm &&
+      !project.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    ) {
+      return false;
+    }
+
+    if (activeFilter === "COMPLETED") {
+      return project.estimation_sent_to_pm === true && !project.is_pc_archived;
+    }
+
+    if (activeFilter === "ARCHIVED") {
+      return project.is_pc_archived === true;
+    }
+
+    // ALL (non-archived)
+    return !project.is_pc_archived;
+  });
 
   /* ========================= ARCHIVE HANDLER ========================= */
   const handleArchive = async (projectId: number) => {
@@ -94,30 +122,25 @@ export default function ProjectCoordinatorDashboard() {
     if (response.status === 200) {
       toast.success("Project archived successfully");
 
-      const archivedProject = projects.find((p: any) => p.id === projectId);
-      setProjects((prev) => prev.filter((p: any) => p.id !== projectId));
+      setProjects((prev: any) =>
+        prev.map((p: any) =>
+          p.id === projectId ? { ...p, is_pc_archived: true } : p
+        )
+      );
 
-      if (archivedProject) {
-        setCards((prev) => ({
-          total_projects: prev.total_projects - 1,
-          completed_works:
-            archivedProject.status === "completed"
-              ? prev.completed_works - 1
-              : prev.completed_works,
-          pending_works:
-            archivedProject.status !== "completed"
-              ? prev.pending_works - 1
-              : prev.pending_works,
-        }));
-      }
+      setCards((prev) => ({
+        ...prev,
+        archived_works: prev.archived_works + 1,
+      }));
     } else {
       toast.error("Failed to archive project");
     }
   };
 
+  /* ========================= RENDER ========================= */
   return (
     <div className="p-6 relative">
-      {/* Header & Quick Stats */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">
@@ -128,24 +151,33 @@ export default function ProjectCoordinatorDashboard() {
           </p>
         </div>
 
+        {/* Summary + Controls */}
         <div className="flex flex-wrap items-center gap-3">
           <MiniSummaryCard
-            icon={<Users className="text-blue-700" size={16} />}
+            icon={<Users size={16} className="text-blue-700" />}
             value={cards.total_projects}
             label="Total"
             bg="bg-blue-50"
+            active={activeFilter === "ALL"}
+            onClick={() => setActiveFilter("ALL")}
           />
+
           <MiniSummaryCard
-            icon={<CheckCircle2 className="text-emerald-700" size={16} />}
+            icon={<CheckCircle2 size={16} className="text-emerald-700" />}
             value={cards.completed_works}
             label="Completed"
             bg="bg-emerald-50"
+            active={activeFilter === "COMPLETED"}
+            onClick={() => setActiveFilter("COMPLETED")}
           />
+
           <MiniSummaryCard
-            icon={<Clock className="text-yellow-700" size={16} />}
-            value={cards.pending_works}
-            label="Pending"
+            icon={<Clock size={16} className="text-yellow-700" />}
+            value={cards.archived_works}
+            label="Archived"
             bg="bg-yellow-50"
+            active={activeFilter === "ARCHIVED"}
+            onClick={() => setActiveFilter("ARCHIVED")}
           />
 
           <div className="flex items-center gap-2 ml-2">
@@ -172,6 +204,7 @@ export default function ProjectCoordinatorDashboard() {
             >
               <Grid size={16} />
             </Button>
+
             <Button
               variant={viewMode === "list" ? "default" : "ghost"}
               size="sm"
@@ -183,10 +216,10 @@ export default function ProjectCoordinatorDashboard() {
         </div>
       </div>
 
-      {/* Projects List/Grid */}
+      {/* Projects */}
       {fetching || !isFetched ? (
         <Loading full={false} />
-      ) : projects.length === 0 ? (
+      ) : filteredProjects.length === 0 ? (
         <EmptyState />
       ) : (
         <div
@@ -196,7 +229,7 @@ export default function ProjectCoordinatorDashboard() {
               : "space-y-4"
           }
         >
-          {projects.map((project: any) => (
+          {filteredProjects.map((project: any) => (
             <ProjectCard
               key={project.id}
               project={{
@@ -205,13 +238,12 @@ export default function ProjectCoordinatorDashboard() {
                 createdDate: project.created_at,
                 status: project.status || "",
                 poNumber: project.po_number,
-                isArchived: false,
               }}
               viewMode={viewMode}
               onSelect={() =>
                 navigate(`/project-coordinator/${project.id}/details`)
               }
-              onArchive={handleArchive} // Pass archive handler
+              onArchive={handleArchive}
             />
           ))}
         </div>
@@ -228,6 +260,7 @@ export default function ProjectCoordinatorDashboard() {
           >
             Previous
           </Button>
+
           {[...Array(totalPages)].map((_, i) => (
             <Button
               key={i}
@@ -238,6 +271,7 @@ export default function ProjectCoordinatorDashboard() {
               {i + 1}
             </Button>
           ))}
+
           <Button
             size="sm"
             variant="outline"
@@ -253,20 +287,29 @@ export default function ProjectCoordinatorDashboard() {
 }
 
 /* ========================= HELPER COMPONENTS ========================= */
-
 function MiniSummaryCard({
   icon,
   value,
   label,
   bg,
+  active,
+  onClick,
 }: {
   icon: React.ReactNode;
   value: number;
   label: string;
   bg: string;
+  active?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <div className={`flex items-center gap-2 rounded-full px-2 py-1 ${bg}`}>
+    <div
+      onClick={onClick}
+      className={`flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer
+        transition-all ${bg}
+        ${active ? "ring-2 ring-slate-400 scale-[1.03]" : "hover:scale-[1.02]"}
+      `}
+    >
       <div className="p-1 rounded-full bg-white">{icon}</div>
       <div className="text-xs text-slate-700 font-semibold">
         {value} {label}
@@ -279,7 +322,7 @@ function EmptyState() {
   return (
     <div className="text-center py-12 text-slate-400">
       <p className="text-lg font-medium">No projects found</p>
-      <p className="text-sm">Try adjusting your search</p>
+      <p className="text-sm">Try adjusting your filters or search</p>
     </div>
   );
 }
