@@ -140,6 +140,10 @@ export default function RFQEnquiry() {
           delRes?.data ||
           [];
 
+        console.log("DEBUG: fetch RFQ deliverables response:", delRes);
+        console.log("DEBUG: parsed rows:", rows);
+        console.log("DEBUG: hasDeliverables check:", Array.isArray(rows) && rows.length > 0);
+
         setHasDeliverables(Array.isArray(rows) && rows.length > 0);
 
         const poRes = await makeApiCall(

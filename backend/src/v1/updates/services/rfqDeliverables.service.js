@@ -150,7 +150,7 @@ export async function addAmountsToDeliverables(
   const results = [];
 
   for (const deliverable of deliverablesWithAmount) {
-    const { sno, amount } = deliverable;
+    const { sno, amount, hourly_rate } = deliverable;
 
     if (amount === undefined || amount === null || isNaN(amount)) {
       throw new Error(
@@ -160,11 +160,11 @@ export async function addAmountsToDeliverables(
 
     const result = await client.query(
       `UPDATE estimation_deliverables
-       SET amount = $1, updated_at = NOW()
-       WHERE project_id = $2::text
-         AND sno = $3
+       SET amount = $1, hourly_rate = $2, updated_at = NOW()
+       WHERE project_id = $3
+         AND sno = $4
        RETURNING *`,
-      [amount, projectId, sno]
+      [amount, hourly_rate || null, projectId, sno]
     );
 
     if (result.rowCount === 0) {

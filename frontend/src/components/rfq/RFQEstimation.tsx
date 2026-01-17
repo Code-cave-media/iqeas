@@ -205,8 +205,7 @@ export default function RFQEstimationTable() {
           return filePath;
         } else {
           toast.error(
-            `Upload failed: ${file.name} - ${
-              (response as any)?.detail || "Unknown error"
+            `Upload failed: ${file.name} - ${(response as any)?.detail || "Unknown error"
             }`
           );
           return null;
@@ -271,8 +270,7 @@ export default function RFQEstimationTable() {
       client_name,
       project_name,
       message,
-      file_path:
-        "https://jegdjcrxqqxzcmboiblb.supabase.co/storage/v1/object/public/course_video/synapse-part-1.mp4",
+      file_path: filePath,
     };
 
     try {
@@ -292,8 +290,8 @@ export default function RFQEstimationTable() {
       } else {
         toast.error(
           response?.data?.message ||
-            (response as any)?.detail ||
-            "Failed to send quotation"
+          (response as any)?.detail ||
+          "Failed to send quotation"
         );
       }
     } catch (err) {
@@ -400,11 +398,10 @@ export default function RFQEstimationTable() {
               onDragLeave={() => setDragActive(false)}
               onDrop={handleDrop}
               onClick={() => inputRef.current?.click()}
-              className={`w-full cursor-pointer border-2 border-dashed rounded-xl p-8 transition flex flex-col items-center justify-center ${
-                dragActive
+              className={`w-full cursor-pointer border-2 border-dashed rounded-xl p-8 transition flex flex-col items-center justify-center ${dragActive
                   ? "border-blue-500 bg-blue-50"
                   : "border-gray-300 hover:border-gray-400"
-              }`}
+                }`}
             >
               <UploadCloud className="h-10 w-10 text-gray-500 mb-3" />
               <p className="font-medium">

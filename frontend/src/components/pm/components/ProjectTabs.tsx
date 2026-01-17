@@ -17,11 +17,10 @@ export const ProjectTabs: React.FC<Props> = ({ activeTab, onTabChange }) => {
           <button
             type="button"
             onClick={() => onTabChange("project")}
-            className={`inline-flex items-center justify-center gap-2 w-full p-3 border-b-2 ${
-              activeTab === "project"
+            className={`inline-flex items-center justify-center gap-2 w-full p-3 border-b-2 ${activeTab === "project"
                 ? "text-blue-600 border-blue-600 bg-blue-50"
                 : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-            }`}
+              }`}
           >
             <FileText size={16} />
             <span>Project Data</span>
@@ -31,17 +30,17 @@ export const ProjectTabs: React.FC<Props> = ({ activeTab, onTabChange }) => {
           <button
             type="button"
             onClick={() => onTabChange("working")}
-            className={`inline-flex items-center justify-center gap-2 w-full p-3 border-b-2 ${
-              activeTab === "working"
+            className={`inline-flex items-center justify-center gap-2 w-full p-3 border-b-2 ${activeTab === "working"
                 ? "text-indigo-600 border-indigo-600 bg-indigo-50"
                 : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-            }`}
+              }`}
           >
             <ClipboardList size={16} />
             <span>Working & RFQ</span>
           </button>
         </li>
-        <li className="flex-1">
+        {/* Delivery Tab Hidden */}
+        {/* <li className="flex-1">
           <button
             type="button"
             onClick={() => onTabChange("delivery")}
@@ -54,7 +53,7 @@ export const ProjectTabs: React.FC<Props> = ({ activeTab, onTabChange }) => {
             <CheckCircle2 size={16} />
             <span>Delivery</span>
           </button>
-        </li>
+        </li> */}
       </ul>
     </div>
   );

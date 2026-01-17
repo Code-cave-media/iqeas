@@ -474,7 +474,7 @@ export async function getPMProjects({
       )
       AND EXISTS (
         SELECT 1 FROM estimations e
-        WHERE e.project_id = projects.id AND e.sent_to_pm = true AND e.pm_id = $6
+        WHERE e.project_id = projects.id AND e.sent_to_pm = true AND e.forwarded_user_id = $6
       )
       ORDER BY created_at DESC
       LIMIT $7 OFFSET $8
@@ -556,8 +556,8 @@ export async function getPMProjects({
         )
         FROM estimations e
         JOIN users eu ON e.user_id = eu.id
-        JOIN users fuser ON fuser.id = e.pm_id
-        WHERE e.project_id = fp.id AND e.pm_id = $6
+        JOIN users fuser ON fuser.id = e.forwarded_user_id
+        WHERE e.project_id = fp.id AND e.forwarded_user_id = $6
         LIMIT 1
       ) AS estimation,
 
@@ -1594,12 +1594,6 @@ export async function deleteProjectById(projectId) {
 
   try {
     await client.query("BEGIN");
-
-    // 1. Delete workers uploaded files
-    await client.query(
-      `DELETE FROM workers_uploaded_files WHERE project_id = $1`,
-      [projectId]
-    );
 
     // 2. Delete purchase orders
     await client.query(`DELETE FROM purchase_orders WHERE project_id = $1`, [

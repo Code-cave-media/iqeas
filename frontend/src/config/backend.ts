@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// export const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1`;
-export const API_URL = `https://iqeas-x6eg.onrender.com/api/v1`;
+export const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1`;
+// export const API_URL = `https://iqeas-x6eg.onrender.com/api/v1`;
 
 export const API_ENDPOINT = {
   VERIFY_USER: `${API_URL}/auth/me `,

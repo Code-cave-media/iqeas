@@ -14,7 +14,7 @@ export async function addHoursToDeliverables(
     return client.query(
       `UPDATE estimation_deliverables
        SET hours = $1,
-       SET total_time = $4
+           total_time = $4,
        updated_at = NOW()
        WHERE project_id = $2 AND sno = $3
        RETURNING *`,
@@ -129,11 +129,15 @@ export async function getDeliverablesByProject(projectId, client = pool) {
 
 export async function getDeliverablesWithTotals(projectId, client = pool) {
   const estimationResult = await client.query(
-    `SELECT * FROM estimation_deliverables WHERE project_id = $1 ORDER BY created_at DESC`,
+    `SELECT * FROM estimations WHERE project_id = $1 ORDER BY created_at DESC`,
     [Number(projectId)]
   );
   if (estimationResult.rows.length === 0) {
-    throw new Error("Estimation not found for this project");
+    return {
+      table_data: [],
+      totals: { total_hours: 0, total_amount: 0 },
+      estimation: null,
+    };
   }
 
   const estimation = estimationResult.rows[0];

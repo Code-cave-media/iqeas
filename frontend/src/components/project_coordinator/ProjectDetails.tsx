@@ -97,7 +97,7 @@ export default function ProjectDetails() {
         API_ENDPOINT.EDIT_ESTIMATION(project.estimation_id),
         {
           sent_to_pm: true,
-          pm_id: selectedPmId,
+          forwarded_user_id: selectedPmId,
         },
         "application/json",
         authToken

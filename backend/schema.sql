@@ -8,7 +8,7 @@ CREATE TABLE users (
     phone VARCHAR(15),
     user_id VARCHAR(1024),
     active BOOLEAN DEFAULT TRUE NOT NULL,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'rfq', 'estimation', 'pm', 'working', 'documentation')),
+    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'rfq', 'estimation', 'pm', 'working', 'documentation', 'project_coordinator', 'project_leader')),
     password VARCHAR(128) NOT NULL,
     is_deleted BOOLEAN DEFAULT FALSE,
     base_salary DECIMAL DEFAULT 0   
@@ -65,6 +65,8 @@ CREATE TABLE projects (
     status VARCHAR(20) NOT NULL DEFAULT 'draft',
     estimation_status VARCHAR(30) DEFAULT 'draft',
     send_to_estimation BOOLEAN DEFAULT FALSE NOT NULL,
+    send_to_coordinator BOOLEAN DEFAULT FALSE NOT NULL,
+    coordinator_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     public_share_token VARCHAR(20) UNIQUE
 );
 
@@ -145,7 +147,26 @@ CREATE TABLE estimation_uploaded_files (
 
 
 
-CREATE TABLE stages (
+CREATE TABLE estimation_deliverables (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    estimation_id INTEGER REFERENCES estimations(id) ON DELETE CASCADE,
+    sno INTEGER NOT NULL,
+    drawing_no VARCHAR(100),
+    drawing_no VARCHAR(100),
+    title VARCHAR(255),
+    deliverables TEXT,
+    discipline VARCHAR(100),
+    additional TEXT,
+    hours NUMERIC(10, 2),
+    amount NUMERIC(15, 2),
+    total_time NUMERIC(10, 2),
+    hourly_rate NUMERIC(10, 2),
+    work_person VARCHAR(100),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (project_id, sno)
+);
     id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(20) NOT NULL ,
@@ -242,3 +263,26 @@ CREATE TABLE salary_records (
     paid_on TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE (user_id, salary_date)
 );
+CREATE TABLE purchase_orders (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    po_number VARCHAR(100) NOT NULL,
+    received_date DATE,
+    received_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    notes TEXT,
+    terms_and_conditions TEXT,
+    status VARCHAR(50) DEFAULT 'received', 
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    forwarded_to_admin_at TIMESTAMPTZ,
+    forwarded_to_pm_at TIMESTAMPTZ,
+    accepted_at TIMESTAMPTZ
+);
+
+CREATE TABLE purchase_order_files (
+    id SERIAL PRIMARY KEY,
+    po_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+    uploaded_file_id INTEGER NOT NULL REFERENCES uploaded_files(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+

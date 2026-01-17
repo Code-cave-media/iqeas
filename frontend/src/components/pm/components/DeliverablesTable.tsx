@@ -70,8 +70,8 @@ export const DeliverablesTable: React.FC<Props> = ({
   onDeleteRow,
   loadingRFQ,
 }) => {
-    const { projectId } = useParams<{ projectId: string }>();
-  
+  const { projectId } = useParams<{ projectId: string }>();
+
   const { makeApiCall, fetching, fetchType } = useAPICall();
   const { authToken } = useAuth();
   const [leaders, setLeaders] = useState<Leader[]>([]);
@@ -81,23 +81,23 @@ export const DeliverablesTable: React.FC<Props> = ({
   const [project, setProject] = useState<any>(null);
 
   useEffect(() => {
-      const fetchProject = async () => {
-        if (!projectId) return;
-        const response = await makeApiCall(
-          "get",
-          API_ENDPOINT.GET_PROJECT_BY_ID(projectId),
-          {},
-          "application/json",
-          authToken,
-          "getProject"
-        );
-        if (response.status === 200) {
-          setProject(response.data);
-        }
-      };
-      fetchProject();
+    const fetchProject = async () => {
+      if (!projectId) return;
+      const response = await makeApiCall(
+        "get",
+        API_ENDPOINT.GET_PROJECT_BY_ID(projectId),
+        {},
+        "application/json",
+        authToken,
+        "getProject"
+      );
+      if (response.status === 200) {
+        setProject(response.data);
+      }
+    };
+    fetchProject();
   }, [projectId, makeApiCall, authToken]);
-  
+
   useEffect(() => {
     const fetchLeaders = async () => {
       setLoadingLeaders(true);
@@ -131,31 +131,31 @@ export const DeliverablesTable: React.FC<Props> = ({
     }
   }, [project]);
 
-    const handleSaveLeader = async () => {
-      if (!project?.estimation?.id || selectedLeaderId === null) return;
-      setSavingLeader(true);
-      try {
-        const resp = await makeApiCall(
-          "patch",
-          API_ENDPOINT.EDIT_ESTIMATION(project.estimation.id),
-          { leader: selectedLeaderId },
-          "application/json",
-          authToken,
-          "assignLeader"
-        );
-        if (resp?.status === 200) {
-          setProject((prev: any) => ({
-            ...prev,
-            estimation: { ...prev.estimation, leader: selectedLeaderId },
-          }));
-          toast.success("Leader assigned successfully");
-        } else throw new Error("Assign failed");
-      } catch (e: any) {
-        toast.error(e.message || "Failed to assign leader");
-      } finally {
-        setSavingLeader(false);
-      }
-    };
+  const handleSaveLeader = async () => {
+    if (!project?.estimation?.id || selectedLeaderId === null) return;
+    setSavingLeader(true);
+    try {
+      const resp = await makeApiCall(
+        "patch",
+        API_ENDPOINT.EDIT_ESTIMATION(project.estimation.id),
+        { leader: selectedLeaderId },
+        "application/json",
+        authToken,
+        "assignLeader"
+      );
+      if (resp?.status === 200) {
+        setProject((prev: any) => ({
+          ...prev,
+          estimation: { ...prev.estimation, leader: selectedLeaderId },
+        }));
+        toast.success("Leader assigned successfully");
+      } else throw new Error("Assign failed");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to assign leader");
+    } finally {
+      setSavingLeader(false);
+    }
+  };
 
   const isParent = (item: RFQDeliverable) =>
     item.sno == null || !String(item.sno).includes(".");
@@ -185,8 +185,8 @@ export const DeliverablesTable: React.FC<Props> = ({
     );
   }
 
-    const currentLeaderName =
-      leaders.find((l) => l.id === selectedLeaderId)?.name || "Not assigned";
+  const currentLeaderName =
+    leaders.find((l) => l.id === selectedLeaderId)?.name || "Not assigned";
 
   return (
     <div className="overflow-x-auto">
@@ -240,8 +240,8 @@ export const DeliverablesTable: React.FC<Props> = ({
                   !selectedLeaderId ||
                   savingLeader ||
                   selectedLeaderId ===
-                    (project?.estimation?.leader?.id ||
-                      project?.estimation?.leader)
+                  (project?.estimation?.leader?.id ||
+                    project?.estimation?.leader)
                 }
                 className="bg-indigo-600 hover:bg-indigo-700"
               >
@@ -282,9 +282,8 @@ export const DeliverablesTable: React.FC<Props> = ({
             return (
               <tr
                 key={item.id}
-                className={`border-t ${
-                  item.isNew ? "bg-amber-50" : "bg-white"
-                } hover:bg-slate-50`}
+                className={`border-t ${item.isNew ? "bg-amber-50" : "bg-white"
+                  } hover:bg-slate-50`}
               >
                 <td className="px-4 py-3 whitespace-nowrap">
                   <div className="flex items-center gap-1">
@@ -354,20 +353,13 @@ export const DeliverablesTable: React.FC<Props> = ({
                     type="number"
                     value={
                       item.hours !== null && item.hours !== undefined
-                        ? Math.floor(item.hours * 0.9) // 10% reduced
+                        ? Math.floor(Number(item.hours) * 0.9) // 10% reduced
                         : ""
                     }
-                    onChange={(e) =>
-                      onHoursChange(
-                        item.id,
-                        e.target.value === ""
-                          ? null
-                          : Math.floor(Number(e.target.value) / 0.9)
-                      )
-                    }
-                    className="w-20 border rounded px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                    readOnly
+                    disabled
+                    className="w-20 border rounded px-2 py-1 text-xs bg-slate-100 text-slate-500 cursor-not-allowed focus:outline-none"
                     placeholder="Hours"
-                    step={1}
                   />
                 </td>
 

@@ -26,6 +26,7 @@ type RFQDeliverable = {
   deliverables?: string;
   amount?: number | string | null;
   hours: number;
+  hourly_rate?: number | string | null;
 };
 
 type TabKey = "project" | "deliverables" | "estimation" | "files";
@@ -126,6 +127,26 @@ const ProjectControlAdmin: React.FC = () => {
     );
   };
 
+  const handleHourlyRateChange = (id: number, value: string) => {
+    setRfqDeliverables((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const rate = value === "" ? null : Number(value);
+          // Auto calculate amount: Amount = Hours * Rate
+          const hours = Number(item.hours) || 0;
+          const amount = rate !== null ? hours * rate : null;
+          return { ...item, hourly_rate: rate, amount: amount };
+        }
+        return item;
+      })
+    );
+  };
+
+  const calculateAmount = (item: RFQDeliverable) => {
+    // Optional utility if we wanted dynamic calc, but we are updating state directly
+    return item.amount;
+  };
+
   const saveAmounts = async () => {
     if (!projectId) return;
 
@@ -136,9 +157,13 @@ const ProjectControlAdmin: React.FC = () => {
         const amountNum =
           d.amount !== null && d.amount !== "" ? Number(d.amount) : NaN;
 
+        const hourlyRateNum =
+          d.hourly_rate !== null && d.hourly_rate !== "" ? Number(d.hourly_rate) : NaN;
+
         return {
           sno: snoNum,
           amount: amountNum,
+          hourly_rate: hourlyRateNum,
         };
       })
       .filter((d) => Number.isFinite(d.sno) && Number.isFinite(d.amount));
@@ -317,6 +342,9 @@ const ProjectControlAdmin: React.FC = () => {
                   <th className="px-4 py-3 text-left">Discipline</th>
                   <th className="px-4 py-3 text-left">Deliverables</th>
                   <th className="px-4 py-3 text-left">Hours</th>
+                  <th className="px-4 py-3 text-left font-semibold text-blue-700">
+                    Hourly Rate
+                  </th>
                   <th className="px-4 py-3 text-left font-semibold text-green-700">
                     Amount (₹)
                   </th>
@@ -333,18 +361,38 @@ const ProjectControlAdmin: React.FC = () => {
                     <td className="px-4 py-3">{item.deliverables || "—"}</td>
                     <td className="px-4 py-3">{item.hours || "—"}</td>
 
+
+
                     <td className="px-4 py-3">
                       {editingAmountId === item.id ? (
                         <input
                           type="number"
                           min="0"
-                          value={item.amount ?? ""}
+                          value={item.hourly_rate ?? ""}
                           onChange={(e) =>
-                            handleAmountChange(item.id, e.target.value)
+                            handleHourlyRateChange(item.id, e.target.value)
                           }
-                          className="w-40 rounded-md border px-3 py-1.5 text-sm focus:border-green-500 focus:outline-none"
-                          placeholder="Enter amount"
-                          autoFocus
+                          className="w-24 rounded-md border px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                          placeholder="Rate"
+                        />
+                      ) : (
+                        <span className="font-semibold text-blue-700">
+                          {item.hourly_rate != null
+                            ? `₹${Number(item.hourly_rate).toLocaleString()}`
+                            : "—"}
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {editingAmountId === item.id ? (
+                        <input
+                          type="number"
+                          min="0"
+                          readOnly
+                          value={item.amount ?? ""}
+                          className="w-40 rounded-md border px-3 py-1.5 text-sm bg-slate-100 text-slate-600 focus:outline-none cursor-not-allowed"
+                          placeholder="Auto-calc"
                         />
                       ) : (
                         <span className="font-semibold text-green-700">
@@ -474,11 +522,10 @@ const ProjectControlAdmin: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveTab("project")}
-                  className={`inline-flex items-center gap-1 p-3 border-b-2 rounded-t-lg ${
-                    activeTab === "project"
-                      ? "text-blue-600 border-blue-600"
-                      : "text-gray-500 border-transparent hover:text-gray-600 hover:border-gray-300"
-                  }`}
+                  className={`inline-flex items-center gap-1 p-3 border-b-2 rounded-t-lg ${activeTab === "project"
+                    ? "text-blue-600 border-blue-600"
+                    : "text-gray-500 border-transparent hover:text-gray-600 hover:border-gray-300"
+                    }`}
                 >
                   <FileText size={16} />
                   Project Data
@@ -488,11 +535,10 @@ const ProjectControlAdmin: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveTab("deliverables")}
-                  className={`inline-flex items-center gap-1 p-3 border-b-2 rounded-t-lg ${
-                    activeTab === "deliverables"
-                      ? "text-blue-600 border-blue-600"
-                      : "text-gray-500 border-transparent hover:text-gray-600 hover:border-gray-300"
-                  }`}
+                  className={`inline-flex items-center gap-1 p-3 border-b-2 rounded-t-lg ${activeTab === "deliverables"
+                    ? "text-blue-600 border-blue-600"
+                    : "text-gray-500 border-transparent hover:text-gray-600 hover:border-gray-300"
+                    }`}
                 >
                   <ClipboardList size={16} />
                   Deliverables
@@ -502,17 +548,16 @@ const ProjectControlAdmin: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveTab("estimation")}
-                  className={`inline-flex items-center gap-1 p-3 border-b-2 rounded-t-lg ${
-                    activeTab === "estimation"
-                      ? "text-blue-600 border-blue-600"
-                      : "text-gray-500 border-transparent hover:text-gray-600 hover:border-gray-300"
-                  }`}
+                  className={`inline-flex items-center gap-1 p-3 border-b-2 rounded-t-lg ${activeTab === "estimation"
+                    ? "text-blue-600 border-blue-600"
+                    : "text-gray-500 border-transparent hover:text-gray-600 hover:border-gray-300"
+                    }`}
                 >
                   <ClipboardList size={16} />
                   Estimation
                 </button>
               </li>
-             
+
             </ul>
           </div>
 

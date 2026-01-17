@@ -20,6 +20,8 @@ class User(TimeStampedModel):
         ("pm", "Project Manager"),
         ('working', 'Working Team'),
         ('documentation', 'Documentation Team'),
+        ('project_coordinator', 'Project Coordinator'),
+        ('project_leader', 'Project Leader'),
     ])
     password = models.CharField(max_length=128) 
 
@@ -71,6 +73,8 @@ class Project(TimeStampedModel):
         ('completed', 'Completed'), 
     ], default='draft')
     send_to_estimation = models.BooleanField(default=False)
+    send_to_coordinator = models.BooleanField(default=False)
+    coordinator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='coordinator_projects')
 
 class ProjectMoreInfo(TimeStampedModel):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='more_info')
