@@ -54,7 +54,7 @@ CREATE TABLE projects (
     received_date DATE NOT NULL,
     client_name VARCHAR(100) NOT NULL,
     client_company VARCHAR(100) NOT NULL,
-    is_pc_archived: BOOLEAN DEFAULT FALSE NOT NULL,
+    is_pc_archived BOOLEAN DEFAULT FALSE NOT NULL,
     location VARCHAR(100) NOT NULL,
     project_type VARCHAR(50) NOT NULL ,
     priority VARCHAR(20) NOT NULL ,
@@ -66,6 +66,7 @@ CREATE TABLE projects (
     estimation_status VARCHAR(30) DEFAULT 'draft',
     send_to_estimation BOOLEAN DEFAULT FALSE NOT NULL,
     send_to_coordinator BOOLEAN DEFAULT FALSE NOT NULL,
+    send_to_workers BOOLEAN DEFAULT FALSE NOT NULL,
     coordinator_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     public_share_token VARCHAR(20) UNIQUE
 );
@@ -129,7 +130,8 @@ CREATE TABLE estimations (
     sent_to_pm BOOLEAN DEFAULT FALSE NOT NULL,
     notes TEXT,
     updates TEXT,
-    forwarded_user_id INTEGER
+    forwarded_user_id INTEGER,
+    leader INTEGER REFERENCES users(id)
 );
 
 CREATE TABLE estimation_corrections ( 
